@@ -11,6 +11,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 
 const menuItems = [
@@ -54,6 +55,12 @@ const menuItems = [
     label: "Reports",
     href: "/reports",
     icon: FileText,
+  },
+
+  {
+  label: "INC Alerts",
+  href: "/inc-alerts",
+  icon: AlertTriangle,
   },
 
   {

@@ -1,5 +1,11 @@
 "use client";
 
+import jsPDF
+from "jspdf";
+
+import autoTable
+from "jspdf-autotable";
+
 import {
   useEffect,
   useState,
@@ -157,6 +163,51 @@ URL.revokeObjectURL(
   url,
 );
 }
+
+    function exportPDF() {
+
+  const doc =
+    new jsPDF();
+
+  doc.setFontSize(18);
+
+  doc.text(
+    "AUDITRIX STUDENT AUDIT REPORT",
+    14,
+    20,
+  );
+
+  autoTable(doc, {
+
+    startY: 30,
+
+    head: [[
+      "Student No.",
+      "Name",
+      "Department",
+      "Status",
+    ]],
+
+    body:
+      filteredStudents.map(
+        (student) => [
+
+          student.student_number,
+
+          `${student.first_name} ${student.last_name}`,
+
+          student.department,
+
+          student.audit_status,
+        ],
+      ),
+  });
+
+  doc.save(
+    `audit-report-${filter}.pdf`,
+  );
+}
+
   return (
 
     <Card>
@@ -174,6 +225,8 @@ URL.revokeObjectURL(
         <div
   className="
   mb-4
+  flex
+  gap-2
   "
 >
 
@@ -188,6 +241,20 @@ URL.revokeObjectURL(
     "
   >
     Export CSV
+  </button>
+
+  <button
+    onClick={exportPDF}
+    className="
+    rounded-lg
+    bg-black
+    
+    px-4
+    py-2
+    text-white
+    "
+  >
+    Export PDF
   </button>
 
 </div>
