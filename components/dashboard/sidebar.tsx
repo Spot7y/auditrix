@@ -21,11 +21,6 @@ const menuItems = [
     icon: LayoutDashboard,
   },
 
-  {
-    label: "Audits",
-    href: "/audits",
-    icon: ShieldCheck,
-  },
 
   {
   label: "Audit Queue",
@@ -46,12 +41,6 @@ const menuItems = [
   },
 
   {
-    label: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
-  },
-
-  {
     label: "Reports",
     href: "/reports",
     icon: FileText,
@@ -63,11 +52,11 @@ const menuItems = [
   icon: AlertTriangle,
   },
 
-  {
+  /*{
     label: "Settings",
     href: "/settings",
     icon: Settings,
-  },
+  },*/
 ];
 
 export default function Sidebar() {
