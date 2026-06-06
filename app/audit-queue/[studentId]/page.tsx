@@ -1,5 +1,8 @@
 "use client";
 
+import StatusBadge
+from "@/components/shared/status-badge";
+
 import {
   useEffect,
   useState,
@@ -201,14 +204,12 @@ StudentAuditPage() {
                 }
               </Badge>
 
-              <Badge>
-
-                {
-                  profile.student
-                    .audit_status
-                }
-
-              </Badge>
+              <StatusBadge
+              status={
+              profile.student
+              .audit_status
+            }
+            />
 
             </div>
 
@@ -304,14 +305,11 @@ StudentAuditPage() {
 
                         </div>
 
-                        <Badge>
-
-                          {
-                            history
-                            .status
-                          }
-
-                        </Badge>
+                       <StatusBadge
+                      status={
+                      history.status
+                        }
+                        />
 
                       </div>
 

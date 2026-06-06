@@ -1,5 +1,8 @@
 "use client";
 
+import StatusBadge
+from "@/components/shared/status-badge";
+
 import jsPDF
 from "jspdf";
 
@@ -409,15 +412,16 @@ URL.revokeObjectURL(
                     </td>
 
                     <td
-                      className="
-                      p-3
-                      font-medium
-                      "
-                    >
-                      {
-                        student.audit_status
-                      }
-                    </td>
+              className="
+                  p-3
+                  " 
+                >
+              <StatusBadge
+               status={
+                  student.audit_status
+                 }
+                     />
+                </td>
 
                   </tr>
                 ),
