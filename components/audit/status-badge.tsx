@@ -1,15 +1,16 @@
 interface StatusBadgeProps {
-  status:
-    | "Validated"
-    | "Pending"
-    | "Violated";
+  status: string;
 }
 
 export default function StatusBadge({
   status,
 }: StatusBadgeProps) {
 
-  const styles = {
+  const styles: Record<
+    string,
+    string
+  > = {
+
     Validated:
       "bg-green-100 text-green-700",
 
@@ -17,6 +18,15 @@ export default function StatusBadge({
       "bg-yellow-100 text-yellow-700",
 
     Violated:
+      "bg-red-100 text-red-700",
+
+    INC:
+      "bg-orange-100 text-orange-700",
+
+    Passed:
+      "bg-green-100 text-green-700",
+
+    Failed:
       "bg-red-100 text-red-700",
   };
 
@@ -28,7 +38,10 @@ export default function StatusBadge({
         rounded-full
         text-sm
         font-semibold
-        ${styles[status]}
+        ${
+          styles[status] ??
+          "bg-slate-100 text-slate-700"
+        }
       `}
     >
       {status}

@@ -1,7 +1,7 @@
 "use client";
 
 import StatusBadge
-from "@/components/shared/status-badge";
+from "@/components/audit/status-badge";
 
 import jsPDF
 from "jspdf";
@@ -421,7 +421,7 @@ URL.revokeObjectURL(
                   student.audit_status
                  }
                      />
-                </td>
+                        </td>
 
                   </tr>
                 ),
