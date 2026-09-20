@@ -1,0 +1,1 @@
+alter table subject_records add column is_invalid_entry boolean not null default false;
