@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { registerStudent } from "./actions";
+import ImportStudentsModal from "./ImportStudentsModal";
 import { getCurriculumVersionsForStaff } from "../../../../lib/queries/curriculum";
 
 export default async function NewStudentPage({
@@ -112,12 +113,7 @@ export default async function NewStudentPage({
         <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
       </div>
 
-      <Link
-        href="/students/import"
-        className="mt-4 block w-full border border-[color:var(--ledger-line)] px-5 py-2 text-center text-sm font-medium text-[color:var(--ink)] hover:bg-black/5"
-      >
-        Import Students (CSV/XLS)
-      </Link>
+      <ImportStudentsModal versions={versions?.versions ?? []} />
     </main>
   );
 }

@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
@@ -87,23 +86,29 @@ function isHtmlFormat(text: string): boolean {
   return start.startsWith("<html") || start.includes("<table") || start.includes("<!doctype");
 }
 
-export async function importStudentsCsv(formData: FormData) {
+export interface ImportResult {
+  error?: string;
+  success?: string;
+  warnings?: string[];
+}
+
+export async function importStudentsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/import?error=${encodeURIComponent("Only a chairperson account can import students.")}`);
+    return { error: "Only a chairperson account can import students." };
   }
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
   if (!curriculumId) {
-    redirect(`/students/import?error=${encodeURIComponent("Please select a curriculum version.")}`);
+    return { error: "Please select a curriculum version." };
   }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    redirect(`/students/import?error=${encodeURIComponent("Please choose a file.")}`);
+    return { error: "Please choose a file." };
   }
 
-  const text = await file!.text();
+  const text = await file.text();
 
   type ParsedStudent = { id: string; name: string; yearLevel: number };
   const parsedStudents: ParsedStudent[] = [];
@@ -112,7 +117,7 @@ export async function importStudentsCsv(formData: FormData) {
   if (isHtmlFormat(text)) {
     const rows = parseHtmlTable(text);
     if (rows.length < 2) {
-      redirect(`/students/import?error=${encodeURIComponent("Could not find a data table in this file.")}`);
+      return { error: "Could not find a data table in this file." };
     }
     const [headers, ...dataRows] = rows;
     const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
@@ -121,11 +126,7 @@ export async function importStudentsCsv(formData: FormData) {
     const yearCol = normalizedHeaders.indexOf("year");
 
     if (idCol === -1 || nameCol === -1 || yearCol === -1) {
-      redirect(
-        `/students/import?error=${encodeURIComponent(
-          "Could not find the expected columns (Student ID, Name, Year) in this file's headers."
-        )}`
-      );
+      return { error: "Could not find the expected columns (Student ID, Name, Year) in this file's headers." };
     }
 
     for (let i = 0; i < dataRows.length; i++) {
@@ -143,7 +144,7 @@ export async function importStudentsCsv(formData: FormData) {
   } else {
     const rows = parseCsv(text);
     if (rows.length < 2) {
-      redirect(`/students/import?error=${encodeURIComponent("File appears to be empty.")}`);
+      return { error: "File appears to be empty." };
     }
     const dataRows = rows.slice(1);
 
@@ -162,8 +163,7 @@ export async function importStudentsCsv(formData: FormData) {
   }
 
   if (parsedStudents.length === 0) {
-    const warningsParam = warnings.length > 0 ? `&warnings=${encodeURIComponent(warnings.join(" | "))}` : "";
-    redirect(`/students/import?error=${encodeURIComponent("No valid rows found in file.")}${warningsParam}`);
+    return { error: "No valid rows found in file.", warnings };
   }
 
   const supabase = await createServerClientForUser();
@@ -195,6 +195,5 @@ export async function importStudentsCsv(formData: FormData) {
   revalidatePath("/home");
 
   const summary = `Imported ${importedCount} student(s).${warnings.length > 0 ? ` ${warnings.length} note(s).` : ""}`;
-  const warningsParam = warnings.length > 0 ? `&warnings=${encodeURIComponent(warnings.join(" | "))}` : "";
-  redirect(`/students/import?success=${encodeURIComponent(summary)}${warningsParam}`);
+  return { success: summary, warnings };
 }
