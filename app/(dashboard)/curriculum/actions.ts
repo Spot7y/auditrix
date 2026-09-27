@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
+import type { ImportResult } from "../../../components/ImportDialog";
 
 async function requireChairperson() {
   const staff = await getCurrentStaff();
@@ -341,19 +342,25 @@ function parseRequirementToken(raw: string): ParsedRequirement | null {
   return { kind: "code", code: normalizeCode(trimmed) };
 }
 
-export async function importSubjectsCsv(formData: FormData) {
-  await requireChairperson();
+export async function importSubjectsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
+  const staff = await getCurrentStaff();
+  if (!staff || staff.role !== "chairperson" || !staff.program) {
+    return { error: "Only a chairperson account can manage curriculum." };
+  }
   const curriculumId = String(formData.get("curriculumId") ?? "");
+  if (!curriculumId) {
+    return { error: "No curriculum version selected. Go back to the curriculum page and pick one first." };
+  }
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent("Please choose a CSV file.")}`);
+    return { error: "Please choose a CSV file." };
   }
 
-  const text = await file!.text();
+  const text = await file.text();
   const rows = parseCsv(text);
   if (rows.length < 2) {
-    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent("File appears to be empty.")}`);
+    return { error: "File appears to be empty." };
   }
   const dataRows = rows.slice(1);
 
@@ -391,7 +398,7 @@ export async function importSubjectsCsv(formData: FormData) {
   }
 
   if (parsedSubjects.length === 0) {
-    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent("No valid rows found in file.")}`);
+    return { error: "No valid rows found in file.", warnings };
   }
 
   const supabase = await createServerClientForUser();
@@ -401,7 +408,7 @@ export async function importSubjectsCsv(formData: FormData) {
     .select("id, code")
     .eq("curriculum_id", curriculumId);
   if (existingError) {
-    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent(existingError.message)}`);
+    return { error: existingError.message };
   }
 
   const codeToId = new Map<string, string>();
@@ -497,6 +504,5 @@ export async function importSubjectsCsv(formData: FormData) {
   revalidatePath("/students/[id]", "page");
 
   const summary = `Imported ${parsedSubjects.length} subject(s).${removedCount > 0 ? ` Removed ${removedCount} subject(s) not in file.` : ""}${warnings.length > 0 ? ` ${warnings.length} warning(s).` : ""}`;
-  const warningsParam = warnings.length > 0 ? `&warnings=${encodeURIComponent(warnings.join(" | "))}` : "";
-  redirect(`/curriculum?version=${curriculumId}&success=${encodeURIComponent(summary)}${warningsParam}`);
+  return { success: summary, warnings };
 }

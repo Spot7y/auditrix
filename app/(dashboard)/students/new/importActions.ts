@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import type { ImportResult } from "../../../../components/ImportDialog";
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -84,12 +85,6 @@ function parseHtmlTable(html: string): string[][] {
 function isHtmlFormat(text: string): boolean {
   const start = text.trim().slice(0, 200).toLowerCase();
   return start.startsWith("<html") || start.includes("<table") || start.includes("<!doctype");
-}
-
-export interface ImportResult {
-  error?: string;
-  success?: string;
-  warnings?: string[];
 }
 
 export async function importStudentsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createSubject } from "../actions";
-import CsvImportForm from "../CsvImportForm";
+import ImportCurriculumModal from "../ImportCurriculumModal";
 
 export default async function NewSubjectPage({
   searchParams,
@@ -94,7 +94,7 @@ export default async function NewSubjectPage({
         <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
       </div>
 
-      <CsvImportForm curriculumId={curriculumId ?? ""} />
+      <ImportCurriculumModal curriculumId={curriculumId ?? ""} />
     </main>
   );
 }
