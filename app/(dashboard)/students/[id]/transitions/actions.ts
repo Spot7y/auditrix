@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "../../../../../lib/domain/supabase/adminClient";
+import { createServerClientForUser } from "../../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 
 export async function recordDropped(formData: FormData) {
@@ -12,9 +12,12 @@ export async function recordDropped(formData: FormData) {
     redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("student_transitions").insert({
+  const supabase = await createServerClientForUser();
+  const { data: student } = await supabase.from("students").select("name").eq("id", studentId).maybeSingle();
+
+  const { error } = await supabase.from("student_transitions").insert({
     student_id: studentId,
+    student_name: student?.name ?? "Unknown",
     type: "DROPPED",
     from_program: staff!.program,
     to_program: null,
@@ -24,7 +27,7 @@ export async function recordDropped(formData: FormData) {
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");
-  redirect(`/students/${studentId}`);
+  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as dropped.")}`);
 }
 
 export async function recordTransferOut(formData: FormData) {
@@ -34,9 +37,12 @@ export async function recordTransferOut(formData: FormData) {
     redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("student_transitions").insert({
+  const supabase = await createServerClientForUser();
+  const { data: student } = await supabase.from("students").select("name").eq("id", studentId).maybeSingle();
+
+  const { error } = await supabase.from("student_transitions").insert({
     student_id: studentId,
+    student_name: student?.name ?? "Unknown",
     type: "TRANSFERRED_OUT",
     from_program: staff!.program,
     to_program: null,
@@ -46,7 +52,7 @@ export async function recordTransferOut(formData: FormData) {
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");
-  redirect(`/students/${studentId}`);
+  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred out.")}`);
 }
 
 export async function recordTransferIn(formData: FormData) {
@@ -56,9 +62,12 @@ export async function recordTransferIn(formData: FormData) {
     redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("student_transitions").insert({
+  const supabase = await createServerClientForUser();
+  const { data: student } = await supabase.from("students").select("name").eq("id", studentId).maybeSingle();
+
+  const { error } = await supabase.from("student_transitions").insert({
     student_id: studentId,
+    student_name: student?.name ?? "Unknown",
     type: "TRANSFERRED_IN",
     from_program: null,
     to_program: staff!.program,
@@ -68,53 +77,44 @@ export async function recordTransferIn(formData: FormData) {
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");
-  redirect(`/students/${studentId}`);
+  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred in.")}`);
 }
 
-export async function recordShift(formData: FormData) {
+export async function requestShiftOut(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
     redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const newCurriculumId = String(formData.get("newCurriculumId") ?? "");
-  const admin = createAdminClient();
-
-  const { data: newCurriculum, error: curriculumError } = await admin
-    .from("curricula")
-    .select("id, program")
-    .eq("id", newCurriculumId)
-    .single();
-  if (curriculumError || !newCurriculum) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Destination curriculum not found.")}`);
+  const supabase = await createServerClientForUser();
+  const { error } = await supabase.from("shift_requests").insert({
+    student_id: studentId,
+    from_program: staff!.program,
+    requested_by: staff!.name,
+  });
+  if (error) {
+    const message = error.message.toLowerCase().includes("duplicate") || error.message.toLowerCase().includes("unique")
+      ? "This student already has a pending shift request."
+      : error.message;
+    redirect(`/students/${studentId}?error=${encodeURIComponent(message)}`);
   }
 
-  const { error: updateError } = await admin
-    .from("students")
-    .update({ curriculum_id: newCurriculumId })
-    .eq("id", studentId);
-  if (updateError) redirect(`/students/${studentId}?error=${encodeURIComponent(updateError.message)}`);
+  revalidatePath(`/students/${studentId}`);
+  redirect(`/students/${studentId}?success=${encodeURIComponent("Shift request submitted.")}`);
+}
 
-  const { error: outError } = await admin.from("student_transitions").insert({
-    student_id: studentId,
-    type: "SHIFTED_OUT",
-    from_program: staff!.program,
-    to_program: newCurriculum!.program,
-    recorded_by: staff!.name,
-  });
-  if (outError) redirect(`/students/${studentId}?error=${encodeURIComponent(outError.message)}`);
+export async function cancelShiftRequest(formData: FormData) {
+  const staff = await getCurrentStaff();
+  const studentId = String(formData.get("studentId") ?? "");
+  if (!staff || staff.role !== "chairperson" || !staff.program) {
+    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+  }
 
-  const { error: inError } = await admin.from("student_transitions").insert({
-    student_id: studentId,
-    type: "SHIFTED_IN",
-    from_program: staff!.program,
-    to_program: newCurriculum!.program,
-    recorded_by: staff!.name,
-  });
-  if (inError) redirect(`/students/${studentId}?error=${encodeURIComponent(inError.message)}`);
+  const supabase = await createServerClientForUser();
+  const { error } = await supabase.from("shift_requests").delete().eq("student_id", studentId);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
 
   revalidatePath(`/students/${studentId}`);
-  revalidatePath("/home");
-  redirect(`/students/${studentId}`);
+  redirect(`/students/${studentId}?success=${encodeURIComponent("Shift request cancelled.")}`);
 }

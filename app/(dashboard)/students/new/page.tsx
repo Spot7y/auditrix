@@ -15,7 +15,7 @@ export default async function NewStudentPage({
   if (!staff || staff.role !== "chairperson" || !staff.program) {
     return (
       <main className="mx-auto max-w-lg px-6 py-16">
-        <p className="text-sm text-[color:var(--status-violated)]">
+        <p className="text-sm text-[color:var(--status-violation)]">
           Only a chairperson account linked to a program can register new students.
         </p>
         <Link href="/students" className="mt-4 inline-block text-sm text-[color:var(--accent-maroon)] hover:underline">
@@ -97,7 +97,7 @@ export default async function NewStudentPage({
             <option value="4">Year 4</option>
           </select>
         </div>
-        {error && <p className="text-sm text-[color:var(--status-violated)]">{error}</p>}
+        {error && <p className="text-sm text-[color:var(--status-violation)]">{error}</p>}
         <button
           type="submit"
           className="w-full bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
@@ -105,6 +105,19 @@ export default async function NewStudentPage({
           Register student
         </button>
       </form>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
+        <span className="text-xs uppercase tracking-wide text-[color:var(--ink)]/40">or</span>
+        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
+      </div>
+
+      <Link
+        href="/students/import"
+        className="mt-4 block w-full border border-[color:var(--ledger-line)] px-5 py-2 text-center text-sm font-medium text-[color:var(--ink)] hover:bg-black/5"
+      >
+        Import Students (CSV/XLS)
+      </Link>
     </main>
   );
 }

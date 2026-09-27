@@ -2,10 +2,12 @@ import StudentSearchBar from "../StudentSearchBar";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStudentAudit } from "../../../../lib/queries/students";
+import { getPendingShiftRequest } from "../../../../lib/queries/transitions";
 import type { AuditStatus } from "../../../../lib/domain/AuditResult";
 import { Fragment } from "react";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { formatGrade } from "../../../../lib/format";
+import FeedbackModal from "../../../../components/FeedbackModal";
 
 const STATUS_STYLE: Record<AuditStatus, { label: string; color: string }> = {
   COMPLETED: { label: "Completed", color: "var(--status-completed)" },
@@ -20,12 +22,17 @@ const SEMESTER_LABEL: Record<number, string> = { 1: "First Semester", 2: "Second
 
 export default async function StudentAuditPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string; success?: string }>;
 }) {
   const { id } = await params;
+  const { error, success } = await searchParams;
   const data = await getStudentAudit(id);
   if (!data) notFound();
+
+  const isPending = await getPendingShiftRequest(id);
 
   type Row = (typeof data.rows)[number];
 
@@ -69,6 +76,14 @@ export default async function StudentAuditPage({
       <p className="mt-2 text-sm text-[color:var(--ink)]/70">
         {data.program} · Year {data.nominalYearLevel} standing
       </p>
+
+      {isPending && (
+        <p className="mt-2 inline-block bg-[color:var(--status-pending)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--status-pending)]">
+          Pending Shift Request
+        </p>
+      )}
+
+      <FeedbackModal key={`${error ?? ""}-${success ?? ""}`} error={error} success={success} />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Link

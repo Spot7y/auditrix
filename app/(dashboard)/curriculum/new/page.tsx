@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createSubject } from "../actions";
+import CsvImportForm from "../CsvImportForm";
 
 export default async function NewSubjectPage({
   searchParams,
@@ -9,13 +10,13 @@ export default async function NewSubjectPage({
   const { error, curriculumId } = await searchParams;
 
   return (
-    <main className="px-8 py-12">
+    <main className="mx-auto max-w-lg px-6 py-16">
       <Link href="/curriculum" className="text-sm text-[color:var(--accent-maroon)] hover:underline">
         ← Back to curriculum
       </Link>
       <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-semibold">Add Subject</h1>
 
-      <form action={createSubject} className="mt-8 max-w-lg space-y-4">
+      <form action={createSubject} className="mt-8 space-y-4">
         <input type="hidden" name="curriculumId" value={curriculumId ?? ""} />
         <div>
           <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Code</label>
@@ -75,7 +76,7 @@ export default async function NewSubjectPage({
             </select>
           </div>
         </div>
-        {error && <p className="text-sm text-[color:var(--status-violated)]">{error}</p>}
+        {error && <p className="text-sm text-[color:var(--status-violation)]">{error}</p>}
         <button
           type="submit"
           className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
@@ -83,9 +84,17 @@ export default async function NewSubjectPage({
           Add Subject
         </button>
       </form>
-      <p className="mt-4 max-w-lg text-xs text-[color:var(--ink)]/50">
+      <p className="mt-4 text-xs text-[color:var(--ink)]/50">
         Prerequisites can be added after creating the subject, from its edit page.
       </p>
+
+      <div className="mt-8 flex items-center gap-3">
+        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
+        <span className="text-xs uppercase tracking-wide text-[color:var(--ink)]/40">or</span>
+        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
+      </div>
+
+      <CsvImportForm curriculumId={curriculumId ?? ""} />
     </main>
   );
 }

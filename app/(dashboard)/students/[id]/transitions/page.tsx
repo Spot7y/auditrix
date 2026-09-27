@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStudentAudit } from "../../../../../lib/queries/students";
-import { getAllCurriculumOptions } from "../../../../../lib/queries/programs";
-import { getTransitionsForStudent } from "../../../../../lib/queries/transitions";
-import { recordTransferIn, recordTransferOut, recordShift, recordDropped } from "./actions";
+import {
+  getTransitionsForStudent,
+  getPendingShiftRequest,
+} from "../../../../../lib/queries/transitions";
+import {
+  recordTransferIn,
+  recordTransferOut,
+  recordDropped,
+  requestShiftOut,
+  cancelShiftRequest,
+} from "./actions";
 
 export default async function StudentTransitionsPage({
   params,
@@ -17,8 +25,8 @@ export default async function StudentTransitionsPage({
   const data = await getStudentAudit(id);
   if (!data) notFound();
 
-  const destinationOptions = await getAllCurriculumOptions(data.program);
   const history = await getTransitionsForStudent(id);
+  const isPending = await getPendingShiftRequest(id);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
@@ -28,33 +36,37 @@ export default async function StudentTransitionsPage({
       <p className="mt-6 font-[family-name:var(--font-mono)] text-sm text-[color:var(--ink)]/60">{data.studentId}</p>
       <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-semibold">Record Transfer / Shift</h1>
       <p className="mt-2 text-sm text-[color:var(--ink)]/70">{data.studentName} · {data.program}</p>
-      {error && <p className="mt-4 text-sm text-[color:var(--status-violated)]">{error}</p>}
+      {error && <p className="mt-4 text-sm text-[color:var(--status-violation)]">{error}</p>}
 
-      <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
-        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Shift to Another Program</h2>
-        <p className="mt-1 text-xs text-[color:var(--ink)]/50">
-          Moves this student to a different KSU program. Their audits will follow the new program&rsquo;s curriculum
-          going forward — this event stays visible under both {data.program} and the destination program.
-        </p>
-        <form action={recordShift} className="mt-4 space-y-3">
-          <input type="hidden" name="studentId" value={id} />
-          <select
-            name="newCurriculumId"
-            required
-            className="w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          >
-            <option value="">Select destination program & curriculum year…</option>
-            {destinationOptions.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.program} ({c.effectiveYear})
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="bg-[color:var(--accent-maroon)] px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-            Confirm Shift
-          </button>
-        </form>
-      </section>
+      {isPending ? (
+        <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Shift Request Pending</h2>
+          <p className="mt-1 text-xs text-[color:var(--ink)]/50">
+            This student has an active pending shift request. They remain fully enrolled and manageable in{" "}
+            {data.program} until another program&rsquo;s chairperson looks them up by ID and accepts them.
+          </p>
+          <form action={cancelShiftRequest} className="mt-4">
+            <input type="hidden" name="studentId" value={id} />
+            <button type="submit" className="bg-[color:var(--accent-maroon)] px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+              Cancel Shift Request
+            </button>
+          </form>
+        </section>
+      ) : (
+        <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Request Shift Out</h2>
+          <p className="mt-1 text-xs text-[color:var(--ink)]/50">
+            Marks this student as wanting to shift to another program. They stay fully enrolled and manageable in{" "}
+            {data.program} until the receiving program&rsquo;s chairperson looks them up by ID and accepts them.
+          </p>
+          <form action={requestShiftOut} className="mt-4">
+            <input type="hidden" name="studentId" value={id} />
+            <button type="submit" className="bg-[color:var(--accent-maroon)] px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+              Request Shift Out
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Transferred Out (Left KSU)</h2>
@@ -84,7 +96,7 @@ export default async function StudentTransitionsPage({
         </form>
       </section>
 
-            <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
+      <section className="mt-10 border-t border-[color:var(--ledger-line)] pt-6">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">Dropped</h2>
         <p className="mt-1 text-xs text-[color:var(--ink)]/50">
           Marks this student as dropped from {data.program}. They remain visible in the records, tagged.
@@ -105,7 +117,6 @@ export default async function StudentTransitionsPage({
               <li key={h.id} className="text-[color:var(--ink)]/70">
                 <span className="font-medium">{h.type.replace("_", " ")}</span>
                 {h.fromProgram && h.toProgram ? ` — ${h.fromProgram} → ${h.toProgram}` : ""}
-                {h.notes ? ` — ${h.notes}` : ""}
                 <span className="ml-2 text-xs text-[color:var(--ink)]/40">
                   {new Date(h.recordedAt).toLocaleDateString()} by {h.recordedBy}
                 </span>

@@ -97,7 +97,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
 
     if (record) {
       const auditResults = engine.auditCurriculum(record);
-            hasViolation = auditResults.some((r) => r.status === "VIOLATION");
+      hasViolation = auditResults.some((r) => r.status === "VIOLATION");
 
       // Irregular: a FAILED subject from an earlier year, still unretaken —
       // per the adviser's confirmed definition, distinct from "at risk"
@@ -118,7 +118,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     else summary.regularStudents += 1;
   }
 
-    // Curriculum versions — year + subject count per program.
+  // Curriculum versions — year + subject count per program.
   // curricula's RLS deliberately allows any staff member to read every
   // program (needed for the shift-destination picker elsewhere), so the
   // dashboard has to filter down to its own scope itself, not rely on RLS.
@@ -147,7 +147,12 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     summary.curriculumVersions.sort((a, b) => b.effectiveYear - a.effectiveYear);
   }
 
-  // Dropped / shifted / transferred counts per program
+  // Dropped / shifted / transferred counts per program.
+  // Transitions are visible if EITHER side involves your own program (so a
+  // chairperson can see the paper trail of a student who shifted away) —
+  // but that broader visibility must never spin up a dashboard section for
+  // a program that isn't actually yours. Only add to a section that already
+  // exists from the students/curriculum steps above; never create one here.
   const { data: transitionRows, error: transitionError } = await supabase
     .from("student_transitions")
     .select("type, from_program, to_program");
@@ -155,15 +160,20 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
 
   for (const t of (transitionRows ?? []) as TransitionForCount[]) {
     if (t.type === "DROPPED" && t.from_program) {
-      getOrCreate(t.from_program).droppedCount += 1;
+      const summary = byProgram.get(t.from_program);
+      if (summary) summary.droppedCount += 1;
     } else if (t.type === "SHIFTED_IN" && t.to_program) {
-      getOrCreate(t.to_program).shiftedInCount += 1;
+      const summary = byProgram.get(t.to_program);
+      if (summary) summary.shiftedInCount += 1;
     } else if (t.type === "SHIFTED_OUT" && t.from_program) {
-      getOrCreate(t.from_program).shiftedOutCount += 1;
+      const summary = byProgram.get(t.from_program);
+      if (summary) summary.shiftedOutCount += 1;
     } else if (t.type === "TRANSFERRED_IN" && t.to_program) {
-      getOrCreate(t.to_program).transferredInCount += 1;
+      const summary = byProgram.get(t.to_program);
+      if (summary) summary.transferredInCount += 1;
     } else if (t.type === "TRANSFERRED_OUT" && t.from_program) {
-      getOrCreate(t.from_program).transferredOutCount += 1;
+      const summary = byProgram.get(t.from_program);
+      if (summary) summary.transferredOutCount += 1;
     }
   }
 

@@ -32,6 +32,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </Link>
           )}
 
+                    {staff.role === "chairperson" && (
+            <Link href="/students/shift-in" className="block px-3 py-2 text-sm hover:bg-black/5">
+              Shift In a Student
+            </Link>
+          )}
+
+
           {staff.role === "chairperson" && (
             <Link href="/curriculum" className="block px-3 py-2 text-sm hover:bg-black/5">
               Manage Curriculum
@@ -44,6 +51,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
             </Link>
           )}
         </nav>
+
+          {staff.role === "dean" && (
+            <Link href="/programs/reassign" className="block px-3 py-2 text-sm hover:bg-black/5">
+              Reassign Chairperson
+            </Link>
+          )}
 
                     <Link href="/settings" className="block px-3 py-2 text-sm hover:bg-black/5">
             Account Settings

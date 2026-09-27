@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { getCurriculumForStaff, getCurriculumVersionsForStaff } from "../../../lib/queries/curriculum";
 import { moveSubjectUp, moveSubjectDown } from "./actions";
-import CsvImportForm from "./CsvImportForm";
 import NewVersionForm from "./NewVersionForm";
 
 const YEAR_LABEL: Record<number, string> = { 1: "Year 1", 2: "Year 2", 3: "Year 3", 4: "Year 4" };
@@ -90,11 +89,16 @@ export default async function CurriculumPage({
           href={`/curriculum/export?curriculumId=${data.curriculumId}`}
           className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
         >
-          Export CSV
+          Export Curriculum (CSV)
         </a>
-      </div>
+        <a
+        href={`/curriculum/export-pdf?curriculumId=${data.curriculumId}`}
+          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
+        >
+          Export Curriculum (PDF)
+        </a>
 
-      <CsvImportForm curriculumId={data.curriculumId} />
+      </div>
 
       <table className="mt-8 w-full table-fixed border-collapse text-sm">
         <colgroup>
