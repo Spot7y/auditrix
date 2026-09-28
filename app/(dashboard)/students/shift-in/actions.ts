@@ -43,6 +43,18 @@ export async function acceptShiftIn(formData: FormData) {
       `/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent("Destination curriculum not found.")}`
     );
   }
+  // The admin client bypasses row-level security, so a chairperson could
+  // otherwise submit another program's curriculum ID and move the student there.
+  if (newCurriculum!.program !== staff!.program) {
+    redirect(
+      `/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent("You can only accept students into your own program's curriculum.")}`
+    );
+  }
+  if (pendingRequest!.from_program === staff!.program) {
+    redirect(
+      `/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent("This student is already in your program.")}`
+    );
+  }
 
   const { error: updateError } = await admin
     .from("students")

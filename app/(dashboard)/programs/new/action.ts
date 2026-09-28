@@ -22,6 +22,20 @@ export async function createProgram(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // Staff access is scoped by program name, so a duplicate name would give
+  // the new chairperson access to another program's students.
+  const { data: existingCurricula, error: existingError } = await admin
+    .from("curricula")
+    .select("id")
+    .eq("program", program)
+    .limit(1);
+  if (existingError) {
+    redirect(`/programs/new?error=${encodeURIComponent(existingError.message)}`);
+  }
+  if (existingCurricula && existingCurricula.length > 0) {
+    redirect(`/programs/new?error=${encodeURIComponent(`A program named ${program} already exists.`)}`);
+  }
+
   const { error: curriculumError } = await admin
     .from("curricula")
     .insert({ program, effective_year: effectiveYear, college_id: staff!.collegeId });

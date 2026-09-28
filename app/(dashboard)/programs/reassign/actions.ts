@@ -22,6 +22,19 @@ export async function reassignChairperson(formData: FormData) {
 
   const admin = createAdminClient();
 
+  // The admin client bypasses row-level security, so check here that the
+  // program belongs to this dean's college — the form only lists those
+  // programs, but the submitted value can't be trusted.
+  const { data: ownedCurricula, error: ownershipError } = await admin
+    .from("curricula")
+    .select("id")
+    .eq("program", program)
+    .eq("college_id", staff!.collegeId!)
+    .limit(1);
+  if (ownershipError || !ownedCurricula || ownedCurricula.length === 0) {
+    redirect(`/programs/reassign?error=${encodeURIComponent("That program is not under your college.")}`);
+  }
+
   // Find every existing chairperson row for this program — normally just
   // one, but past reassignments could have left stale rows behind, so this
   // cleans up all of them defensively rather than assuming exactly one.
