@@ -1,9 +1,10 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
-import { createAdminClient } from "../supabase/adminClient";import { SupabaseAcademicRecordRepository } from "../import/SupabaseAcademicRecordRepository";
-import { GradeEntryService } from "../import/GradeEntryService";
-import { AuditEngine } from "../AuditEngine";
+import { createAdminClient } from "../lib/domain/supabase/adminClient";
+import { SupabaseAcademicRecordRepository } from "../lib/domain/import/SupabaseAcademicRecordRepository";
+import { GradeEntryService } from "../lib/domain/import/GradeEntryService";
+import { AuditEngine } from "../lib/domain/AuditEngine";
 
 const STUDENT_ID = "23-110414";
 

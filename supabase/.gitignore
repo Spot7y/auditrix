@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# Scratch queries saved by Supabase Studio
+snippets
