@@ -1,21 +1,90 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. KSU green is the brand color; everything else is neutral
+ * so status colors stay easy to tell apart. Tailwind classes use these
+ * directly, e.g. bg-brand-600, text-ink-500, border-line.
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  --color-brand-50: #eefbf3;
+  --color-brand-100: #d6f5e1;
+  --color-brand-200: #b0e9c7;
+  --color-brand-300: #7cd6a5;
+  --color-brand-400: #46bb7e;
+  --color-brand-500: #23a063;
+  --color-brand-600: #178549;
+  --color-brand-700: #136a3c;
+  --color-brand-800: #125432;
+  --color-brand-900: #10452b;
+  --color-brand-950: #062716;
+
+  /* Neutrals with a faint green cast, so grays sit well next to the brand. */
+  --color-ink-50: #f6f8f7;
+  --color-ink-100: #eef1ef;
+  --color-ink-200: #dfe4e1;
+  --color-ink-300: #c5cdc8;
+  --color-ink-400: #97a39c;
+  --color-ink-500: #6b7872;
+  --color-ink-600: #505c56;
+  --color-ink-700: #3e4843;
+  --color-ink-800: #28302c;
+  --color-ink-900: #18201c;
+
+  --color-canvas: #f5f7f6;
+  --color-line: #e2e7e4;
+
+  --color-status-completed: #15803d;
+  --color-status-available: #1d4ed8;
+  --color-status-pending: #b45309;
+  --color-status-unavailable: #6b7872;
+  --color-status-violation: #b91c1c;
+
+  --shadow-card: 0 1px 2px rgb(16 24 20 / 0.04), 0 1px 3px rgb(16 24 20 / 0.06);
+  --shadow-overlay: 0 12px 32px rgb(16 24 20 / 0.18), 0 2px 6px rgb(16 24 20 / 0.08);
+
+  --animate-toast-in: toast-in 180ms ease-out;
+  --animate-dialog-in: dialog-in 160ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
 :root {
   color-scheme: light;
-  --paper: #f6f5f1;
-  --ink: #1f2937;
-  --ledger-line: #d8d5cc;
-  --accent-maroon: #178549;
-
-  --status-completed: #3b6e4f;
-  --status-available: #2c6e8e;
-  --status-pending: #b8792a;
-  --status-unavailable: #6b6b63;
-  --status-violation: #a23b2e;
 }
 
 body {
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-body), system-ui, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers line up in tables of grades and units. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+dialog::backdrop {
+  background: rgb(16 24 20 / 0.45);
+  backdrop-filter: blur(2px);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 
 export async function reassignChairperson(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -19,6 +20,8 @@ export async function reassignChairperson(formData: FormData) {
   if (!program || !chairName || !chairEmail || !chairPassword) {
     redirect(`/programs/reassign?error=${encodeURIComponent("All fields are required.")}`);
   }
+  const weakPassword = passwordProblem(chairPassword);
+  if (weakPassword) redirect(`/programs/reassign?error=${encodeURIComponent(weakPassword)}`);
 
   const admin = createAdminClient();
 
@@ -67,5 +70,5 @@ export async function reassignChairperson(formData: FormData) {
   }
 
   revalidatePath("/home");
-  redirect("/home");
+  redirect(`/home?success=${encodeURIComponent(`${chairName} is now the chairperson of ${program}.`)}`);
 }

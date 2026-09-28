@@ -9,7 +9,9 @@ let updated: Record<string, unknown>[];
 const userClient = {
   from: () => ({
     insert: async (row: Record<string, unknown>) => (inserted.push(row), { error: null }),
-    update: (row: Record<string, unknown>) => ({ eq: async () => (updated.push(row), { error: null }) }),
+    update: (row: Record<string, unknown>) => ({
+      eq: () => ({ select: async () => (updated.push(row), { data: [{ id: row.id }], error: null }) }),
+    }),
   }),
 };
 
@@ -42,7 +44,10 @@ describe("Register student", () => {
   });
 
   it("accepts a valid ID, removing stray spaces", async () => {
-    assert.equal(await redirectOf(registerStudent, form({ id: " 24-113792 ", ...student })), "/students/24-113792");
+    assert.equal(
+      await redirectOf(registerStudent, form({ id: " 24-113792 ", ...student })),
+      "/students/24-113792?success=Registered Doe, John."
+    );
     assert.equal(inserted[0].id, "24-113792");
   });
 });
@@ -70,7 +75,7 @@ describe("Edit student", () => {
 
   it("still lets an older record with a non-standard ID have its name edited", async () => {
     const url = await redirectOf(updateStudentInfo, form({ currentId: "23-1", id: "23-1", name: "Renamed" }));
-    assert.equal(url, "/students/23-1");
+    assert.equal(url, "/students/23-1?success=Student details saved.");
     assert.deepEqual(updated, [{ id: "23-1", name: "Renamed" }]);
   });
 });

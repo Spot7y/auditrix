@@ -111,7 +111,10 @@ describe("Reassign chairperson", () => {
 
   it("a dean can replace the chairperson of their own college's program", async () => {
     current.staff = ceitDean;
-    assert.equal(await redirectOf(reassignChairperson, form({ program: "BSCE", ...newChair })), "/home");
+    assert.equal(
+      await redirectOf(reassignChairperson, form({ program: "BSCE", ...newChair })),
+      "/home?success=New Chair is now the chairperson of BSCE."
+    );
     assert.deepEqual(writes, ["createUser", "rpc replace_chairperson", "ban old-ce-chair"]);
   });
 
@@ -134,7 +137,7 @@ describe("Create program", () => {
   it("a new program name is accepted", async () => {
     current.staff = ceitDean;
     const url = await redirectOf(createProgram, form({ program: "BSEE", effectiveYear: "2025", ...newChair }));
-    assert.equal(url, "/home");
+    assert.equal(url, "/home?success=Created BSEE and the chairperson account for New Chair.");
     assert.deepEqual(writes, ["createUser", "rpc create_program_with_chairperson"]);
   });
 });

@@ -1,100 +1,58 @@
-import Link from "next/link";
+import type { Metadata } from "next";
+import { getCurriculumForStaff } from "../../../../lib/queries/curriculum";
 import { createSubject } from "../actions";
 import ImportCurriculumModal from "../ImportCurriculumModal";
+import SubjectFields from "../SubjectFields";
+import PageHeader from "../../../../components/ui/PageHeader";
+import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
+import SubmitButton from "../../../../components/ui/SubmitButton";
+import Alert from "../../../../components/ui/Alert";
 
-export default async function NewSubjectPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string; curriculumId?: string }>;
-}) {
-  const { error, curriculumId } = await searchParams;
+export const metadata: Metadata = { title: "Add subject" };
+
+export default async function NewSubjectPage({ searchParams }: { searchParams: Promise<{ curriculumId?: string }> }) {
+  const { curriculumId } = await searchParams;
+  const data = await getCurriculumForStaff(curriculumId);
+
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <PageHeader back={{ href: "/curriculum", label: "Curriculum" }} title="Add subject" />
+        <Alert tone="error">Choose a curriculum version on the Curriculum page first.</Alert>
+      </div>
+    );
+  }
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <Link href="/curriculum" className="text-sm text-[color:var(--accent-maroon)] hover:underline">
-        ← Back to curriculum
-      </Link>
-      <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-semibold">Add Subject</h1>
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        back={{ href: `/curriculum?version=${data.curriculumId}`, label: `${data.program} ${data.effectiveYear} curriculum` }}
+        title="Add subject"
+        description={`Add one subject to the ${data.program} ${data.effectiveYear} curriculum. Prerequisites can be added after it’s created.`}
+      />
 
-      <form action={createSubject} className="mt-8 space-y-4">
-        <input type="hidden" name="curriculumId" value={curriculumId ?? ""} />
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Code</label>
-          <input
-            type="text"
-            name="code"
-            required
-            autoComplete="off"
-            placeholder="e.g. CC 129"
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Title</label>
-          <input
-            type="text"
-            name="title"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div className="flex gap-4">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Units</label>
-            <input
-              type="number"
-              step="0.5"
-              name="units"
-              required
-              defaultValue={3}
-              className="mt-1 w-24 border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-            />
+      <Card>
+        <CardHeader title="New subject" />
+        <form action={createSubject}>
+          <input type="hidden" name="curriculumId" value={data.curriculumId} />
+          <CardBody>
+            <SubjectFields />
+          </CardBody>
+          <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
+            <SubmitButton pendingLabel="Adding…">Add subject</SubmitButton>
           </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Year Level</label>
-            <select
-              name="yearLevel"
-              defaultValue="1"
-              className="mt-1 border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-            >
-              <option value="1">1st Year</option>
-              <option value="2">2nd Year</option>
-              <option value="3">3rd Year</option>
-              <option value="4">4th Year</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Semester</label>
-            <select
-              name="semester"
-              defaultValue="1"
-              className="mt-1 border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-            >
-              <option value="1">First</option>
-              <option value="2">Second</option>
-              <option value="3">Midyear</option>
-            </select>
-          </div>
-        </div>
-        {error && <p className="text-sm text-[color:var(--status-violation)]">{error}</p>}
-        <button
-          type="submit"
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Add Subject
-        </button>
-      </form>
-      <p className="mt-4 text-xs text-[color:var(--ink)]/50">
-        Prerequisites can be added after creating the subject, from its edit page.
-      </p>
+        </form>
+      </Card>
 
-      <div className="mt-8 flex items-center gap-3">
-        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
-        <span className="text-xs uppercase tracking-wide text-[color:var(--ink)]/40">or</span>
-        <div className="h-px flex-1 bg-[color:var(--ledger-line)]" />
-      </div>
-
-      <ImportCurriculumModal curriculumId={curriculumId ?? ""} />
-    </main>
+      <Card className="mt-6">
+        <CardHeader
+          title="Import the whole curriculum"
+          description="Replace this version’s subjects with the ones in a CSV file. You’ll see a preview before anything is saved."
+        />
+        <CardBody>
+          <ImportCurriculumModal curriculumId={data.curriculumId} />
+        </CardBody>
+      </Card>
+    </div>
   );
 }

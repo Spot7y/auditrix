@@ -25,14 +25,26 @@ export async function updateStudentInfo(formData: FormData) {
   }
 
   const supabase = await createServerClientForUser();
-  const { error } = await supabase.from("students").update({ id: newId, name }).eq("id", currentId);
+  const { data: updated, error } = await supabase
+    .from("students")
+    .update({ id: newId, name })
+    .eq("id", currentId)
+    .select("id");
 
   if (error) {
-    redirect(`/students/${currentId}/edit?error=${encodeURIComponent(error.message)}`);
+    const message =
+      error.code === "23505" ? `Another student already has the ID ${newId}.` : error.message;
+    redirect(`/students/${currentId}/edit?error=${encodeURIComponent(message)}`);
+  }
+  // Row-level security turns a disallowed update into "0 rows changed", not an error.
+  if (!updated || updated.length === 0) {
+    redirect(
+      `/students/${currentId}/edit?error=${encodeURIComponent("The change couldn't be saved: your account isn't allowed to edit this student.")}`
+    );
   }
 
   revalidatePath(`/students/${newId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  redirect(`/students/${newId}`);
+  redirect(`/students/${newId}?success=${encodeURIComponent("Student details saved.")}`);
 }

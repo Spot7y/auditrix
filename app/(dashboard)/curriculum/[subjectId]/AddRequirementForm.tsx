@@ -1,68 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import { Plus } from "lucide-react";
 import { addRequirement } from "../actions";
+import { Field, Input, Select } from "../../../../components/ui/Field";
+import SubmitButton from "../../../../components/ui/SubmitButton";
 
-export default function AddRequirementForm({ subjectId }: { subjectId: string }) {
+export default function AddRequirementForm({ subjectId, codes }: { subjectId: string; codes: string[] }) {
   const [type, setType] = useState("PREREQUISITE");
+  const listId = useId();
 
   return (
-    <form action={addRequirement} className="mt-4 flex flex-wrap items-end gap-3">
+    <form action={addRequirement} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="subjectId" value={subjectId} />
-      <div>
-        <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Type</label>
-        <select
-          name="type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="mt-1 border border-[color:var(--ledger-line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-        >
+      <Field label="Add requirement" htmlFor="type" className="w-full sm:w-52">
+        <Select id="type" name="type" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="PREREQUISITE">Prerequisite</option>
           <option value="COREQUISITE">Corequisite</option>
-          <option value="YEAR_STANDING">Year Standing</option>
-          <option value="COMPLETION">Completion (All Subjects)</option>
-        </select>
-      </div>
+          <option value="YEAR_STANDING">Year standing</option>
+          <option value="COMPLETION">All subjects completed</option>
+        </Select>
+      </Field>
 
       {(type === "PREREQUISITE" || type === "COREQUISITE") && (
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">
-            Required Subject Code
-          </label>
-          <input
-            type="text"
-            name="requiredSubjectCode"
-            placeholder="e.g. CC 101"
-            required
-            className="mt-1 border border-[color:var(--ledger-line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
+        <Field label="Subject code" htmlFor="requiredSubjectCode" className="w-full sm:w-44">
+          <Input id="requiredSubjectCode" name="requiredSubjectCode" list={listId} placeholder="CC 101" required className="font-mono" />
+          <datalist id={listId}>
+            {codes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
       )}
 
       {type === "YEAR_STANDING" && (
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">
-            Required Year Level
-          </label>
-          <select
-            name="requiredYearLevel"
-            required
-            className="mt-1 border border-[color:var(--ledger-line)] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          >
-            <option value="1">1st Year</option>
-            <option value="2">2nd Year</option>
-            <option value="3">3rd Year</option>
-            <option value="4">4th Year</option>
-          </select>
-        </div>
+        <Field label="Year level" htmlFor="requiredYearLevel" className="w-full sm:w-40">
+          <Select id="requiredYearLevel" name="requiredYearLevel" required>
+            <option value="2">2nd year</option>
+            <option value="3">3rd year</option>
+            <option value="4">4th year</option>
+          </Select>
+        </Field>
       )}
 
-      <button
-        type="submit"
-        className="bg-[color:var(--accent-maroon)] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-      >
-        Add Requirement
-      </button>
+      <SubmitButton variant="secondary" pendingLabel="Adding…">
+        <Plus aria-hidden />
+        Add
+      </SubmitButton>
     </form>
   );
 }

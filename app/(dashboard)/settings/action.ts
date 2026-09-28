@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { createAdminClient } from "../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
+import { passwordProblem } from "../../../lib/domain/passwordPolicy";
 
 export async function updateName(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -13,8 +14,12 @@ export async function updateName(formData: FormData) {
   if (!name) redirect(`/settings?error=${encodeURIComponent("Name cannot be empty.")}`);
 
   const supabase = await createServerClientForUser();
-  const { error } = await supabase.from("staff").update({ name }).eq("id", staff!.id);
+  const { data: updated, error } = await supabase.from("staff").update({ name }).eq("id", staff!.id).select("id");
   if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
+  // Row-level security turns a disallowed update into "0 rows changed", not an error.
+  if (!updated || updated.length === 0) {
+    redirect(`/settings?error=${encodeURIComponent("Your name couldn't be saved. Ask your administrator to apply the latest database update.")}`);
+  }
 
   redirect("/settings?success=" + encodeURIComponent("Name updated."));
 }
@@ -30,12 +35,8 @@ export async function updatePassword(formData: FormData) {
   if (!currentPassword || !newPassword) {
     redirect(`/settings?error=${encodeURIComponent("All password fields are required.")}`);
   }
-  if (newPassword !== confirmPassword) {
-    redirect(`/settings?error=${encodeURIComponent("New passwords do not match.")}`);
-  }
-  if (newPassword.length < 6) {
-    redirect(`/settings?error=${encodeURIComponent("New password must be at least 6 characters.")}`);
-  }
+  const problem = passwordProblem(newPassword, confirmPassword);
+  if (problem) redirect(`/settings?error=${encodeURIComponent(problem)}`);
 
   const supabase = await createServerClientForUser();
   const { data: { user } } = await supabase.auth.getUser();

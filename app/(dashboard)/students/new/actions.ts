@@ -33,8 +33,9 @@ export async function registerStudent(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/students/new?error=${encodeURIComponent(error.message)}`);
+    const message = error.code === "23505" ? `A student with the ID ${id} is already registered.` : error.message;
+    redirect(`/students/new?error=${encodeURIComponent(message)}`);
   }
 
-  redirect(`/students/${id}`);
+  redirect(`/students/${id}?success=${encodeURIComponent(`Registered ${name}.`)}`);
 }

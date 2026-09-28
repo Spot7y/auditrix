@@ -1,7 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { CheckCircle2, Loader2, Upload } from "lucide-react";
 import { startTransition, useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Button, LinkButton, type ButtonVariant } from "./ui/Button";
+import { DialogCloseButton, DialogPanel } from "./ui/Dialog";
+import Alert from "./ui/Alert";
 
 export interface ImportResult {
   error?: string;
@@ -30,8 +33,10 @@ export interface ImportPreviewStep<P> {
 interface ImportDialogProps<P> {
   /** Text on the button that opens the dialog. */
   triggerLabel: string;
-  triggerClassName: string;
+  triggerVariant?: ButtonVariant;
   title: string;
+  /** One line under the title explaining what the import does. */
+  description?: string;
   action: ImportAction;
   /** Form fields (file input, selects, hidden inputs) rendered above the error and buttons. */
   children: ReactNode;
@@ -43,8 +48,9 @@ interface ImportDialogProps<P> {
 
 export default function ImportDialog<P>({
   triggerLabel,
-  triggerClassName,
+  triggerVariant = "secondary",
   title,
+  description,
   action,
   children,
   doneHref,
@@ -66,27 +72,26 @@ export default function ImportDialog<P>({
 
   return (
     <>
-      <button type="button" onClick={open} className={triggerClassName}>
+      <Button variant={triggerVariant} onClick={open}>
+        <Upload aria-hidden />
         {triggerLabel}
-      </button>
+      </Button>
 
-      <dialog
+      <DialogPanel
         ref={dialogRef}
-        aria-labelledby={titleId}
+        labelledBy={titleId}
         // Start fresh each time the dialog is dismissed, so reopening it
         // doesn't show the previous import's results.
         onClose={() => setFormKey((k) => k + 1)}
         onCancel={(e) => {
           if (busyRef.current) e.preventDefault();
         }}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) close();
-        }}
-        className="m-auto w-[calc(100%-2rem)] max-w-lg border-t-4 border-t-[color:var(--accent-maroon)] bg-white p-0 shadow-xl backdrop:bg-black/40"
+        onBackdropClick={close}
       >
         <ImportForm
           key={formKey}
           title={title}
+          description={description}
           titleId={titleId}
           action={action}
           doneHref={doneHref}
@@ -98,7 +103,7 @@ export default function ImportDialog<P>({
         >
           {children}
         </ImportForm>
-      </dialog>
+      </DialogPanel>
     </>
   );
 }
@@ -109,6 +114,7 @@ async function noPreview<P>(): Promise<PreviewResult<P>> {
 
 function ImportForm<P>({
   title,
+  description,
   titleId,
   action,
   children,
@@ -118,6 +124,7 @@ function ImportForm<P>({
   onPendingChange,
 }: {
   title: string;
+  description?: string;
   titleId: string;
   action: ImportAction;
   children: ReactNode;
@@ -146,72 +153,65 @@ function ImportForm<P>({
   const previewReady = preview && showingPreview && !previewPending && previewState?.preview !== undefined;
   const formError = sizeError ?? (preview ? previewState?.error : state?.error);
   const formWarnings = (preview ? previewState?.warnings : state?.warnings) ?? [];
-  const doneClassName =
-    "mt-6 block w-full bg-[color:var(--accent-maroon)] px-5 py-2 text-center text-sm font-medium text-white hover:opacity-90";
 
   return (
-    <div className="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <h2 id={titleId} className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-          {title}
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="-mr-2 -mt-1 px-2 text-xl leading-none text-[color:var(--ink)]/50 hover:text-[color:var(--ink)]"
-        >
-          ×
-        </button>
+    <div>
+      <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+        <div>
+          <h2 id={titleId} className="text-lg font-semibold text-ink-900">
+            {title}
+          </h2>
+          {description && <p className="mt-0.5 text-sm text-ink-500">{description}</p>}
+        </div>
+        <DialogCloseButton onClick={onClose} disabled={pending} />
       </div>
 
       {state?.success ? (
-        <div className="mt-6">
-          <p className="text-sm font-medium text-[color:var(--status-completed)]">{state.success}</p>
-          <WarningList warnings={warnings} />
-          {doneHref ? (
-            <Link href={doneHref} className={doneClassName}>
-              Done
-            </Link>
-          ) : (
-            <button type="button" onClick={onClose} className={doneClassName}>
-              Done
-            </button>
-          )}
-        </div>
+        <>
+          <div className="px-6 py-6">
+            <div className="flex gap-3">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-status-completed" aria-hidden />
+              <p className="text-sm font-medium text-ink-900">{state.success}</p>
+            </div>
+            <WarningList warnings={warnings} />
+          </div>
+          <Footer>
+            {doneHref ? (
+              <LinkButton href={doneHref}>Done</LinkButton>
+            ) : (
+              <Button onClick={onClose}>Done</Button>
+            )}
+          </Footer>
+        </>
       ) : (
         <>
           {previewReady && (
-            <div className="mt-6" aria-live="polite">
-              {preview.render(previewState!.preview as P)}
-              <WarningList warnings={previewState?.warnings ?? []} />
-              {state?.error && (
-                <div className="mt-3">
-                  <p className="text-sm text-[color:var(--status-violation)]">{state.error}</p>
-                  <WarningList warnings={warnings} />
-                </div>
-              )}
-              <div className="flex gap-3 pt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowingPreview(false)}
-                  disabled={pending}
-                  className="flex-1 border border-[color:var(--ledger-line)] px-5 py-2 text-sm font-medium text-[color:var(--ink)] hover:bg-black/5 disabled:opacity-50"
-                >
+            <div aria-live="polite">
+              <div className="max-h-[60vh] overflow-y-auto px-6 py-5">
+                {preview.render(previewState!.preview as P)}
+                <WarningList warnings={previewState?.warnings ?? []} />
+                {state?.error && (
+                  <Alert tone="error" className="mt-4">
+                    {state.error}
+                    <WarningList warnings={warnings} />
+                  </Alert>
+                )}
+              </div>
+              <Footer>
+                <Button variant="secondary" onClick={() => setShowingPreview(false)} disabled={pending}>
                   Back
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
                   onClick={() => {
                     const formData = previewedData.current;
                     if (formData) startTransition(() => formAction(formData));
                   }}
                   disabled={pending}
-                  className="flex-1 bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                 >
+                  {importPending && <Loader2 className="animate-spin" aria-hidden />}
                   {importPending ? "Importing…" : "Confirm import"}
-                </button>
-              </div>
+                </Button>
+              </Footer>
             </div>
           )}
           <form
@@ -239,34 +239,27 @@ function ImportForm<P>({
                 startTransition(() => formAction(formData));
               }
             }}
-            className="mt-6 space-y-4"
           >
-            {children}
+            <div className="space-y-4 px-6 py-5">
+              {children}
 
-            {formError && (
-              <div aria-live="polite">
-                <p className="text-sm text-[color:var(--status-violation)]">{formError}</p>
-                <WarningList warnings={formWarnings} />
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={pending}
-                className="flex-1 border border-[color:var(--ledger-line)] px-5 py-2 text-sm font-medium text-[color:var(--ink)] hover:bg-black/5 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={pending}
-                className="flex-1 bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-              >
-                {previewPending ? "Checking file…" : pending ? "Importing…" : preview ? "Preview import" : "Import"}
-              </button>
+              {formError && (
+                <Alert tone="error">
+                  {formError}
+                  <WarningList warnings={formWarnings} />
+                </Alert>
+              )}
             </div>
+
+            <Footer>
+              <Button variant="secondary" onClick={onClose} disabled={pending}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending && <Loader2 className="animate-spin" aria-hidden />}
+                {previewPending ? "Checking file…" : pending ? "Importing…" : preview ? "Preview import" : "Import"}
+              </Button>
+            </Footer>
           </form>
         </>
       )}
@@ -274,10 +267,18 @@ function ImportForm<P>({
   );
 }
 
+function Footer({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col-reverse gap-2 rounded-b-2xl border-t border-line bg-ink-50 px-6 py-4 sm:flex-row sm:justify-end">
+      {children}
+    </div>
+  );
+}
+
 function WarningList({ warnings }: { warnings: string[] }) {
   if (warnings.length === 0) return null;
   return (
-    <details className="mt-3 text-xs text-[color:var(--status-pending)]" open={warnings.length <= 5}>
+    <details className="mt-3 text-xs text-amber-800" open={warnings.length <= 5}>
       <summary className="cursor-pointer font-medium">
         {warnings.length} note{warnings.length === 1 ? "" : "s"}
       </summary>

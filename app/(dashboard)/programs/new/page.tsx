@@ -1,82 +1,53 @@
+import type { Metadata } from "next";
 import { createProgram } from "./action";
+import ChairAccountFields from "../ChairAccountFields";
+import PageHeader from "../../../../components/ui/PageHeader";
+import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
+import { Field, Input } from "../../../../components/ui/Field";
+import ConfirmButton from "../../../../components/ui/ConfirmButton";
 
-export default async function NewProgramPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+export const metadata: Metadata = { title: "Create program" };
+
+export default function NewProgramPage() {
+  const thisYear = new Date().getFullYear();
 
   return (
-    <main className="max-w-lg px-8 py-12">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Create New Course</h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">
-        Creates a new program under your college and a login account for its chairperson.
-      </p>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        title="Create program"
+        description="Adds a new program to your college, with an empty first curriculum and a login for its chairperson."
+      />
+      <form action={createProgram} className="space-y-6">
+        <Card>
+          <CardHeader title="Program" />
+          <CardBody className="grid gap-4 sm:grid-cols-2">
+            <Field label="Program code" htmlFor="program" hint="Short name, e.g. BSCE. Must be unique.">
+              <Input id="program" name="program" required placeholder="BSCE" className="uppercase" />
+            </Field>
+            <Field label="First curriculum year" htmlFor="effectiveYear">
+              <Input id="effectiveYear" name="effectiveYear" type="number" required min={2000} max={thisYear + 10} defaultValue={thisYear} />
+            </Field>
+          </CardBody>
+        </Card>
 
-      <form action={createProgram} className="mt-8 space-y-4">
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Program Name</label>
-          <input
-            type="text"
-            name="program"
-            required
-            placeholder="e.g. BSCE"
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Initial Curriculum Year</label>
-          <input
-            type="number"
-            name="effectiveYear"
-            required
-            placeholder="e.g. 2026"
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
+        <Card>
+          <CardHeader title="Chairperson account" description="The chairperson manages this program’s curriculum and students." />
+          <CardBody>
+            <ChairAccountFields />
+          </CardBody>
+        </Card>
 
-        <div className="border-t border-[color:var(--ledger-line)] pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">New Chairperson Account</p>
+        <div className="flex justify-end">
+          <ConfirmButton
+            tone="primary"
+            title="Create this program?"
+            description="The program and the chairperson’s login are created right away. Program codes can’t be reused."
+            confirmLabel="Create program"
+          >
+            Create program
+          </ConfirmButton>
         </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Full Name</label>
-          <input
-            type="text"
-            name="chairName"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Email</label>
-          <input
-            type="email"
-            name="chairEmail"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Temporary Password</label>
-          <input
-            type="text"
-            name="chairPassword"
-            required
-            minLength={6}
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-          <p className="mt-1 text-xs text-[color:var(--ink)]/50">
-            Share this with the new chairperson directly — it isn&rsquo;t emailed automatically.
-          </p>
-        </div>
-
-        {error && <p className="text-sm text-[color:var(--status-violated)]">{error}</p>}
-
-        <button type="submit" className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90">
-          Create Course &amp; Chairperson Account
-        </button>
       </form>
-    </main>
+    </div>
   );
 }

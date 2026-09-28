@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
+import { logCurriculumChange } from "../../../lib/queries/curriculumHistory";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
 import type { ImportResult, PreviewResult } from "../../../components/ImportDialog";
 import {
@@ -14,6 +15,8 @@ import {
   type ExistingRequirement,
   type ExistingSubject,
 } from "../../../lib/domain/import/curriculumImport";
+
+const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
 
 async function requireChairperson() {
   const staff = await getCurrentStaff();
@@ -32,7 +35,7 @@ export async function createCurriculumVersion(formData: FormData) {
 
   const { data: sourceCurriculum } = await supabase
     .from("curricula")
-    .select("id")
+    .select("id, effective_year")
     .eq("program", staff.program)
     .order("effective_year", { ascending: false })
     .limit(1)
@@ -95,12 +98,22 @@ export async function createCurriculumVersion(formData: FormData) {
     }
   }
 
+  await logCurriculumChange(supabase, {
+    curriculumId: newCurriculum!.id,
+    changedBy: staff.name,
+    summary: sourceCurriculum
+      ? `Created the ${effectiveYear} version as a copy of the ${sourceCurriculum.effective_year} version`
+      : `Created the ${effectiveYear} version`,
+  });
+
   revalidatePath("/curriculum");
-  redirect(`/curriculum?version=${newCurriculum!.id}`);
+  redirect(
+    `/curriculum?version=${newCurriculum!.id}&success=${encodeURIComponent(`Created the ${effectiveYear} curriculum version.`)}`
+  );
 }
 
 export async function createSubject(formData: FormData) {
-  await requireChairperson();
+  const staff = await requireChairperson();
   const supabase = await createServerClientForUser();
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
@@ -118,15 +131,25 @@ export async function createSubject(formData: FormData) {
     year_level: yearLevel,
     semester,
   });
-  if (error) redirect(`/curriculum/new?curriculumId=${curriculumId}&error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : error.message;
+    redirect(`/curriculum/new?curriculumId=${curriculumId}&error=${encodeURIComponent(message)}`);
+  }
+
+  await logCurriculumChange(supabase, {
+    curriculumId,
+    subjectCode: code,
+    changedBy: staff.name,
+    summary: `Added ${code} — ${title} (${units} units, year ${yearLevel}, ${SEMESTER_NAME[semester] ?? `semester ${semester}`})`,
+  });
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum?version=${curriculumId}`);
+  redirect(`/curriculum?version=${curriculumId}&success=${encodeURIComponent(`Added ${code}.`)}`);
 }
 
 export async function updateSubject(formData: FormData) {
-  await requireChairperson();
+  const staff = await requireChairperson();
   const supabase = await createServerClientForUser();
 
   const subjectId = String(formData.get("subjectId") ?? "");
@@ -136,25 +159,55 @@ export async function updateSubject(formData: FormData) {
   const yearLevel = Number(formData.get("yearLevel"));
   const semester = Number(formData.get("semester"));
 
+  const { data: before } = await supabase
+    .from("subjects")
+    .select("curriculum_id, code, title, units, year_level, semester")
+    .eq("id", subjectId)
+    .single();
+
   const { error } = await supabase
     .from("subjects")
     .update({ code, title, units, year_level: yearLevel, semester })
     .eq("id", subjectId);
-  if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+  if (error) {
+    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : error.message;
+    redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(message)}`);
+  }
 
-  const { data: subjectRow } = await supabase.from("subjects").select("curriculum_id").eq("id", subjectId).single();
+  if (before) {
+    const changes: string[] = [];
+    if (before.code !== code) changes.push(`code ${before.code} → ${code}`);
+    if (before.title !== title) changes.push(`title "${before.title}" → "${title}"`);
+    if (Number(before.units) !== units) changes.push(`units ${before.units} → ${units}`);
+    if (before.year_level !== yearLevel) changes.push(`year ${before.year_level} → ${yearLevel}`);
+    if (before.semester !== semester) {
+      changes.push(`semester ${SEMESTER_NAME[before.semester] ?? before.semester} → ${SEMESTER_NAME[semester] ?? semester}`);
+    }
+    if (changes.length > 0) {
+      await logCurriculumChange(supabase, {
+        curriculumId: before.curriculum_id,
+        subjectCode: code,
+        changedBy: staff.name,
+        summary: `Edited ${before.code}: ${changes.join("; ")}`,
+      });
+    }
+  }
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum?version=${subjectRow?.curriculum_id ?? ""}`);
+  redirect(`/curriculum?version=${before?.curriculum_id ?? ""}&success=${encodeURIComponent(`Saved ${code}.`)}`);
 }
 
 export async function deleteSubject(formData: FormData) {
-  await requireChairperson();
+  const staff = await requireChairperson();
   const supabase = await createServerClientForUser();
   const subjectId = String(formData.get("subjectId") ?? "");
 
-  const { data: subjectRow } = await supabase.from("subjects").select("curriculum_id").eq("id", subjectId).single();
+  const { data: subjectRow } = await supabase
+    .from("subjects")
+    .select("curriculum_id, code, title")
+    .eq("id", subjectId)
+    .single();
 
   const { error } = await supabase.from("subjects").delete().eq("id", subjectId);
   if (error) {
@@ -165,18 +218,34 @@ export async function deleteSubject(formData: FormData) {
     );
   }
 
+  if (subjectRow) {
+    await logCurriculumChange(supabase, {
+      curriculumId: subjectRow.curriculum_id,
+      subjectCode: subjectRow.code,
+      changedBy: staff.name,
+      summary: `Deleted ${subjectRow.code} — ${subjectRow.title}`,
+    });
+  }
+
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum?version=${subjectRow?.curriculum_id ?? ""}`);
+  redirect(
+    `/curriculum?version=${subjectRow?.curriculum_id ?? ""}&success=${encodeURIComponent(`Deleted ${subjectRow?.code ?? "the subject"}.`)}`
+  );
 }
 
 export async function addRequirement(formData: FormData) {
-  await requireChairperson();
+  const staff = await requireChairperson();
   const supabase = await createServerClientForUser();
 
   const subjectId = String(formData.get("subjectId") ?? "");
   const type = String(formData.get("type") ?? "");
-  const { data: subjectRow } = await supabase.from("subjects").select("curriculum_id").eq("id", subjectId).single();
+  const { data: subjectRow } = await supabase
+    .from("subjects")
+    .select("curriculum_id, code")
+    .eq("id", subjectId)
+    .single();
+  let added = "";
 
   if (type === "YEAR_STANDING") {
     const requiredYearLevel = Number(formData.get("requiredYearLevel"));
@@ -184,9 +253,11 @@ export async function addRequirement(formData: FormData) {
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_year_level: requiredYearLevel });
     if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    added = `year ${requiredYearLevel} standing`;
   } else if (type === "COMPLETION") {
     const { error } = await supabase.from("requirements").insert({ subject_id: subjectId, type });
     if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    added = "all subjects completed";
   } else {
     const requiredCodeRaw = String(formData.get("requiredSubjectCode") ?? "");
     const { data: candidateSubjects } = await supabase
@@ -206,25 +277,62 @@ export async function addRequirement(formData: FormData) {
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_subject_id: matched!.id });
     if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    added = type === "COREQUISITE" ? `${matched!.code} (corequisite)` : matched!.code;
+  }
+
+  if (subjectRow) {
+    await logCurriculumChange(supabase, {
+      curriculumId: subjectRow.curriculum_id,
+      subjectCode: subjectRow.code,
+      changedBy: staff.name,
+      summary: `Added requirement to ${subjectRow.code}: ${added}`,
+    });
   }
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum/${subjectId}`);
+  redirect(`/curriculum/${subjectId}?success=${encodeURIComponent(`Requirement added: ${added}.`)}`);
 }
 
 export async function deleteRequirement(formData: FormData) {
-  await requireChairperson();
+  const staff = await requireChairperson();
   const supabase = await createServerClientForUser();
   const requirementId = String(formData.get("requirementId") ?? "");
   const subjectId = String(formData.get("subjectId") ?? "");
 
+  const { data: requirement } = await supabase
+    .from("requirements")
+    .select("type, required_year_level, subject:subjects!requirements_subject_id_fkey(code, curriculum_id), required:subjects!requirements_required_subject_id_fkey(code)")
+    .eq("id", requirementId)
+    .maybeSingle();
+
   const { error } = await supabase.from("requirements").delete().eq("id", requirementId);
   if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
 
+  const subject = one(requirement?.subject);
+  if (requirement && subject) {
+    const removed =
+      requirement.type === "YEAR_STANDING"
+        ? `year ${requirement.required_year_level} standing`
+        : requirement.type === "COMPLETION"
+          ? "all subjects completed"
+          : (one(requirement.required)?.code ?? "a prerequisite");
+    await logCurriculumChange(supabase, {
+      curriculumId: subject.curriculum_id,
+      subjectCode: subject.code,
+      changedBy: staff.name,
+      summary: `Removed requirement from ${subject.code}: ${removed}`,
+    });
+  }
+
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum/${subjectId}`);
+  redirect(`/curriculum/${subjectId}?success=${encodeURIComponent("Requirement removed.")}`);
+}
+
+/** Supabase returns a to-one relation as an object or a one-item array depending on the schema cache. */
+function one<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
 export async function moveSubjectUp(formData: FormData) {
@@ -293,7 +401,7 @@ export async function moveSubjectDown(formData: FormData) {
 
 type LoadedImportPlan =
   | { error: string; warnings?: string[] }
-  | { plan: CurriculumImportPlan; curriculumId: string; existing: ExistingSubject[] };
+  | { plan: CurriculumImportPlan; curriculumId: string; existing: ExistingSubject[]; staffName: string };
 
 // Shared by the preview and the real import, so what the preview shows is
 // exactly what the import will do.
@@ -348,7 +456,7 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
   }
 
   const plan = planCurriculumImport(parsed.subjects, existing, existingRequirements, gradedSubjectIds, parsed.warnings);
-  return { plan, curriculumId, existing };
+  return { plan, curriculumId, existing, staffName: staff.name };
 }
 
 export async function previewSubjectsCsv(
@@ -375,7 +483,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   const loaded = await loadImportPlan(formData);
   if ("error" in loaded) return { error: loaded.error, warnings: loaded.warnings };
 
-  const { plan, curriculumId, existing } = loaded;
+  const { plan, curriculumId, existing, staffName } = loaded;
   const warnings = [...plan.warnings];
   const supabase = await createServerClientForUser();
 
@@ -422,12 +530,14 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   }
 
   let removedCount = 0;
+  const removedCodes: string[] = [];
   for (const s of plan.removed) {
     const { error: removeError } = await supabase.from("subjects").delete().eq("id", s.id);
     if (removeError) {
       warnings.push(`Could not remove "${s.code}": ${removeError.message}`);
     } else {
       removedCount++;
+      removedCodes.push(s.code);
       codeToId.delete(s.code);
     }
   }
@@ -472,5 +582,20 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   if (plan.keptWithGrades.length > 0) {
     parts.push(`Kept ${plan.keptWithGrades.length} subject(s) not in the file because students have grades in them.`);
   }
+  const listed = (label: string, codes: string[]) =>
+    codes.length ? `${label} ${codes.slice(0, 8).join(", ")}${codes.length > 8 ? ` and ${codes.length - 8} more` : ""}` : null;
+  await logCurriculumChange(supabase, {
+    curriculumId,
+    changedBy: staffName,
+    summary: [
+      `Imported a CSV of ${plan.subjects.length} subjects`,
+      listed("added", plan.added),
+      listed("changed", plan.changed.map((c) => c.code)),
+      listed("removed", removedCodes),
+    ]
+      .filter(Boolean)
+      .join("; "),
+  });
+
   return { success: parts.join(" "), warnings };
 }

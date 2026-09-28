@@ -1,96 +1,110 @@
+import type { Metadata } from "next";
+import { ArrowRight, Search, UserRoundSearch } from "lucide-react";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { getCurriculumVersionsForStaff } from "../../../../lib/queries/curriculum";
 import { lookupPendingShiftStudent } from "../../../../lib/queries/transitions";
 import { acceptShiftIn } from "./actions";
+import PageHeader from "../../../../components/ui/PageHeader";
+import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
+import { Field, Input, Select } from "../../../../components/ui/Field";
+import { Button } from "../../../../components/ui/Button";
+import ConfirmButton from "../../../../components/ui/ConfirmButton";
+import Alert from "../../../../components/ui/Alert";
+import EmptyState from "../../../../components/ui/EmptyState";
 
-export default async function ShiftInPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ id?: string; error?: string; success?: string }>;
-}) {
-  const { id, error, success } = await searchParams;
+export const metadata: Metadata = { title: "Shift in a student" };
+
+export default async function ShiftInPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  const { id } = await searchParams;
   const staff = await getCurrentStaff();
   const versions = await getCurriculumVersionsForStaff();
 
   if (!staff || staff.role !== "chairperson" || !staff.program) {
     return (
-      <main className="mx-auto max-w-lg px-6 py-16">
-        <p className="text-sm text-[color:var(--status-violation)]">
-          Only a chairperson account can accept students shifting in.
-        </p>
-      </main>
+      <div className="mx-auto max-w-2xl">
+        <PageHeader title="Shift in a student" />
+        <Alert tone="error">Only a chairperson account can accept students shifting in.</Alert>
+      </div>
     );
   }
 
   const result = id ? await lookupPendingShiftStudent(id.trim()) : null;
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Shift In a Student</h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">
-        Look up a student by their ID number. Only students with an active pending shift request will be found.
-      </p>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        title="Shift in a student"
+        description={`Accept a student who is shifting into ${staff.program}. Their current chairperson must have filed a shift request first.`}
+      />
 
-      {success && <p className="mt-4 text-sm text-[color:var(--status-completed)]">{success}</p>}
-      {error && <p className="mt-4 text-sm text-[color:var(--status-violation)]">{error}</p>}
-
-      <form method="GET" className="mt-8 flex items-center gap-3">
-        <input
-          type="text"
-          name="id"
-          defaultValue={id ?? ""}
-          required
-          placeholder="e.g. 23-10112"
-          className="flex-1 border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-        />
-        <button
-          type="submit"
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Search
-        </button>
-      </form>
+      <Card>
+        <CardBody>
+          <form method="GET" className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="Student ID number" htmlFor="id" className="flex-1">
+              <Input id="id" name="id" defaultValue={id ?? ""} required placeholder="23-10112" className="font-mono" />
+            </Field>
+            <Button type="submit" variant="secondary">
+              <Search aria-hidden />
+              Look up
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
 
       {id && !result && (
-        <p className="mt-6 text-sm text-[color:var(--ink)]/60">
-          No student with a pending shift request was found for ID &ldquo;{id}&rdquo;.
-        </p>
+        <Card className="mt-6">
+          <EmptyState
+            icon={UserRoundSearch}
+            title="No pending shift request"
+            description={`No student with the ID “${id}” has a pending shift request. Check the ID, or ask their current chairperson to file the request.`}
+          />
+        </Card>
       )}
 
       {result && (
-        <div className="mt-8 border-t border-[color:var(--ledger-line)] pt-6">
-          <p className="font-[family-name:var(--font-mono)] text-sm text-[color:var(--ink)]/60">{result.studentId}</p>
-          <p className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">{result.studentName}</p>
-          <p className="mt-1 text-sm text-[color:var(--ink)]/70">Currently in {result.fromProgram}</p>
-
-          <form action={acceptShiftIn} className="mt-6 space-y-4">
+        <Card className="mt-6">
+          <CardHeader
+            title={result.studentName}
+            description={
+              <span className="inline-flex items-center gap-1.5">
+                <span className="font-mono">{result.studentId}</span> · {result.fromProgram}
+                <ArrowRight className="size-3.5" aria-label="to" /> {staff.program}
+              </span>
+            }
+          />
+          <form action={acceptShiftIn}>
             <input type="hidden" name="studentId" value={result.studentId} />
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">
-                Accept into which curriculum version?
-              </label>
-              <select
-                name="newCurriculumId"
-                required
-                className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
+            <CardBody>
+              <Field
+                label="Curriculum version"
+                htmlFor="newCurriculumId"
+                hint="The student will be audited against this version from now on."
               >
-                <option value="">Select…</option>
-                {versions?.versions.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.effectiveYear}
+                <Select id="newCurriculumId" name="newCurriculumId" required defaultValue="">
+                  <option value="" disabled>
+                    Select…
                   </option>
-                ))}
-              </select>
+                  {versions?.versions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {staff.program} {v.effectiveYear}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </CardBody>
+            <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
+              <ConfirmButton
+                tone="primary"
+                title={`Accept ${result.studentName} into ${staff.program}?`}
+                description={`The student moves from ${result.fromProgram} to ${staff.program}, and both programs’ records show the shift. Grades recorded under ${result.fromProgram} don’t carry over automatically; enter any credited subjects on the Enter Grades page.`}
+                confirmLabel="Accept student"
+              >
+                Accept student
+              </ConfirmButton>
             </div>
-            <button
-              type="submit"
-              className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-            >
-              Accept Student
-            </button>
           </form>
-        </div>
+        </Card>
       )}
-    </main>
+    </div>
   );
 }

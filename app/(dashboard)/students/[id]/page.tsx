@@ -1,178 +1,196 @@
-import StudentSearchBar from "../StudentSearchBar";
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ClipboardPen, History, Pencil, Repeat } from "lucide-react";
+import StudentSearchBar from "../StudentSearchBar";
 import { getStudentAudit } from "../../../../lib/queries/students";
 import { getPendingShiftRequest } from "../../../../lib/queries/transitions";
-import type { AuditStatus } from "../../../../lib/domain/AuditResult";
-import { Fragment } from "react";
-import { getCurrentStaff } from "../../../../lib/queries/staff";
-import { formatGrade } from "../../../../lib/format";
-import FeedbackModal from "../../../../components/FeedbackModal";
+import { formatGrade, plural } from "../../../../lib/format";
+import PageHeader from "../../../../components/ui/PageHeader";
+import { Card, CardHeader } from "../../../../components/ui/Card";
+import { LinkButton } from "../../../../components/ui/Button";
+import { Badge, StatusBadge } from "../../../../components/ui/Badge";
+import { Table, Td, Th, Tr } from "../../../../components/ui/Table";
+import Alert from "../../../../components/ui/Alert";
 
-const STATUS_STYLE: Record<AuditStatus, { label: string; color: string }> = {
-  COMPLETED: { label: "Completed", color: "var(--status-completed)" },
-  AVAILABLE: { label: "Available", color: "var(--status-available)" },
-  PENDING: { label: "Pending", color: "var(--status-pending)" },
-  UNAVAILABLE: { label: "Unavailable", color: "var(--status-unavailable)" },
-  VIOLATION: { label: "Violation", color: "var(--status-violation)" },
-};
+const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
+const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second semester", 3: "Midyear" };
 
-const YEAR_LABEL: Record<number, string> = { 1: "Year 1", 2: "Year 2", 3: "Year 3", 4: "Year 4" };
-const SEMESTER_LABEL: Record<number, string> = { 1: "First Semester", 2: "Second Semester", 3: "Midyear" };
-
-export default async function StudentAuditPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string }>;
-}) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  const { error, success } = await searchParams;
+  return { title: `Student ${id}` };
+}
+
+function SummaryTile({
+  label,
+  value,
+  sub,
+  alert = false,
+  children,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  alert?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-line bg-white p-4 shadow-card">
+      <p className="text-sm text-ink-500">{label}</p>
+      <p className={`tabular mt-1 text-xl font-semibold ${alert ? "text-status-violation" : "text-ink-900"}`}>
+        {value}
+        {sub && <span className="ml-1 text-sm font-normal text-ink-400">{sub}</span>}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+export default async function StudentAuditPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();
 
   const isPending = await getPendingShiftRequest(id);
 
   type Row = (typeof data.rows)[number];
-
-  const byYear = new Map<number, Map<number, Row[]>>();
+  const byTerm = new Map<string, { year: number; semester: number; rows: Row[] }>();
   for (const row of data.rows) {
-    const yearMap = byYear.get(row.subject.yearLevel) ?? new Map<number, Row[]>();
-    const semList = yearMap.get(row.subject.semester) ?? [];
-    semList.push(row);
-    yearMap.set(row.subject.semester, semList);
-    byYear.set(row.subject.yearLevel, yearMap);
+    const key = `${row.subject.yearLevel}-${row.subject.semester}`;
+    const entry = byTerm.get(key) ?? { year: row.subject.yearLevel, semester: row.subject.semester, rows: [] };
+    entry.rows.push(row);
+    byTerm.set(key, entry);
   }
+  const terms = [...byTerm.values()].sort((a, b) => a.year - b.year || a.semester - b.semester);
 
-  const sections = [...byYear.entries()]
-    .sort(([a], [b]) => a - b)
-    .flatMap(([year, semesterMap]) =>
-      [...semesterMap.entries()]
-        .sort(([a], [b]) => a - b)
-        .map(([semester, rows]) => ({
-          label: `${YEAR_LABEL[year] ?? `Year ${year}`} — ${SEMESTER_LABEL[semester] ?? `Semester ${semester}`}`,
-          key: `${year}-${semester}`,
-          rows,
-        }))
-    );
+  const count = (status: Row["result"]["status"]) => data.rows.filter((r) => r.result.status === status).length;
+  const totalUnits = data.rows.reduce((sum, r) => sum + Number(r.subject.units), 0);
+  const earnedUnits = data.rows
+    .filter((r) => r.result.status === "COMPLETED")
+    .reduce((sum, r) => sum + Number(r.subject.units), 0);
+  const violations = data.rows.filter((r) => r.result.status === "VIOLATION");
+  const progress = totalUnits ? Math.round((earnedUnits / totalUnits) * 100) : 0;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
-      <Link href="/students" className="text-sm text-[color:var(--accent-maroon)] hover:underline">
-        ← Back to search
-      </Link>
-
-    <div className="mt-4 max-w-md">
-        <StudentSearchBar placeholder="Search another student…" />
+    <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <LinkButton href="/students" variant="ghost" size="sm" className="-ml-3 text-ink-500">
+          ← All students
+        </LinkButton>
+        <div className="w-full sm:w-80">
+          <StudentSearchBar placeholder="Find another student…" />
+        </div>
       </div>
 
-      <p className="mt-6 font-[family-name:var(--font-mono)] text-sm text-[color:var(--ink)]/60">
-        {data.studentId}
-      </p>
-      <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-semibold">
-        {data.studentName}
-      </h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">
-        {data.program} · Year {data.nominalYearLevel} standing
-      </p>
+      <PageHeader
+        eyebrow={data.studentId}
+        title={data.studentName}
+        description={
+          <span className="flex flex-wrap items-center gap-2">
+            {data.program} · {YEAR_LABEL[data.nominalYearLevel] ?? `Year ${data.nominalYearLevel}`} standing
+            {isPending && <Badge tone="amber">Pending shift request</Badge>}
+          </span>
+        }
+        actions={
+          <>
+            <LinkButton href={`/students/${id}/edit`} variant="secondary">
+              <Pencil aria-hidden />
+              Edit
+            </LinkButton>
+            <LinkButton href={`/students/${id}/logbook`} variant="secondary">
+              <History aria-hidden />
+              Grade logbook
+            </LinkButton>
+            <LinkButton href={`/students/${id}/transitions`} variant="secondary">
+              <Repeat aria-hidden />
+              Transfer / shift
+            </LinkButton>
+            <LinkButton href={`/students/${id}/grades`}>
+              <ClipboardPen aria-hidden />
+              Enter grades
+            </LinkButton>
+          </>
+        }
+      />
 
-      {isPending && (
-        <p className="mt-2 inline-block bg-[color:var(--status-pending)]/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[color:var(--status-pending)]">
-          Pending Shift Request
-        </p>
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <SummaryTile label="Subjects completed" value={String(count("COMPLETED"))} sub={`of ${data.rows.length}`} />
+        <SummaryTile label="Units earned" value={String(earnedUnits)} sub={`of ${totalUnits} · ${progress}%`}>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100">
+            <div className="h-full rounded-full bg-brand-500" style={{ width: `${progress}%` }} />
+          </div>
+        </SummaryTile>
+        <SummaryTile label="Can take now" value={String(count("AVAILABLE"))} sub="subjects" />
+        <SummaryTile
+          label="Violations"
+          value={String(violations.length)}
+          sub={violations.length ? "need attention" : "none"}
+          alert={violations.length > 0}
+        />
+      </div>
+
+      {violations.length > 0 && (
+        <Alert tone="error" title="Subjects taken before their prerequisites" className="mb-6">
+          {violations.map((v) => v.subject.code).join(", ")} {violations.length === 1 ? "was" : "were"} graded while a
+          prerequisite was still unmet. {violations.length === 1 ? "It has" : "They have"} to be retaken once the
+          prerequisites are passed.
+        </Alert>
       )}
 
-      <FeedbackModal key={`${error ?? ""}-${success ?? ""}`} error={error} success={success} />
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <Link
-          href={`/students/${id}/grades`}
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Enter Grades
-        </Link>
-        <Link
-          href={`/students/${id}/transitions`}
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + Record Transfer / Shift
-        </Link>
-        <Link
-          href={`/students/${id}/logbook`}
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          + View Grade Logbook
-        </Link>
-        <Link
-          href={`/students/${id}/edit`}
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Edit Student Info
-        </Link>
-      </div>
-
-      <table className="mt-10 w-full table-fixed border-collapse text-sm">
-        <colgroup>
-          <col style={{ width: "110px" }} />
-          <col />
-          <col style={{ width: "220px" }} />
-          <col style={{ width: "70px" }} />
-          <col style={{ width: "170px" }} />
-        </colgroup>
-        <thead>
-          <tr className="border-b border-[color:var(--ledger-line)] text-left text-xs uppercase tracking-wide text-[color:var(--ink)]/50">
-            <th className="py-2 pr-4 font-medium">Code</th>
-            <th className="py-2 pr-4 font-medium">Subject Description</th>
-            <th className="py-2 pr-4 font-medium">Prerequisite</th>
-            <th className="py-2 pr-4 text-right font-medium">Grade</th>
-            <th className="py-2 font-medium">Remarks</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[color:var(--ledger-line)]">
-          {sections.map((section) => (
-            <Fragment key={section.key}>
-              <tr key={`${section.key}-header`}>
-                <td
-                  colSpan={5}
-                  className="pt-6 pb-1 font-[family-name:var(--font-display)] text-sm font-semibold uppercase tracking-wide text-[color:var(--accent-maroon)]"
-                >
-                  {section.label}
-                </td>
-              </tr>
-              {section.rows.map(({ subject, result, grade }) => {
-                const style = STATUS_STYLE[result.status];
-                const prereqLabel =
-                  subject.requirements.length > 0
-                    ? subject.requirements.map((r) => r.description).join(", ")
-                    : "None";
-                return (
-                  <tr key={subject.code}>
-                    <td className="py-2 pr-4 font-[family-name:var(--font-mono)] text-[color:var(--ink)]/70">
-                      {subject.code}
-                    </td>
-                    <td className="py-2 pr-4">{subject.title}</td>
-                    <td className="truncate py-2 pr-4 font-[family-name:var(--font-mono)] text-xs text-[color:var(--ink)]/60">
-                      {prereqLabel}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-[family-name:var(--font-mono)]">
-                    {formatGrade(grade)}
-                    </td>
-                    <td className="py-2">
-                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: style.color }}>
-                        {style.label}
-                      </span>
-                      {result.reasons.length > 0 && (
-                        <p className="mt-0.5 text-xs text-[color:var(--ink)]/50">Needs: {result.reasons.join(", ")}</p>
-                      )}
-                    </td>
+      <div className="space-y-5">
+        {terms.map(({ year, semester, rows }) => {
+          const termUnits = rows.reduce((sum, r) => sum + Number(r.subject.units), 0);
+          return (
+            <Card key={`${year}-${semester}`}>
+              <CardHeader
+                title={`${YEAR_LABEL[year] ?? `Year ${year}`} · ${SEMESTER_LABEL[semester] ?? `Semester ${semester}`}`}
+                description={`${plural(rows.length, "subject")} · ${plural(termUnits, "unit")}`}
+              />
+              <Table className="table-fixed">
+                <colgroup>
+                  <col className="w-28" />
+                  <col />
+                  <col className="hidden w-48 md:table-column" />
+                  <col className="w-16" />
+                  <col className="w-20" />
+                  <col className="w-56" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <Th>Code</Th>
+                    <Th>Subject</Th>
+                    <Th className="hidden md:table-cell">Prerequisites</Th>
+                    <Th className="text-right">Units</Th>
+                    <Th className="text-right">Grade</Th>
+                    <Th>Status</Th>
                   </tr>
-                );
-              })}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </main>
+                </thead>
+                <tbody>
+                  {rows.map(({ subject, result, grade }) => (
+                    <Tr key={subject.code} className={result.status === "VIOLATION" ? "bg-red-50/60" : ""}>
+                      <Td className="font-mono text-ink-600">{subject.code}</Td>
+                      <Td className="text-ink-900">{subject.title}</Td>
+                      <Td className="hidden text-xs text-ink-500 md:table-cell">
+                        {subject.requirements.length > 0 ? subject.requirements.map((r) => r.description).join(", ") : "—"}
+                      </Td>
+                      <Td className="tabular text-right text-ink-600">{Number(subject.units)}</Td>
+                      <Td className="tabular text-right font-medium text-ink-900">{formatGrade(grade)}</Td>
+                      <Td>
+                        <StatusBadge status={result.status} />
+                        {result.reasons.length > 0 && (
+                          <p className="mt-1 text-xs leading-snug text-ink-500">
+                            {result.status === "UNAVAILABLE" || result.status === "VIOLATION" ? "Needs: " : ""}
+                            {result.reasons.join(", ")}
+                          </p>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card>
+          );
+        })}
+      </div>
+    </>
   );
 }

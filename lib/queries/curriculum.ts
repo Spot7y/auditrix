@@ -112,3 +112,16 @@ export async function getCurriculumForStaff(
 
   return { program: staff.program, curriculumId: curriculum.id, effectiveYear: curriculum.effective_year, subjects };
 }
+/** The curriculum version a subject belongs to, so pages can load the right version. */
+export async function getCurriculumIdForSubject(subjectId: string): Promise<string | null> {
+  const supabase = await createServerClientForUser();
+  const { data } = await supabase.from("subjects").select("curriculum_id").eq("id", subjectId).maybeSingle();
+  return (data?.curriculum_id as string | undefined) ?? null;
+}
+
+export function describeRequirement(r: CurriculumRequirementRow): string {
+  if (r.type === "YEAR_STANDING") return `Year ${r.requiredYearLevel} standing`;
+  if (r.type === "COMPLETION") return "All subjects completed";
+  if (r.type === "COREQUISITE") return `${r.requiredSubjectCode ?? "?"} (corequisite)`;
+  return r.requiredSubjectCode ?? "?";
+}

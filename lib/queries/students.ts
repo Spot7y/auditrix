@@ -3,6 +3,7 @@ import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcade
 import { AuditEngine } from "../domain/AuditEngine";
 import type { AuditResult } from "../domain/AuditResult";
 import type { Subject } from "../domain/Subject";
+import { searchTerms } from "../domain/searchTerms";
 
 export interface StudentSearchResult {
   id: string;
@@ -10,32 +11,55 @@ export interface StudentSearchResult {
   program: string;
 }
 
-export async function searchStudents(query: string): Promise<StudentSearchResult[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
+type StudentListRow = {
+  id: string;
+  name: string;
+  nominal_year_level: number;
+  curricula: { program: string; effective_year: number } | { program: string; effective_year: number }[] | null;
+};
 
-const client = await createServerClientForUser();
-  const { data, error } = await client
+export interface StudentListItem {
+  id: string;
+  name: string;
+  program: string;
+  curriculumYear: number | null;
+  nominalYearLevel: number;
+}
+
+/**
+ * Students the current user can see (row-level security scopes this),
+ * optionally filtered: every word must match the ID or the name, so
+ * "Doe, John" and "john doe" both find "Doe, John James".
+ */
+export async function listStudents(query = "", limit = 100): Promise<StudentListItem[]> {
+  const client = await createServerClientForUser();
+  let request = client
     .from("students")
-    .select("id, name, curricula(program)")
-    .or(`id.ilike.%${trimmed}%,name.ilike.%${trimmed}%`)
-    .limit(20);
+    .select("id, name, nominal_year_level, curricula(program, effective_year)")
+    .order("name")
+    .limit(limit);
+  for (const term of searchTerms(query)) {
+    request = request.or(`id.ilike.%${term}%,name.ilike.%${term}%`);
+  }
+  const { data, error } = await request;
   if (error) throw error;
 
-  const rows = (data ?? []) as Array<{
-    id: string;
-    name: string;
-    curricula: { program: string } | { program: string }[] | null;
-  }>;
-
-  return rows.map((row) => {
+  return ((data ?? []) as StudentListRow[]).map((row) => {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
     return {
       id: row.id,
       name: row.name,
       program: curricula?.program ?? "Unknown",
+      curriculumYear: curricula?.effective_year ?? null,
+      nominalYearLevel: row.nominal_year_level,
     };
   });
+}
+
+export async function searchStudents(query: string): Promise<StudentSearchResult[]> {
+  if (searchTerms(query).length === 0) return [];
+  const students = await listStudents(query, 20);
+  return students.map(({ id, name, program }) => ({ id, name, program }));
 }
 
 export interface StudentAuditRow {

@@ -1,42 +1,40 @@
+import type { Metadata } from "next";
 import { login } from "./actions";
+import AuthLayout from "../../components/AuthLayout";
 import PasswordInput from "../../components/PasswordInput";
+import Alert from "../../components/ui/Alert";
+import { Field, Input } from "../../components/ui/Field";
+import SubmitButton from "../../components/ui/SubmitButton";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+export const metadata: Metadata = { title: "Log in" };
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Auditrix</h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">KSU-CEIT Curriculum Audit System</p>
+    <AuthLayout>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900">Welcome back</h1>
+      <p className="mt-1 text-sm text-ink-500">Log in with your KSU staff account.</p>
 
-      <form action={login} className="mt-8 space-y-4">
-        <div>
-          <label htmlFor="email" className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        
-                <PasswordInput name="password" label="Password" />
+      {error && (
+        <Alert tone="error" className="mt-6">
+          {error}
+        </Alert>
+      )}
 
-        {error && <p className="text-sm text-[color:var(--status-violated)]">{error}</p>}
-        <button
-          type="submit"
-          className="w-full bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
+      <form action={login} className="mt-6 space-y-4">
+        <Field label="Email" htmlFor="email">
+          <Input id="email" name="email" type="email" autoComplete="email" placeholder="name@ksu.edu.ph" required />
+        </Field>
+        <PasswordInput name="password" label="Password" autoComplete="current-password" />
+        <SubmitButton block pendingLabel="Logging in…">
           Log in
-        </button>
+        </SubmitButton>
       </form>
-    </main>
+
+      <p className="mt-8 text-center text-xs text-ink-400">
+        Staff accounts are created by the college dean.
+      </p>
+    </AuthLayout>
   );
 }

@@ -1,92 +1,65 @@
+import type { Metadata } from "next";
 import { getProgramsWithChairpersonForDean } from "../../../../lib/queries/programs";
 import { reassignChairperson } from "./actions";
+import ChairAccountFields from "../ChairAccountFields";
+import PageHeader from "../../../../components/ui/PageHeader";
+import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
+import { Field, Select } from "../../../../components/ui/Field";
+import ConfirmButton from "../../../../components/ui/ConfirmButton";
+import Alert from "../../../../components/ui/Alert";
 
-export default async function ReassignChairpersonPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+export const metadata: Metadata = { title: "Reassign chairperson" };
+
+export default async function ReassignChairpersonPage() {
   const programs = await getProgramsWithChairpersonForDean();
 
-  if (programs.length === 0) {
-    return (
-      <main className="mx-auto max-w-lg px-6 py-16">
-        <p className="text-sm text-[color:var(--status-violation)]">
-          Only a dean account with programs under their college can reassign chairpersons.
-        </p>
-      </main>
-    );
-  }
-
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold">Reassign Chairperson</h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">
-        Creates a new login for the incoming chairperson and deactivates the outgoing one for the selected program.
-      </p>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        title="Reassign chairperson"
+        description="Hand a program over to a new chairperson. The outgoing chairperson’s login is deactivated."
+      />
 
-      <form action={reassignChairperson} className="mt-8 space-y-4">
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Program</label>
-          <select
-            name="program"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          >
-            <option value="">Select…</option>
-            {programs.map((p) => (
-              <option key={p.program} value={p.program}>
-                {p.program} — currently {p.chairpersonName ?? "Vacant"}
-              </option>
-            ))}
-          </select>
-        </div>
+      {programs.length === 0 ? (
+        <Alert tone="error">Only a dean account with programs in their college can reassign chairpersons.</Alert>
+      ) : (
+        <form action={reassignChairperson} className="space-y-6">
+          <Card>
+            <CardHeader title="Program" />
+            <CardBody>
+              <Field label="Program" htmlFor="program">
+                <Select id="program" name="program" required defaultValue="">
+                  <option value="" disabled>
+                    Select…
+                  </option>
+                  {programs.map((p) => (
+                    <option key={p.program} value={p.program}>
+                      {p.program} — currently {p.chairpersonName ?? "vacant"}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </CardBody>
+          </Card>
 
-        <div className="border-t border-[color:var(--ledger-line)] pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">New Chairperson Account</p>
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Full Name</label>
-          <input
-            type="text"
-            name="chairName"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Email</label>
-          <input
-            type="email"
-            name="chairEmail"
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Temporary Password</label>
-          <input
-            type="text"
-            name="chairPassword"
-            required
-            minLength={6}
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-          <p className="mt-1 text-xs text-[color:var(--ink)]/50">
-            Share this with the new chairperson directly — it isn&rsquo;t emailed automatically.
-          </p>
-        </div>
+          <Card>
+            <CardHeader title="New chairperson" />
+            <CardBody>
+              <ChairAccountFields />
+            </CardBody>
+          </Card>
 
-        {error && <p className="text-sm text-[color:var(--status-violation)]">{error}</p>}
-
-        <button
-          type="submit"
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Reassign Chairperson
-        </button>
-      </form>
-    </main>
+          <div className="flex justify-end">
+            <ConfirmButton
+              title="Replace this program’s chairperson?"
+              description="The current chairperson loses access immediately and can no longer log in. The new chairperson takes over the program’s curriculum and students."
+              confirmLabel="Replace chairperson"
+            >
+              Reassign chairperson
+            </ConfirmButton>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }

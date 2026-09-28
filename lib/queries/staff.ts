@@ -7,6 +7,7 @@ export interface CurrentStaff {
   program: string | null;
   collegeId: string | null;
   collegeName: string | null;
+  mustChangePassword: boolean;
 }
 
 export async function getCurrentStaff(): Promise<CurrentStaff | null> {
@@ -14,9 +15,11 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // "*" rather than a column list, so this keeps working on a database that
+  // doesn't have the must_change_password column yet.
   const { data, error } = await supabase
     .from("staff")
-    .select("id, name, role, program, college_id, colleges(name)")
+    .select("*, colleges(name)")
     .eq("id", user.id)
     .single();
   if (error) return null;
@@ -30,5 +33,6 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
     program: data.program,
     collegeId: data.college_id,
     collegeName: college?.name ?? null,
+    mustChangePassword: data.must_change_password === true,
   };
 }

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 
 export async function createProgram(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -19,6 +20,8 @@ export async function createProgram(formData: FormData) {
   if (!program || !effectiveYear || !chairName || !chairEmail || !chairPassword) {
     redirect(`/programs/new?error=${encodeURIComponent("All fields are required.")}`);
   }
+  const weakPassword = passwordProblem(chairPassword);
+  if (weakPassword) redirect(`/programs/new?error=${encodeURIComponent(weakPassword)}`);
 
   const admin = createAdminClient();
 
@@ -59,5 +62,5 @@ export async function createProgram(formData: FormData) {
     redirect(`/programs/new?error=${encodeURIComponent(createError.message)}`);
   }
 
-  redirect("/home");
+  redirect(`/home?success=${encodeURIComponent(`Created ${program} and the chairperson account for ${chairName}.`)}`);
 }

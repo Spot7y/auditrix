@@ -13,13 +13,16 @@ what each student has completed, can take next, or took out of order.
   invalid, and the subject must be retaken.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
   requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
-  Export to CSV or PDF.
+  Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
 - **Students.** Register one at a time or import a CSV or a KSU-MIS "Export to Excel" file.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook.
 - **Overview dashboard.** Per program: curriculum versions, students by year level and recent moves.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
+  New chairpersons must replace the temporary password their dean set when they first log in.
+- **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
+  saving grades) ask for confirmation first, and every result is shown as a notification.
 
 ## Roles
 
@@ -33,9 +36,9 @@ check permissions in the server action and do their database writes in one trans
 
 ## Tech stack
 
-- [Next.js 16](https://nextjs.org) (App Router, server actions) with React 19 and Tailwind CSS 4
+- [Next.js 16](https://nextjs.org) (App Router, server actions) with React 19 and Tailwind CSS 4 (Inter font, KSU green theme)
 - [Supabase](https://supabase.com): Postgres, Auth and row-level security
-- `@react-pdf/renderer` for the curriculum PDF export
+- `@react-pdf/renderer` for the curriculum PDF export, and Lucide for icons
 
 ## Getting started
 
@@ -99,7 +102,8 @@ npm test
 The tests use Node's built-in test runner and need no database or network:
 
 - `lib/domain/__tests__/` — the audit rules (prerequisites, pending and invalid entries, year standing, completion),
-  KSU grade validation, grade entry, subject-code matching, student ID format, and curriculum CSV import planning.
+  KSU grade validation, grade entry, subject-code matching, student ID format, curriculum CSV import planning,
+  search input handling and the password policy.
 - `tests/actions/` — server actions with Supabase replaced by an in-memory fake: permission checks for deans and
   chairpersons, and ID validation when registering, importing and editing students. These need Node 22.3+ and are
   skipped on older versions.
@@ -110,7 +114,8 @@ The tests use Node's built-in test runner and need no database or network:
 app/                  Pages and server actions (Next.js App Router)
   (dashboard)/        Signed-in pages: home, students, curriculum, programs, settings
   login/              Sign-in page
-components/           Shared UI (import dialog, feedback modal, password input)
+components/           App shell, import dialog and password input
+  ui/                 Design system: buttons, form fields, cards, tables, badges, dialogs, toasts
 lib/domain/           Audit engine, requirements, grade entry and import logic (no framework code)
 lib/queries/          Data loading for pages
 proxy.ts              Redirects signed-out visitors to /login

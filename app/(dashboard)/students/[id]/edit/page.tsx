@@ -1,61 +1,54 @@
-import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getStudentAudit } from "../../../../../lib/queries/students";
+import { STUDENT_ID_HINT } from "../../../../../lib/domain/studentId";
 import { updateStudentInfo } from "./actions";
+import PageHeader from "../../../../../components/ui/PageHeader";
+import { Card, CardBody } from "../../../../../components/ui/Card";
+import { Field, Input } from "../../../../../components/ui/Field";
+import { LinkButton } from "../../../../../components/ui/Button";
+import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 
-export default async function EditStudentPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
-}) {
+export const metadata: Metadata = { title: "Edit student" };
+
+export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { error } = await searchParams;
   const data = await getStudentAudit(id);
   if (!data) notFound();
 
   return (
-    <main className="mx-auto max-w-lg px-6 py-16">
-      <Link href={`/students/${id}`} className="text-sm text-[color:var(--accent-maroon)] hover:underline">
-        ← Back to profile
-      </Link>
-      <h1 className="mt-6 font-[family-name:var(--font-display)] text-3xl font-semibold">Edit Student</h1>
-      <p className="mt-2 text-sm text-[color:var(--ink)]/70">
-        Correcting a mistake in the student&rsquo;s ID number or name. All existing grades, transitions, and
-        history automatically follow the new ID.
-      </p>
-
-      <form action={updateStudentInfo} className="mt-8 space-y-4">
-        <input type="hidden" name="currentId" value={id} />
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">ID Number</label>
-          <input
-            type="text"
-            name="id"
-            defaultValue={data.studentId}
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold uppercase tracking-wide text-[color:var(--ink)]/60">Full Name</label>
-          <input
-            type="text"
-            name="name"
-            defaultValue={data.studentName}
-            required
-            className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
-          />
-        </div>
-        {error && <p className="text-sm text-[color:var(--status-violation)]">{error}</p>}
-        <button
-          type="submit"
-          className="bg-[color:var(--accent-maroon)] px-5 py-2 text-sm font-medium text-white hover:opacity-90"
-        >
-          Save Changes
-        </button>
-      </form>
-    </main>
+    <div className="mx-auto max-w-2xl">
+      <PageHeader
+        back={{ href: `/students/${id}`, label: "Back to audit" }}
+        title="Edit student"
+        description="Correct a mistake in the ID number or name. Grades, transfers and history follow the new ID automatically."
+      />
+      <Card>
+        <form action={updateStudentInfo}>
+          <CardBody className="space-y-4">
+            <input type="hidden" name="currentId" value={id} />
+            <Field label="ID number" htmlFor="id" hint={STUDENT_ID_HINT}>
+              <Input id="id" name="id" defaultValue={data.studentId} required className="font-mono" />
+            </Field>
+            <Field label="Full name" htmlFor="name" hint="Last, First Middle">
+              <Input id="name" name="name" defaultValue={data.studentName} required />
+            </Field>
+          </CardBody>
+          <div className="flex justify-end gap-2 rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
+            <LinkButton href={`/students/${id}`} variant="secondary">
+              Cancel
+            </LinkButton>
+            <ConfirmButton
+              tone="primary"
+              title="Save changes to this student?"
+              description="If you changed the ID number, the student’s audit, grades and history move to the new ID."
+              confirmLabel="Save changes"
+            >
+              Save changes
+            </ConfirmButton>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 }

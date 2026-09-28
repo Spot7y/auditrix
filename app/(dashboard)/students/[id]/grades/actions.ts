@@ -76,7 +76,8 @@ export async function submitTermGrades(
 
   const allAccepted = result.rows.length > 0 && result.rows.every((r) => r.accepted);
   if (allAccepted) {
-    redirect(`/students/${studentId}`);
+    const saved = result.rows.length === 1 ? "1 grade" : `${result.rows.length} grades`;
+    redirect(`/students/${studentId}?success=${encodeURIComponent(`Saved ${saved} for term ${term}.`)}`);
   }
 
   return { result, error: null };
