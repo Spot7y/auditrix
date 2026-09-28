@@ -5,7 +5,15 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
-import type { ImportResult } from "../../../components/ImportDialog";
+import type { ImportResult, PreviewResult } from "../../../components/ImportDialog";
+import {
+  parseSubjectsCsv,
+  planCurriculumImport,
+  type CurriculumImportPlan,
+  type CurriculumImportSummary,
+  type ExistingRequirement,
+  type ExistingSubject,
+} from "../../../lib/domain/import/curriculumImport";
 
 async function requireChairperson() {
   const staff = await getCurrentStaff();
@@ -283,66 +291,13 @@ export async function moveSubjectDown(formData: FormData) {
   redirect(`/curriculum?version=${subject!.curriculum_id}`);
 }
 
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
+type LoadedImportPlan =
+  | { error: string; warnings?: string[] }
+  | { plan: CurriculumImportPlan; curriculumId: string; existing: ExistingSubject[] };
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (inQuotes) {
-      if (char === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        field += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ",") {
-        row.push(field);
-        field = "";
-      } else if (char === "\n" || char === "\r") {
-        if (char === "\r" && next === "\n") i++;
-        row.push(field);
-        rows.push(row);
-        row = [];
-        field = "";
-      } else {
-        field += char;
-      }
-    }
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((f) => f.trim().length > 0));
-}
-
-type ParsedRequirement =
-  | { kind: "code"; code: string }
-  | { kind: "year_standing"; level: number };
-
-function parseRequirementToken(raw: string): ParsedRequirement | null {
-  const trimmed = raw.trim();
-  if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
-
-  const yearMatch = trimmed.match(/^(\d)(?:st|nd|rd|th)?\s+(?:yr|year)s?\s+standing$/i);
-  if (yearMatch) {
-    return { kind: "year_standing", level: Number(yearMatch[1]) };
-  }
-
-  return { kind: "code", code: normalizeCode(trimmed) };
-}
-
-export async function importSubjectsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
+// Shared by the preview and the real import, so what the preview shows is
+// exactly what the import will do.
+async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "chairperson" || !staff.program) {
     return { error: "Only a chairperson account can manage curriculum." };
@@ -357,81 +312,80 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
     return { error: "Please choose a CSV file." };
   }
 
-  const text = await file.text();
-  const rows = parseCsv(text);
-  if (rows.length < 2) {
-    return { error: "File appears to be empty." };
-  }
-  const dataRows = rows.slice(1);
-
-  type ParsedSubject = {
-    code: string;
-    title: string;
-    units: number;
-    yearLevel: number;
-    semester: number;
-    requirements: ParsedRequirement[];
-  };
-
-  const parsedSubjects: ParsedSubject[] = [];
-  const warnings: string[] = [];
-
-  for (let i = 0; i < dataRows.length; i++) {
-    const [rawCode, rawTitle, rawUnits, rawYear, rawSemester, rawPrereq] = dataRows[i];
-    const code = normalizeCode(rawCode ?? "");
-    const title = (rawTitle ?? "").trim();
-    const units = Number(rawUnits);
-    const yearLevel = Number(rawYear);
-    const semester = Number(rawSemester);
-
-    if (!code || !title || Number.isNaN(units) || Number.isNaN(yearLevel) || Number.isNaN(semester)) {
-      warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
-      continue;
-    }
-
-    const requirements = (rawPrereq ?? "")
-      .split(";")
-      .map((token) => parseRequirementToken(token))
-      .filter((r): r is ParsedRequirement => r !== null);
-
-    parsedSubjects.push({ code, title, units, yearLevel, semester, requirements });
-  }
-
-  if (parsedSubjects.length === 0) {
-    return { error: "No valid rows found in file.", warnings };
-  }
+  const parsed = parseSubjectsCsv(await file.text());
+  if ("error" in parsed) return { error: parsed.error };
 
   const supabase = await createServerClientForUser();
 
-  const { data: existingSubjects, error: existingError } = await supabase
+  const { data: existingRows, error: existingError } = await supabase
     .from("subjects")
-    .select("id, code")
+    .select("id, code, title, units, year_level, semester")
     .eq("curriculum_id", curriculumId);
-  if (existingError) {
-    return { error: existingError.message };
+  if (existingError) return { error: existingError.message };
+  const existing = (existingRows ?? []) as ExistingSubject[];
+
+  let existingRequirements: ExistingRequirement[] = [];
+  if (existing.length > 0) {
+    const { data, error } = await supabase
+      .from("requirements")
+      .select("subject_id, type, required_subject_id, required_year_level")
+      .in(
+        "subject_id",
+        existing.map((s) => s.id)
+      );
+    if (error) return { error: error.message };
+    existingRequirements = (data ?? []) as ExistingRequirement[];
   }
+
+  // Subjects with student grades recorded can't be deleted.
+  const importedCodes = new Set(parsed.subjects.map((s) => s.code));
+  const notInFileIds = existing.filter((s) => !importedCodes.has(s.code)).map((s) => s.id);
+  const gradedSubjectIds = new Set<string>();
+  if (notInFileIds.length > 0) {
+    const { data, error } = await supabase.from("subject_records").select("subject_id").in("subject_id", notInFileIds);
+    if (error) return { error: error.message };
+    for (const r of data ?? []) gradedSubjectIds.add(r.subject_id as string);
+  }
+
+  const plan = planCurriculumImport(parsed.subjects, existing, existingRequirements, gradedSubjectIds, parsed.warnings);
+  return { plan, curriculumId, existing };
+}
+
+export async function previewSubjectsCsv(
+  _prev: PreviewResult<CurriculumImportSummary> | null,
+  formData: FormData
+): Promise<PreviewResult<CurriculumImportSummary>> {
+  const loaded = await loadImportPlan(formData);
+  if ("error" in loaded) return { error: loaded.error, warnings: loaded.warnings };
+
+  const { plan } = loaded;
+  return {
+    preview: {
+      added: plan.added,
+      changed: plan.changed,
+      unchangedCount: plan.unchangedCount,
+      removed: plan.removed.map((s) => s.code),
+      keptWithGrades: plan.keptWithGrades,
+    },
+    warnings: plan.warnings,
+  };
+}
+
+export async function importSubjectsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
+  const loaded = await loadImportPlan(formData);
+  if ("error" in loaded) return { error: loaded.error, warnings: loaded.warnings };
+
+  const { plan, curriculumId, existing } = loaded;
+  const warnings = [...plan.warnings];
+  const supabase = await createServerClientForUser();
 
   const codeToId = new Map<string, string>();
-  for (const s of existingSubjects ?? []) codeToId.set(s.code, s.id);
+  for (const s of existing) codeToId.set(s.code, s.id);
 
-  const parsedCodes = new Set(parsedSubjects.map((s) => s.code));
-  const subjectsToRemove = (existingSubjects ?? []).filter((s) => !parsedCodes.has(s.code as string));
-  let removedCount = 0;
-
-  for (const s of subjectsToRemove) {
-    const { error: removeError } = await supabase.from("subjects").delete().eq("id", s.id);
-    if (removeError) {
-      warnings.push(
-        `Could not remove "${s.code}" (not in this file) — it's still referenced as a prerequisite or has student grades recorded.`
-      );
-    } else {
-      removedCount++;
-    }
-  }
-
+  // created_at is spaced out so subjects keep the file's order.
   const importBaseTime = Date.now();
-  for (let i = 0; i < parsedSubjects.length; i++) {
-    const s = parsedSubjects[i];
+  for (let i = 0; i < plan.subjects.length; i++) {
+    const s = plan.subjects[i];
     const { data, error } = await supabase
       .from("subjects")
       .upsert(
@@ -455,23 +409,33 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
     codeToId.set(s.code, data.id);
   }
 
-  const subjectIdsInImport = parsedSubjects
-    .map((s) => codeToId.get(s.code))
-    .filter((id): id is string => Boolean(id));
-
-  if (subjectIdsInImport.length > 0) {
-    const { error: clearError } = await supabase
-      .from("requirements")
-      .delete()
-      .in("subject_id", subjectIdsInImport);
+  // Clear old requirements before deleting anything: a requirement that
+  // points at a removed subject would otherwise block its deletion.
+  const importedIds = plan.subjects.map((s) => codeToId.get(s.code)).filter((id): id is string => Boolean(id));
+  const removedIds = plan.removed.map((s) => s.id);
+  const idsToClear = [...importedIds, ...removedIds];
+  if (idsToClear.length > 0) {
+    const { error: clearError } = await supabase.from("requirements").delete().in("subject_id", idsToClear);
     if (clearError) {
       warnings.push(`Could not clear existing requirements before re-import: ${clearError.message}`);
     }
   }
 
+  let removedCount = 0;
+  for (const s of plan.removed) {
+    const { error: removeError } = await supabase.from("subjects").delete().eq("id", s.id);
+    if (removeError) {
+      warnings.push(`Could not remove "${s.code}": ${removeError.message}`);
+    } else {
+      removedCount++;
+      codeToId.delete(s.code);
+    }
+  }
+
+  // Resolve prerequisites against subjects that exist after the import.
   const codeCandidates = [...codeToId.entries()].map(([code, id]) => ({ code, id }));
 
-  for (const s of parsedSubjects) {
+  for (const s of plan.subjects) {
     const subjectId = codeToId.get(s.code);
     if (!subjectId) continue;
 
@@ -486,11 +450,9 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
         continue;
       }
 
+      // Unmatched prerequisites were already reported by the plan.
       const matched = findMatchingCode(req.code, codeCandidates);
-      if (!matched) {
-        warnings.push(`${s.code}: prerequisite "${req.code}" not found, skipped.`);
-        continue;
-      }
+      if (!matched) continue;
       const { error } = await supabase.from("requirements").insert({
         subject_id: subjectId,
         type: "PREREQUISITE",
@@ -503,6 +465,12 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
 
-  const summary = `Imported ${parsedSubjects.length} subject(s).${removedCount > 0 ? ` Removed ${removedCount} subject(s) not in file.` : ""}${warnings.length > 0 ? ` ${warnings.length} warning(s).` : ""}`;
-  return { success: summary, warnings };
+  const parts = [
+    `Imported ${plan.subjects.length} subject(s): ${plan.added.length} added, ${plan.changed.length} changed.`,
+  ];
+  if (removedCount > 0) parts.push(`Removed ${removedCount} subject(s) not in the file.`);
+  if (plan.keptWithGrades.length > 0) {
+    parts.push(`Kept ${plan.keptWithGrades.length} subject(s) not in the file because students have grades in them.`);
+  }
+  return { success: parts.join(" "), warnings };
 }

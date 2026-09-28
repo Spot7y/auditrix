@@ -1,7 +1,8 @@
 "use client";
 
 import ImportDialog from "../../../components/ImportDialog";
-import { importSubjectsCsv } from "./actions";
+import type { CurriculumImportSummary } from "../../../lib/domain/import/curriculumImport";
+import { importSubjectsCsv, previewSubjectsCsv } from "./actions";
 
 export default function ImportCurriculumModal({ curriculumId }: { curriculumId: string }) {
   return (
@@ -12,6 +13,7 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
         title="Import Curriculum"
         action={importSubjectsCsv}
         doneHref={`/curriculum?version=${curriculumId}`}
+        preview={{ action: previewSubjectsCsv, render: (summary) => <ImportSummary summary={summary} /> }}
       >
         <input type="hidden" name="curriculumId" value={curriculumId} />
 
@@ -36,8 +38,8 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
         </div>
 
         <p className="border-l-4 border-[color:var(--status-pending)] bg-black/[0.03] px-3 py-2 text-xs text-[color:var(--ink)]/80">
-          This replaces the subject list of this curriculum version. Subjects that aren’t in the file will be
-          removed, and prerequisites are replaced with the ones in the file.
+          This replaces the subject list of this curriculum version: subjects that aren’t in the file are removed, and
+          prerequisites are replaced with the ones in the file. You’ll see a preview before anything is saved.
         </p>
       </ImportDialog>
       <a
@@ -48,5 +50,68 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
         Download CSV template
       </a>
     </>
+  );
+}
+
+export function ImportSummary({ summary }: { summary: CurriculumImportSummary }) {
+  const { added, changed, unchangedCount, removed, keptWithGrades } = summary;
+  const nothingChanges = added.length === 0 && changed.length === 0 && removed.length === 0;
+
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="font-medium">
+        {added.length} added · {changed.length} changed · {unchangedCount} unchanged · {removed.length} removed
+      </p>
+      {nothingChanges && (
+        <p className="text-[color:var(--ink)]/70">
+          The file matches this curriculum version. Importing won’t change it.
+        </p>
+      )}
+
+      <SummarySection title="Will be removed" tone="violation" items={removed}>
+        Not in the file. Their prerequisites are removed with them.
+      </SummarySection>
+      <SummarySection title="Added" tone="completed" items={added} />
+      {changed.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[color:var(--status-pending)]">
+            Changed ({changed.length})
+          </p>
+          <ul className="mt-1 max-h-40 space-y-1 overflow-y-auto text-xs">
+            {changed.map((c) => (
+              <li key={c.code}>
+                <span className="font-medium">{c.code}</span>: {c.changes.join("; ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <SummarySection title="Kept because students have grades in them" tone="unavailable" items={keptWithGrades}>
+        Not in the file, but can’t be removed while grades are recorded.
+      </SummarySection>
+    </div>
+  );
+}
+
+function SummarySection({
+  title,
+  tone,
+  items,
+  children,
+}: {
+  title: string;
+  tone: "violation" | "completed" | "unavailable";
+  items: string[];
+  children?: React.ReactNode;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: `var(--status-${tone})` }}>
+        {title} ({items.length})
+      </p>
+      {children && <p className="mt-0.5 text-xs text-[color:var(--ink)]/60">{children}</p>}
+      <p className="mt-1 max-h-24 overflow-y-auto text-xs">{items.join(", ")}</p>
+    </div>
   );
 }
