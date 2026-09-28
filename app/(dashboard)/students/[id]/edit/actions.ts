@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
+import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../../lib/domain/studentId";
 
 export async function updateStudentInfo(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -12,11 +13,15 @@ export async function updateStudentInfo(formData: FormData) {
     redirect(`/students/${currentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const newId = String(formData.get("id") ?? "").trim();
+  const newId = normalizeStudentId(String(formData.get("id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
 
   if (!newId || !name) {
     redirect(`/students/${currentId}/edit?error=${encodeURIComponent("ID and name are required.")}`);
+  }
+  // Only a changed ID is checked, so older records can still have their name edited.
+  if (newId !== currentId && !isValidStudentId(newId)) {
+    redirect(`/students/${currentId}/edit?error=${encodeURIComponent(STUDENT_ID_HINT)}`);
   }
 
   const supabase = await createServerClientForUser();

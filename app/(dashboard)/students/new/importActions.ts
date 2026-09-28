@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import type { ImportResult } from "../../../../components/ImportDialog";
+import { isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
 
 function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -126,12 +127,16 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
 
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
-      const id = (row[idCol] ?? "").trim();
+      const id = normalizeStudentId(row[idCol] ?? "");
       const name = (row[nameCol] ?? "").trim();
       const yearLevel = Number((row[yearCol] ?? "").trim());
 
       if (!id || !name || Number.isNaN(yearLevel) || yearLevel < 1 || yearLevel > 4) {
         warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
+        continue;
+      }
+      if (!isValidStudentId(id)) {
+        warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
         continue;
       }
       parsedStudents.push({ id, name, yearLevel });
@@ -145,12 +150,16 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
 
     for (let i = 0; i < dataRows.length; i++) {
       const [rawId, rawName, rawYear] = dataRows[i];
-      const id = (rawId ?? "").trim();
+      const id = normalizeStudentId(rawId ?? "");
       const name = (rawName ?? "").trim();
       const yearLevel = Number(rawYear);
 
       if (!id || !name || Number.isNaN(yearLevel) || yearLevel < 1 || yearLevel > 4) {
         warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
+        continue;
+      }
+      if (!isValidStudentId(id)) {
+        warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
         continue;
       }
       parsedStudents.push({ id, name, yearLevel });

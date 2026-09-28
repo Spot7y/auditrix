@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { registerStudent } from "./actions";
 import ImportStudentsModal from "./ImportStudentsModal";
+import { STUDENT_ID_HINT, STUDENT_ID_PATTERN } from "../../../../lib/domain/studentId";
 import { getCurriculumVersionsForStaff } from "../../../../lib/queries/curriculum";
 
 export default async function NewStudentPage({
@@ -44,6 +45,8 @@ export default async function NewStudentPage({
             name="id"
             type="text"
             required
+            pattern={STUDENT_ID_PATTERN}
+            title={STUDENT_ID_HINT}
             placeholder="e.g. 25-123456"
             className="mt-1 w-full border border-[color:var(--ledger-line)] bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--accent-maroon)]"
           />

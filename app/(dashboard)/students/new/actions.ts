@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
 
 export async function registerStudent(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -10,9 +11,13 @@ export async function registerStudent(formData: FormData) {
     redirect(`/students/new?error=${encodeURIComponent("Not authorized to register students.")}`);
   }
 
-  const id = String(formData.get("id") ?? "").trim();
+  const id = normalizeStudentId(String(formData.get("id") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
   const nominalYearLevel = Number(formData.get("nominalYearLevel"));
+
+  if (!isValidStudentId(id)) {
+    redirect(`/students/new?error=${encodeURIComponent(STUDENT_ID_HINT)}`);
+  }
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
   if (!curriculumId) {

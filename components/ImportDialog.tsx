@@ -9,6 +9,10 @@ export interface ImportResult {
   warnings?: string[];
 }
 
+// Keep in step with serverActions.bodySizeLimit in next.config.ts, which
+// allows a little extra for the form's own overhead.
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
 export type ImportAction = (prev: ImportResult | null, formData: FormData) => Promise<ImportResult>;
 
 export interface PreviewResult<P> {
@@ -130,6 +134,8 @@ function ImportForm<P>({
   // The form data the preview was made from; confirming imports exactly this.
   const previewedData = useRef<FormData | null>(null);
   const [showingPreview, setShowingPreview] = useState(false);
+  // Checked before uploading, since an over-limit request fails without a useful message.
+  const [sizeError, setSizeError] = useState<string | null>(null);
   const pending = importPending || previewPending;
 
   useEffect(() => {
@@ -138,7 +144,7 @@ function ImportForm<P>({
 
   const warnings = state?.warnings ?? [];
   const previewReady = preview && showingPreview && !previewPending && previewState?.preview !== undefined;
-  const formError = preview ? previewState?.error : state?.error;
+  const formError = sizeError ?? (preview ? previewState?.error : state?.error);
   const formWarnings = (preview ? previewState?.warnings : state?.warnings) ?? [];
   const doneClassName =
     "mt-6 block w-full bg-[color:var(--accent-maroon)] px-5 py-2 text-center text-sm font-medium text-white hover:opacity-90";
@@ -217,6 +223,14 @@ function ImportForm<P>({
             onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
+              const tooLarge = [...formData.values()].find(
+                (v): v is File => v instanceof File && v.size > MAX_FILE_BYTES
+              );
+              if (tooLarge) {
+                setSizeError(`${tooLarge.name} is too large. Files can be up to 10 MB.`);
+                return;
+              }
+              setSizeError(null);
               if (preview) {
                 previewedData.current = formData;
                 setShowingPreview(true);
