@@ -132,17 +132,16 @@ function SidebarContent({ staff, onNavigate }: { staff: CurrentStaff; onNavigate
               {scope ? ` · ${scope}` : ""}
             </p>
           </div>
-          <form action={logout}>
-            <button
-              type="submit"
-              aria-label="Log out"
-              title="Log out"
-              className="rounded-md p-2 text-ink-400 hover:bg-ink-100 hover:text-ink-800"
-            >
-              <LogOut className="size-4" aria-hidden />
-            </button>
-          </form>
         </div>
+        <form action={logout} className="mt-1">
+          <button
+            type="submit"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-red-50 hover:text-status-violation"
+          >
+            <LogOut className="size-4.5 shrink-0" aria-hidden />
+            Log out
+          </button>
+        </form>
       </div>
     </div>
   );
