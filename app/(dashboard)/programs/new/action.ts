@@ -36,13 +36,6 @@ export async function createProgram(formData: FormData) {
     redirect(`/programs/new?error=${encodeURIComponent(`A program named ${program} already exists.`)}`);
   }
 
-  const { error: curriculumError } = await admin
-    .from("curricula")
-    .insert({ program, effective_year: effectiveYear, college_id: staff!.collegeId });
-  if (curriculumError) {
-    redirect(`/programs/new?error=${encodeURIComponent(curriculumError.message)}`);
-  }
-
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({
     email: chairEmail,
     password: chairPassword,
@@ -52,14 +45,18 @@ export async function createProgram(formData: FormData) {
     redirect(`/programs/new?error=${encodeURIComponent(userError?.message ?? "Could not create chairperson account.")}`);
   }
 
-  const { error: staffError } = await admin.from("staff").insert({
-    id: newUser!.user.id,
-    name: chairName,
-    role: "chairperson",
-    program,
+  // Curriculum and staff row are written in one transaction. The auth account
+  // can't be part of it, so it's deleted again if the transaction fails.
+  const { error: createError } = await admin.rpc("create_program_with_chairperson", {
+    p_program: program,
+    p_effective_year: effectiveYear,
+    p_college_id: staff!.collegeId,
+    p_chair_id: newUser!.user.id,
+    p_chair_name: chairName,
   });
-  if (staffError) {
-    redirect(`/programs/new?error=${encodeURIComponent(staffError.message)}`);
+  if (createError) {
+    await admin.auth.admin.deleteUser(newUser!.user.id);
+    redirect(`/programs/new?error=${encodeURIComponent(createError.message)}`);
   }
 
   redirect("/home");

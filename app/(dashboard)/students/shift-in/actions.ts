@@ -30,9 +30,6 @@ export async function acceptShiftIn(formData: FormData) {
     redirect(`/students/shift-in?error=${encodeURIComponent("This student no longer has a pending shift request.")}`);
   }
 
-  const { data: studentRow } = await admin.from("students").select("name").eq("id", studentId).maybeSingle();
-  const studentName = studentRow?.name ?? "Unknown";
-
   const { data: newCurriculum, error: curriculumError } = await admin
     .from("curricula")
     .select("id, program")
@@ -56,35 +53,16 @@ export async function acceptShiftIn(formData: FormData) {
     );
   }
 
-  const { error: updateError } = await admin
-    .from("students")
-    .update({ curriculum_id: newCurriculumId })
-    .eq("id", studentId);
-  if (updateError) {
-    redirect(`/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent(updateError.message)}`);
+  // Consumes the request, moves the student and logs both sides of the
+  // shift in one transaction, so a failure part-way leaves nothing changed.
+  const { error: acceptError } = await admin.rpc("accept_shift_in", {
+    p_student_id: studentId,
+    p_new_curriculum_id: newCurriculumId,
+    p_recorded_by: staff!.name,
+  });
+  if (acceptError) {
+    redirect(`/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent(acceptError.message)}`);
   }
-
-  const { error: outError } = await admin.from("student_transitions").insert({
-    student_id: studentId,
-    student_name: studentName,
-    type: "SHIFTED_OUT",
-    from_program: pendingRequest!.from_program,
-    to_program: newCurriculum!.program,
-    recorded_by: staff!.name,
-  });
-  if (outError) redirect(`/students/shift-in?error=${encodeURIComponent(outError.message)}`);
-
-  const { error: inError } = await admin.from("student_transitions").insert({
-    student_id: studentId,
-    student_name: studentName,
-    type: "SHIFTED_IN",
-    from_program: pendingRequest!.from_program,
-    to_program: newCurriculum!.program,
-    recorded_by: staff!.name,
-  });
-  if (inError) redirect(`/students/shift-in?error=${encodeURIComponent(inError.message)}`);
-
-  await admin.from("shift_requests").delete().eq("student_id", studentId);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");

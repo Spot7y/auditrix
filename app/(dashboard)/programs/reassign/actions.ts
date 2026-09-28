@@ -35,15 +35,6 @@ export async function reassignChairperson(formData: FormData) {
     redirect(`/programs/reassign?error=${encodeURIComponent("That program is not under your college.")}`);
   }
 
-  // Find every existing chairperson row for this program — normally just
-  // one, but past reassignments could have left stale rows behind, so this
-  // cleans up all of them defensively rather than assuming exactly one.
-  const { data: oldChairs } = await admin
-    .from("staff")
-    .select("id")
-    .eq("role", "chairperson")
-    .eq("program", program);
-
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({
     email: chairEmail,
     password: chairPassword,
@@ -55,19 +46,24 @@ export async function reassignChairperson(formData: FormData) {
     );
   }
 
-  const { error: staffError } = await admin.from("staff").insert({
-    id: newUser!.user.id,
-    name: chairName,
-    role: "chairperson",
-    program,
+  // Removes every existing chairperson row for the program (normally one, but
+  // stale rows from past reassignments are cleaned up too) and adds the new
+  // one in a single transaction. The auth account can't be part of it, so
+  // it's deleted again if the transaction fails.
+  const { data: oldChairIds, error: replaceError } = await admin.rpc("replace_chairperson", {
+    p_program: program,
+    p_new_chair_id: newUser!.user.id,
+    p_new_chair_name: chairName,
   });
-  if (staffError) {
-    redirect(`/programs/reassign?error=${encodeURIComponent(staffError.message)}`);
+  if (replaceError) {
+    await admin.auth.admin.deleteUser(newUser!.user.id);
+    redirect(`/programs/reassign?error=${encodeURIComponent(replaceError.message)}`);
   }
 
-  for (const oldChair of oldChairs ?? []) {
-    await admin.auth.admin.updateUserById(oldChair.id, { ban_duration: "876000h" });
-    await admin.from("staff").delete().eq("id", oldChair.id);
+  // Their staff rows are already gone, which removes their access; banning
+  // the auth accounts also stops them from logging in at all.
+  for (const oldChairId of (oldChairIds as string[] | null) ?? []) {
+    await admin.auth.admin.updateUserById(oldChairId, { ban_duration: "876000h" });
   }
 
   revalidatePath("/home");
