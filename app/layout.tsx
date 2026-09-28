@@ -15,10 +15,10 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Auditrix — KSU-CEIT Curriculum Audit",
+    default: "Auditrix — KSU Curriculum Audit",
     template: "%s · Auditrix",
   },
-  description: "Curriculum audit system for KSU College of Engineering and Information Technology",
+  description: "Curriculum and prerequisite audit system for KSU colleges and programs",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

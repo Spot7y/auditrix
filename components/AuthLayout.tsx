@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
         <div className="relative mt-auto max-w-md">
           <h2 className="text-3xl font-semibold leading-tight tracking-tight">
-            Curriculum audits for the KSU College of Engineering and Information Technology.
+            Curriculum audits for every KSU college and program.
           </h2>
           <p className="mt-3 text-brand-100">
             Track every student’s progress against their curriculum and catch prerequisite problems before enrollment.

@@ -1,6 +1,6 @@
 # Auditrix
 
-Curriculum and prerequisite auditing for KSU-CEIT. Chairpersons keep each program's curriculum, register students
+Curriculum and prerequisite auditing for KSU colleges. Chairpersons keep each program's curriculum, register students
 and record their grades; Auditrix checks every subject against its prerequisites and year-standing rules and shows
 what each student has completed, can take next, or took out of order.
 

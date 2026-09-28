@@ -70,7 +70,7 @@ export function Brand({ onDark = false }: { onDark?: boolean }) {
         <span className={`block text-base font-semibold tracking-tight ${onDark ? "text-white" : "text-ink-900"}`}>
           Auditrix
         </span>
-        <span className={`block text-xs ${onDark ? "text-brand-100" : "text-ink-500"}`}>KSU · CEIT</span>
+        <span className={`block text-xs ${onDark ? "text-brand-100" : "text-ink-500"}`}>KSU</span>
       </span>
     </Link>
   );
