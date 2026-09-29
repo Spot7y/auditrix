@@ -32,7 +32,8 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
         <CardBody className="space-y-4">
           {!current && (
             <Alert tone="warning">
-              Until it’s set, chairpersons can’t promote students, and year levels aren’t recorded by semester.
+              Until it’s set, grade entry has no default term, regular and irregular students can’t be told apart, and
+              year levels count every grade entered so far.
             </Alert>
           )}
           <div>
@@ -44,7 +45,7 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
               <ConfirmButton
                 tone="primary"
                 title="Change the current semester?"
-                description={`This applies to every program in ${collegeName}. New grades default to this semester, and year levels recorded from now on count from it.`}
+                description={`This applies to every program in ${collegeName}. New grades default to this semester, and students’ year levels count the subjects passed before it, so moving to a new school year moves students up.`}
                 confirmLabel="Set semester"
               >
                 Set semester

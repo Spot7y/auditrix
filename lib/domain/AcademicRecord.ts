@@ -1,21 +1,17 @@
 import type { CurriculumMap } from "./CurriculumMap";
 import type { SubjectRecord, SubjectRecordStatus } from "./SubjectRecord";
-import { yearLevelAsOf, type YearLevelEntry } from "./yearLevels";
+import type { YearLevelEntry } from "./yearLevels";
 
 export class AcademicRecord {
   constructor(
     public readonly studentId: string,
     public readonly curriculum: CurriculumMap,
-    public readonly nominalYearLevel: number,
+    /** The year level the student was registered or imported at. */
+    public readonly registeredYearLevel: number,
     private readonly subjectRecords: SubjectRecord[],
-    /** The student's year level by term, as far back as it was recorded. */
+    /** Year levels recorded by term: registrations and chairperson overrides. */
     public readonly yearLevelHistory: YearLevelEntry[] = []
   ) {}
-
-  /** The year level recorded for a term, or null when the history doesn't reach it. */
-  yearLevelIn(term: string): number | null {
-    return yearLevelAsOf(this.yearLevelHistory, term);
-  }
 
   private findRecord(subjectCode: string): SubjectRecord | undefined {
     return this.subjectRecords.find((r) => r.subjectCode === subjectCode);

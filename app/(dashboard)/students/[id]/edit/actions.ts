@@ -59,9 +59,11 @@ export async function setYearLevel(formData: FormData) {
     redirect(`${back}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
-  const yearLevel = Number(formData.get("yearLevel"));
+  // "auto" sets the student back to their year level from grades.
+  const rawYearLevel = String(formData.get("yearLevel") ?? "");
+  const yearLevel = rawYearLevel === "auto" ? null : Number(rawYearLevel);
   const term = `${String(formData.get("termYear") ?? "").trim().padStart(2, "0")}-${String(formData.get("termSemester") ?? "").trim()}`;
-  if (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 4) {
+  if (yearLevel !== null && (!Number.isInteger(yearLevel) || yearLevel < 1 || yearLevel > 4)) {
     redirect(`${back}?error=${encodeURIComponent("Choose a year level from 1st to 4th year.")}`);
   }
   if (!isValidTerm(term)) {
@@ -79,7 +81,11 @@ export async function setYearLevel(formData: FormData) {
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  redirect(`${back}?success=${encodeURIComponent(`Year level set to ${YEAR_LABEL[yearLevel]} from ${term}.`)}`);
+  const message =
+    yearLevel === null
+      ? `Year level is automatic from ${term}.`
+      : `Year level set to ${YEAR_LABEL[yearLevel]} from ${term}.`;
+  redirect(`${back}?success=${encodeURIComponent(message)}`);
 }
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };

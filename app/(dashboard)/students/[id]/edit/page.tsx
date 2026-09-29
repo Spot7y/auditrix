@@ -4,6 +4,7 @@ import { getStudentAudit } from "../../../../../lib/queries/students";
 import { getCurrentTerm, getYearLevelHistory } from "../../../../../lib/queries/yearLevels";
 import { STUDENT_ID_HINT } from "../../../../../lib/domain/studentId";
 import { parseTerm } from "../../../../../lib/domain/Term";
+import type { YearLevelInfo } from "../../../../../lib/domain/yearLevels";
 import { formatDateTime } from "../../../../../lib/format";
 import { setYearLevel, updateStudentInfo } from "./actions";
 import PageHeader from "../../../../../components/ui/PageHeader";
@@ -17,6 +18,12 @@ import TermFields from "../../../../../components/ui/TermFields";
 export const metadata: Metadata = { title: "Edit student" };
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
+
+const BASIS: Record<YearLevelInfo["basis"], string> = {
+  GRADES: "now, from the subjects passed.",
+  REGISTERED: "now, as registered. It rises automatically once the grades show more.",
+  CHAIRPERSON: "now, set by hand.",
+};
 
 export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -63,16 +70,27 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
       <Card>
         <CardHeader
           title="Year level"
-          description={`Now ${YEAR_LABEL[data.nominalYearLevel] ?? `year ${data.nominalYearLevel}`}. To move a whole class up at the start of a school year, use Promote students.`}
+          description={`${YEAR_LABEL[data.yearLevel.level] ?? `Year ${data.yearLevel.level}`} ${BASIS[data.yearLevel.basis]}`}
         />
         <form action={setYearLevel}>
           <CardBody className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="studentId" value={id} />
+            <p className="text-sm text-ink-600 sm:col-span-2">
+              The year level follows what the student has finished: 25% of the curriculum’s units for 2nd year, more
+              than 50% for 3rd year and 75% for 4th year, or every subject of the earlier years. Set it by hand only for a
+              special case.
+            </p>
             <Field label="Year level" htmlFor="yearLevel">
-              <Select id="yearLevel" name="yearLevel" defaultValue={String(data.nominalYearLevel)} required>
+              <Select
+                id="yearLevel"
+                name="yearLevel"
+                defaultValue={data.yearLevel.basis === "CHAIRPERSON" ? String(data.yearLevel.level) : "auto"}
+                required
+              >
+                <option value="auto">Automatic (from grades)</option>
                 {[1, 2, 3, 4].map((y) => (
                   <option key={y} value={y}>
-                    {YEAR_LABEL[y]}
+                    {YEAR_LABEL[y]} (set by hand)
                   </option>
                 ))}
               </Select>
@@ -83,17 +101,14 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
                 defaultYear={term ? String(term.year).padStart(2, "0") : ""}
                 defaultSemester={term ? String(term.semester) : ""}
               />
-              <Hint>
-                Defaults to the current semester. A term before the latest one below only fills in past history; the
-                current year level stays.
-              </Hint>
+              <Hint>Defaults to the current semester.</Hint>
             </div>
           </CardBody>
           <div className="flex justify-end gap-2 rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
             <ConfirmButton
               tone="primary"
-              title="Change this student’s year level?"
-              description="The year level history records it from the term you chose. If that’s the latest term in the history, the student’s current year level changes too."
+              title="Change how this student’s year level is set?"
+              description="A year level set by hand stays until it’s set back to automatic, even as grades are entered."
               confirmLabel="Save year level"
             >
               Save year level
@@ -112,9 +127,14 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
             </thead>
             <tbody>
               {history.map((h) => (
-                <Tr key={h.term}>
+                <Tr key={`${h.term}-${h.source}`}>
                   <Td className="font-mono text-ink-600">{h.term}</Td>
-                  <Td className="text-ink-900">{YEAR_LABEL[h.yearLevel] ?? h.yearLevel}</Td>
+                  <Td className="text-ink-900">
+                    {h.yearLevel === null ? "Automatic" : (YEAR_LABEL[h.yearLevel] ?? h.yearLevel)}
+                    <span className="block text-xs text-ink-500">
+                      {h.source === "REGISTERED" ? "When registered" : h.yearLevel === null ? "Set back by hand" : "Set by hand"}
+                    </span>
+                  </Td>
                   <Td className="text-ink-600">{h.recordedBy}</Td>
                   <Td className="whitespace-nowrap text-right text-ink-500">{formatDateTime(h.recordedAt)}</Td>
                 </Tr>

@@ -16,19 +16,20 @@ what each student has completed, can take next, or took out of order.
   a subject while its prerequisite is still INC. Co-requisites must be taken in the same term and both passed; if one
   fails, both are retaken. A subject taken out of order earns no credit, so it doesn't count toward later subjects
   either. Because everything is worked out from the terms, grades can be entered in any order.
-- **Year standing at the time taken.** A year-standing requirement is met by the year level, by having passed every
-  earlier year's subjects, or by units passed (Sophomore 25% or more, Junior more than 50%, Senior 75% or more, per
-  the KSU Operations Manual). For a subject already taken, each is checked as of that term, using the year level
-  history. When no year level is recorded for that term and the grades alone don't show the standing, the subject is
-  marked "Year standing: please verify" instead of a violation.
+- **Year standing at the time taken.** A year-standing requirement is met by being on that year level (see below).
+  For a subject already taken, it's the year level going into that term, counting only what was passed before it.
+  When nothing was recorded for that term and the grades alone don't show the standing, the subject is marked
+  "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
   requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
 - **Students.** Register one at a time or import a CSV or a KSU-MIS "Export to Excel" file.
 - **Current semester and year levels.** The dean sets the college's current semester; grade entry starts on it.
-  Each student's year level is kept by semester: registration and imports record it, **Promote students** moves a
-  whole class up one year at the start of a school year (everyone is checked except 4th-year, dropped and
-  transferred-out students), and a single student's year level can be changed or back-filled from their Edit page.
+  A student's year level follows what they've finished in their curriculum, per the KSU Operations Manual: 25% of the
+  units for 2nd year, more than 50% for 3rd year, 75% for 4th year, or every subject of the earlier years. Only
+  subjects passed before the current semester count, so students move up when the dean moves to a new semester. The
+  year level given at registration or import is kept until the grades show more, and a chairperson can set a
+  student's year level by hand for a special case (and set it back to automatic) from their Edit page.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook.
@@ -47,7 +48,7 @@ what each student has completed, can take next, or took out of order.
 
 | Role        | Can                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------ |
-| Chairperson | Manage their program's curriculum and students, enter grades, promote students, record shifts, transfers and drops |
+| Chairperson | Manage their program's curriculum and students, enter grades, record shifts, transfers and drops |
 | Dean        | See their college's programs and students, set the current semester, create programs, reassign chairpersons |
 
 Access is enforced by Supabase row-level security. Actions that need the admin key (creating accounts, shift-ins)

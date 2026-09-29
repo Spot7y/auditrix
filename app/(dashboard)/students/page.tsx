@@ -80,7 +80,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
                     {s.program}
                     {s.curriculumYear ? ` · ${s.curriculumYear}` : ""}
                   </Td>
-                  <Td className="whitespace-nowrap text-ink-600">{YEAR[s.nominalYearLevel] ?? s.nominalYearLevel}</Td>
+                  <Td className="whitespace-nowrap text-ink-600">{YEAR[s.yearLevel] ?? s.yearLevel}</Td>
                   <Td className="w-10 text-right">
                     <Link href={`/students/${s.id}`} aria-label={`Open ${s.name}`} className="inline-flex text-ink-400 group-hover:text-brand-700">
                       <ChevronRight className="size-4" aria-hidden />

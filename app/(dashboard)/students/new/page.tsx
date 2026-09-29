@@ -63,7 +63,11 @@ export default async function NewStudentPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Year level" htmlFor="nominalYearLevel">
+            <Field
+              label="Year level"
+              htmlFor="nominalYearLevel"
+              hint="Where the student is now. It rises automatically as their grades are entered."
+            >
               <Select id="nominalYearLevel" name="nominalYearLevel" required defaultValue="1">
                 <option value="1">1st year</option>
                 <option value="2">2nd year</option>

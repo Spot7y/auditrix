@@ -12,11 +12,17 @@ import { Card, CardHeader } from "../../../../components/ui/Card";
 import { LinkButton } from "../../../../components/ui/Button";
 import { Badge, StatusBadge, type BadgeTone } from "../../../../components/ui/Badge";
 import type { EnrollmentStatus } from "../../../../lib/domain/enrollmentStatus";
+import type { YearLevelInfo } from "../../../../lib/domain/yearLevels";
 import { Table, Td, Th, Tr } from "../../../../components/ui/Table";
 import Alert from "../../../../components/ui/Alert";
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second semester", 3: "Midyear" };
+const YEAR_LEVEL_BASIS: Record<YearLevelInfo["basis"], string> = {
+  GRADES: "From the subjects passed so far",
+  REGISTERED: "The year level the student was registered at; it rises as grades are entered",
+  CHAIRPERSON: "Set by the chairperson on the Edit page",
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -114,7 +120,11 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
         title={data.studentName}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            {data.program} · {YEAR_LABEL[data.nominalYearLevel] ?? `Year ${data.nominalYearLevel}`} standing
+            {data.program} ·{" "}
+            <span title={YEAR_LEVEL_BASIS[data.yearLevel.basis]}>
+              {YEAR_LABEL[data.yearLevel.level] ?? `Year ${data.yearLevel.level}`}
+              {data.yearLevel.basis === "CHAIRPERSON" ? " (set by chairperson)" : ""}
+            </span>
             <EnrollmentBadge status={data.enrollment} />
             {isPending && <Badge tone="amber">Pending shift request</Badge>}
           </span>

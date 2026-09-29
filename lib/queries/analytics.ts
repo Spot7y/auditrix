@@ -88,30 +88,36 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     .select("id, nominal_year_level, curricula(program)");
   if (studentsError) throw studentsError;
 
-  const repository = new SupabaseAcademicRecordRepository(supabase);
   const engine = new AuditEngine();
-  const currentTerm = await getCurrentTerm();
+  const currentTerm = (await getCurrentTerm())?.term ?? null;
+  const records = await new SupabaseAcademicRecordRepository(supabase).getRecords(
+    ((studentRows ?? []) as StudentRow[]).map((row) => row.id)
+  );
 
   for (const row of (studentRows ?? []) as StudentRow[]) {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
     const program = curricula?.program ?? "Unknown";
     const summary = getOrCreate(program);
 
-    const record = await repository.getRecord(row.id);
+    const record = records.get(row.id);
     let hasViolation = false;
+    // The year level follows what the student has finished (see
+    // AuditEngine.yearLevel).
+    let yearLevel = row.nominal_year_level;
     // Regular / irregular per the KSU Operations Manual: enrolled this
     // semester in the full prescribed load, or less. Students with no
     // enrollment recorded aren't counted either way.
     let enrollment: EnrollmentStatus["kind"] = "NOT_DETERMINED";
 
     if (record) {
-      const auditResults = engine.auditCurriculum(record);
-      hasViolation = auditResults.some((r) => r.status === "VIOLATION");
-      enrollment = enrollmentStatus(record, currentTerm?.term ?? null).kind;
+      const audit = engine.auditStudent(record, currentTerm);
+      hasViolation = audit.results.some((r) => r.status === "VIOLATION");
+      yearLevel = audit.yearLevel.level;
+      enrollment = enrollmentStatus(record, currentTerm, yearLevel).kind;
     }
 
     summary.totalStudents += 1;
-    summary.byYearLevel[row.nominal_year_level] = (summary.byYearLevel[row.nominal_year_level] ?? 0) + 1;
+    summary.byYearLevel[yearLevel] = (summary.byYearLevel[yearLevel] ?? 0) + 1;
     if (hasViolation) summary.atRiskStudents += 1;
     else summary.clearStudents += 1;
     if (enrollment === "REGULAR") summary.regularStudents += 1;

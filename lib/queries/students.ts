@@ -6,6 +6,7 @@ import type { Subject } from "../domain/Subject";
 import { searchTerms } from "../domain/searchTerms";
 import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentStatus";
 import { getCurrentTerm } from "./yearLevels";
+import type { YearLevelInfo } from "../domain/yearLevels";
 
 export interface StudentSearchResult {
   id: string;
@@ -25,7 +26,8 @@ export interface StudentListItem {
   name: string;
   program: string;
   curriculumYear: number | null;
-  nominalYearLevel: number;
+  /** Worked out from what the student has finished (see AuditEngine.yearLevel). */
+  yearLevel: number;
 }
 
 /**
@@ -34,6 +36,20 @@ export interface StudentListItem {
  * "Doe, John" and "john doe" both find "Doe, John James".
  */
 export async function listStudents(query = "", limit = 100): Promise<StudentListItem[]> {
+  const rows = await findStudents(query, limit);
+  const client = await createServerClientForUser();
+  const [records, currentTerm] = await Promise.all([
+    new SupabaseAcademicRecordRepository(client).getRecords(rows.map((r) => r.id)),
+    getCurrentTerm(),
+  ]);
+  const engine = new AuditEngine();
+  return rows.map(({ registeredYearLevel, ...row }) => {
+    const record = records.get(row.id);
+    return { ...row, yearLevel: record ? engine.yearLevel(record, currentTerm?.term ?? null).level : registeredYearLevel };
+  });
+}
+
+async function findStudents(query: string, limit: number) {
   const client = await createServerClientForUser();
   let request = client
     .from("students")
@@ -53,14 +69,14 @@ export async function listStudents(query = "", limit = 100): Promise<StudentList
       name: row.name,
       program: curricula?.program ?? "Unknown",
       curriculumYear: curricula?.effective_year ?? null,
-      nominalYearLevel: row.nominal_year_level,
+      registeredYearLevel: row.nominal_year_level,
     };
   });
 }
 
 export async function searchStudents(query: string): Promise<StudentSearchResult[]> {
   if (searchTerms(query).length === 0) return [];
-  const students = await listStudents(query, 20);
+  const students = await findStudents(query, 20);
   return students.map(({ id, name, program }) => ({ id, name, program }));
 }
 
@@ -77,7 +93,8 @@ export interface StudentAuditData {
   studentId: string;
   studentName: string;
   program: string;
-  nominalYearLevel: number;
+  /** The year level for the current semester, and what it's based on. */
+  yearLevel: YearLevelInfo;
   /** Regular or irregular this semester, per the Operations Manual. */
   enrollment: EnrollmentStatus;
   rows: StudentAuditRow[];
@@ -96,7 +113,9 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
     .single();
   if (error) throw error;
 
-  const results = new Map(new AuditEngine().auditCurriculum(record).map((r) => [r.subjectCode, r]));
+  const currentTerm = (await getCurrentTerm())?.term ?? null;
+  const audit = new AuditEngine().auditStudent(record, currentTerm);
+  const results = new Map(audit.results.map((r) => [r.subjectCode, r]));
   const rows: StudentAuditRow[] = record.curriculum.allSubjects().map((subject) => {
     const attempt = record.recordOf(subject.code);
     return {
@@ -118,8 +137,8 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
     studentId: record.studentId,
     studentName: studentRow.name,
     program: record.curriculum.program,
-    nominalYearLevel: record.nominalYearLevel,
-    enrollment: enrollmentStatus(record, (await getCurrentTerm())?.term ?? null),
+    yearLevel: audit.yearLevel,
+    enrollment: enrollmentStatus(record, currentTerm, audit.yearLevel.level),
     rows,
   };
 }

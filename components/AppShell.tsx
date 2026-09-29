@@ -6,7 +6,6 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRightLeft,
   BookOpen,
-  ChevronsUp,
   FolderPlus,
   GraduationCap,
   LayoutDashboard,
@@ -32,7 +31,6 @@ const NAV: { heading?: string; items: NavItem[] }[] = [
       { href: "/students", label: "Students", icon: Search, roles: ["chairperson"] },
       { href: "/students/new", label: "Register Student", icon: UserPlus, roles: ["chairperson"] },
       { href: "/students/shift-in", label: "Shift In a Student", icon: ArrowRightLeft, roles: ["chairperson"] },
-      { href: "/students/promote", label: "Promote Students", icon: ChevronsUp, roles: ["chairperson"] },
     ],
   },
   {

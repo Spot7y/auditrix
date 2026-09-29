@@ -23,7 +23,7 @@ const curriculum = new CurriculumMap("BSIT", [
   subject("CC 203", 2, 2),
 ]);
 const status = (records: SubjectRecord[], term: string | null = "25-2", yearLevel = 2) =>
-  enrollmentStatus(new AcademicRecord("S", curriculum, yearLevel, records), term);
+  enrollmentStatus(new AcademicRecord("S", curriculum, yearLevel, records), term, yearLevel);
 
 describe("regular or irregular (KSU Operations Manual)", () => {
   it("is regular when enrolled in the whole prescribed load", () => {

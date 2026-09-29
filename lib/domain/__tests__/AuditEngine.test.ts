@@ -8,6 +8,7 @@ import { YearStandingRequirement, meetsUnitThreshold } from "../requirements/Yea
 import { CompletionRequirement } from "../requirements/CompletionRequirement";
 import type { Subject } from "../Subject";
 import type { SubjectRecord, SubjectRecordStatus } from "../SubjectRecord";
+import type { YearLevelEntry } from "../yearLevels";
 
 const engine = new AuditEngine();
 
@@ -317,7 +318,7 @@ describe("AuditEngine — co-requisites", () => {
   });
 });
 
-describe("YearStandingRequirement — satisfied by any one of three conditions", () => {
+describe("YearStandingRequirement — the year level the student has reached", () => {
   // 2 year-1 subjects, 3 year-2 subjects and the year-3 target: 6 × 3 = 18 units in total.
   const curriculum = new CurriculumMap("BSIT", [
     subject("GE 101", { yearLevel: 1 }),
@@ -327,10 +328,10 @@ describe("YearStandingRequirement — satisfied by any one of three conditions",
     subject("GE 203", { yearLevel: 2 }),
     subject("CC 300", { yearLevel: 3, requirements: [new YearStandingRequirement(3)] }),
   ]);
-  const cc300 = (nominalYear: number, records: SubjectRecord[]) =>
-    engine.auditEnrollment(new AcademicRecord("S", curriculum, nominalYear, records), "CC 300");
+  const cc300 = (registeredYear: number, records: SubjectRecord[]) =>
+    engine.auditEnrollment(new AcademicRecord("S", curriculum, registeredYear, records), "CC 300");
 
-  it("nominal year level alone", () => {
+  it("the year level the student was registered at", () => {
     assert.equal(cc300(3, []).status, "AVAILABLE");
   });
 
@@ -376,8 +377,10 @@ describe("YearStandingRequirement — as of the term the subject was taken", () 
     subject("GE 203", { yearLevel: 2 }),
     subject("CC 300", { yearLevel: 3, requirements: [new YearStandingRequirement(3)] }),
   ]);
-  const cc300 = (nominalYear: number, records: SubjectRecord[], history: { term: string; yearLevel: number }[] = []) =>
-    engine.auditEnrollment(new AcademicRecord("S", curriculum, nominalYear, records, history), "CC 300");
+  const cc300 = (registeredYear: number, records: SubjectRecord[], history: YearLevelEntry[] = []) =>
+    engine.auditEnrollment(new AcademicRecord("S", curriculum, registeredYear, records, history), "CC 300");
+  const registered = (term: string, yearLevel: number): YearLevelEntry => ({ term, yearLevel, source: "REGISTERED" });
+  const byHand = (term: string, yearLevel: number | null): YearLevelEntry => ({ term, yearLevel, source: "CHAIRPERSON" });
   const firstTwoYears = [
     taken("GE 101", "24-1"),
     taken("GE 102", "24-1"),
@@ -385,32 +388,35 @@ describe("YearStandingRequirement — as of the term the subject was taken", () 
     taken("GE 202", "25-1"),
   ];
 
-  it("accepts the year level recorded for that term", () => {
-    const result = cc300(3, [taken("CC 300", "26-1")], [
-      { term: "24-1", yearLevel: 1 },
-      { term: "26-1", yearLevel: 3 },
-    ]);
+  it("accepts the year level a student was registered at, from that term", () => {
+    const result = cc300(3, [taken("CC 300", "26-1")], [registered("26-1", 3)]);
     assert.equal(result.status, "COMPLETED");
     assert.deepEqual(result.warnings, []);
   });
 
+  it("accepts a year level set by hand for that term", () => {
+    const result = cc300(1, [taken("CC 300", "26-1")], [registered("24-1", 1), byHand("25-2", 3)]);
+    assert.equal(result.status, "COMPLETED");
+  });
+
   it("is a violation when the recorded year level and the grades both fall short", () => {
-    const result = cc300(3, [taken("GE 101", "24-1"), taken("CC 300", "25-1")], [{ term: "24-1", yearLevel: 1 }]);
+    const result = cc300(1, [taken("GE 101", "24-1"), taken("CC 300", "25-1")], [registered("24-1", 1)]);
     assert.deepEqual(result.reasons, ["Third yr standing in 25-1"]);
     assert.equal(result.status, "VIOLATION");
   });
 
-  it("accepts enough units passed before that term, whatever the year level", () => {
-    const result = cc300(1, [...firstTwoYears, taken("CC 300", "25-2")], [{ term: "24-1", yearLevel: 1 }]);
+  it("accepts enough units passed before that term, whatever the registered level", () => {
+    const result = cc300(1, [...firstTwoYears, taken("CC 300", "25-2")], [registered("24-1", 1)]);
     assert.equal(result.status, "COMPLETED");
   });
 
   it("doesn't count units passed in the same term or later", () => {
-    const result = cc300(3, [...firstTwoYears, taken("CC 300", "25-1")], [{ term: "24-1", yearLevel: 1 }]);
+    const result = cc300(1, [...firstTwoYears, taken("CC 300", "25-1")], [registered("24-1", 1)]);
     assert.equal(result.status, "VIOLATION");
   });
 
-  it("asks to verify, rather than flagging, when no year level is recorded for that term", () => {
+  it("asks to verify, rather than flagging, when nothing is recorded for that term", () => {
+    // Registered at 3rd year, but not when: that says nothing about 25-1.
     const result = cc300(3, [taken("GE 101", "24-1"), taken("CC 300", "25-1")]);
     assert.deepEqual(result, {
       subjectCode: "CC 300",
@@ -435,8 +441,80 @@ describe("YearStandingRequirement — as of the term the subject was taken", () 
     assert.equal(statusOf(results, "CC 310")?.status, "COMPLETED");
   });
 
-  it("uses the current year level for what can be taken now", () => {
-    assert.equal(cc300(3, [], [{ term: "24-1", yearLevel: 1 }]).status, "AVAILABLE");
+  it("follows a year level set by hand, until it's set back to automatic", () => {
+    assert.equal(cc300(1, [], [registered("24-1", 1), byHand("25-1", 3)]).status, "AVAILABLE");
+    assert.equal(cc300(1, [], [registered("24-1", 1), byHand("25-1", 3), byHand("25-2", null)]).status, "UNAVAILABLE");
+  });
+});
+
+describe("Year level — from what the student has finished", () => {
+  // 18 units: two 1st-year subjects, three 2nd-year, one 3rd-year.
+  const curriculum = new CurriculumMap("BSIT", [
+    subject("GE 101", { yearLevel: 1 }),
+    subject("GE 102", { yearLevel: 1 }),
+    subject("GE 201", { yearLevel: 2 }),
+    subject("GE 202", { yearLevel: 2 }),
+    subject("GE 203", { yearLevel: 2 }),
+    subject("CC 300", { yearLevel: 3 }),
+  ]);
+  const level = (records: SubjectRecord[], currentTerm: string | null, registeredYear = 1, history: YearLevelEntry[] = []) =>
+    engine.yearLevel(new AcademicRecord("S", curriculum, registeredYear, records, history), currentTerm);
+
+  it("starts at 1st year", () => {
+    assert.deepEqual(level([], "25-1"), { level: 1, basis: "GRADES", known: true });
+  });
+
+  it("moves up with the share of units passed", () => {
+    const twoSubjects = [taken("GE 101", "24-1"), taken("GE 102", "24-1")]; // 33%
+    assert.equal(level(twoSubjects, "24-2").level, 2);
+    const fourSubjects = [...twoSubjects, taken("GE 201", "24-2"), taken("GE 202", "24-2")]; // 67%
+    assert.equal(level(fourSubjects, "25-1").level, 3);
+    const fiveSubjects = [...fourSubjects, taken("GE 203", "25-1")]; // 83%
+    assert.equal(level(fiveSubjects, "25-2").level, 4);
+  });
+
+  it("moves up once every earlier year's subject is passed, even with fewer units", () => {
+    const heavy = new CurriculumMap("BSIT", [
+      subject("GE 101", { yearLevel: 1, units: 1 }),
+      subject("CC 201", { yearLevel: 2, units: 10 }),
+      subject("CC 301", { yearLevel: 3, units: 10 }),
+    ]);
+    const record = new AcademicRecord("S", heavy, 1, [taken("GE 101", "24-1")]); // 1 of 21 units
+    assert.equal(engine.yearLevel(record, "24-2").level, 2);
+  });
+
+  it("counts only what was passed before the current semester", () => {
+    const twoSubjects = [taken("GE 101", "25-1"), taken("GE 102", "25-1")];
+    assert.equal(level(twoSubjects, "25-1").level, 1);
+    assert.equal(level(twoSubjects, "25-2").level, 2);
+  });
+
+  it("doesn't count failed subjects or subjects taken out of order", () => {
+    const withPrereq = new CurriculumMap("BSIT", [
+      subject("GE 101", { yearLevel: 1 }),
+      subject("GE 102", { yearLevel: 1, requirements: [prereq("GE 101")] }),
+      subject("GE 201", { yearLevel: 2 }),
+      subject("GE 202", { yearLevel: 2 }),
+    ]);
+    const record = new AcademicRecord("S", withPrereq, 1, [
+      taken("GE 101", "24-1", "FAILED"),
+      taken("GE 102", "24-1"),
+    ]);
+    assert.equal(engine.yearLevel(record, "25-1").level, 1);
+  });
+
+  it("keeps the registered year level until the grades show more", () => {
+    assert.deepEqual(level([], "25-1", 3), { level: 3, basis: "REGISTERED", known: true });
+    const passedMost = ["GE 101", "GE 102", "GE 201", "GE 202", "GE 203"].map((c) => taken(c, "24-1"));
+    assert.deepEqual(level(passedMost, "25-1", 3), { level: 4, basis: "GRADES", known: true });
+  });
+
+  it("uses a year level set by hand, higher or lower, until it's set back to automatic", () => {
+    const passedMost = ["GE 101", "GE 102", "GE 201", "GE 202", "GE 203"].map((c) => taken(c, "24-1"));
+    const override: YearLevelEntry = { term: "25-1", yearLevel: 2, source: "CHAIRPERSON" };
+    assert.deepEqual(level(passedMost, "25-1", 1, [override]), { level: 2, basis: "CHAIRPERSON", known: true });
+    const back: YearLevelEntry = { term: "25-2", yearLevel: null, source: "CHAIRPERSON" };
+    assert.equal(level(passedMost, "25-2", 1, [override, back]).level, 4);
   });
 });
 

@@ -3,7 +3,8 @@ import type { Subject } from "./Subject";
 import type { AuditResult, AuditStatus } from "./AuditResult";
 import type { AuditContext, CheckOutcome, Credit } from "./requirements/Requirement";
 import { isCorequisite } from "./requirements/CoursePrerequisite";
-import { isValidTerm, laterTerm } from "./Term";
+import { compareTerms, isValidTerm, laterTerm } from "./Term";
+import { yearLevelFromProgress, type YearLevelEntry, type YearLevelInfo } from "./yearLevels";
 
 interface TakenCheck {
   /** Requirements that weren't met in the term the subject was taken. */
@@ -35,6 +36,7 @@ class RecordAudit implements AuditContext {
   private readonly credits = new Map<string, Credit>();
   private readonly checks = new Map<string, TakenCheck>();
   private readonly computing = new Set<string>();
+  private readonly yearLevels = new Map<string, YearLevelInfo>();
   /** Times the cycle guard answered; anything worked out through it isn't cached. */
   private guardHits = 0;
 
@@ -46,6 +48,69 @@ class RecordAudit implements AuditContext {
         this.pair(subject.code, requirement.subjectCode);
       }
     }
+  }
+
+  countsBefore(code: string, term: string | null): boolean {
+    // Anything taken in or after `term` can't have been passed before it;
+    // skipping it also avoids working out subjects that depend on this one.
+    const attempt = this.record.recordOf(code);
+    if (attempt?.status !== "PASSED") return false;
+    if (term !== null && isValidTerm(attempt.term) && compareTerms(attempt.term, term) >= 0) return false;
+    const credit = this.creditOf(code);
+    return credit.kind === "CREDITED" && (term === null || credit.term === null || compareTerms(credit.term, term) < 0);
+  }
+
+  /** The year level the subjects passed before `term` (or so far, if null) put the student in. */
+  private yearLevelFromGrades(term: string | null): number {
+    const subjects = this.record.curriculum.allSubjects();
+    const counted = new Map(subjects.map((s) => [s.code, this.countsBefore(s.code, term)]));
+    const total = subjects.reduce((sum, s) => sum + Number(s.units), 0);
+    const earned = subjects.filter((s) => counted.get(s.code)).reduce((sum, s) => sum + Number(s.units), 0);
+    return yearLevelFromProgress(total > 0 ? (earned / total) * 100 : 0, (throughYear) =>
+      subjects.filter((s) => s.yearLevel <= throughYear).every((s) => counted.get(s.code))
+    );
+  }
+
+  /**
+   * The year level going into `term` (or now, if null): a chairperson's
+   * override if one applies, otherwise the higher of the registered level
+   * and what the grades show.
+   *
+   * The registered level counts from the term it was recorded. A student
+   * registered before the dean set a semester has no such term; their
+   * registered level then counts only for now and for the current term
+   * (`current`), not for earlier terms.
+   */
+  yearLevelAt(term: string | null, current = false): YearLevelInfo {
+    const key = `${term ?? "now"}:${current}`;
+    const cached = this.yearLevels.get(key);
+    if (cached) return cached;
+
+    const history = this.record.yearLevelHistory;
+    const upTo = history.filter((e) => term === null || compareTerms(e.term, term) <= 0);
+    const latest = (source: YearLevelEntry["source"]) =>
+      upTo
+        .filter((e) => e.source === source)
+        .reduce<YearLevelEntry | undefined>((a, b) => (!a || compareTerms(b.term, a.term) >= 0 ? b : a), undefined);
+
+    const override = latest("CHAIRPERSON");
+    let info: YearLevelInfo;
+    if (override && override.yearLevel !== null) {
+      info = { level: override.yearLevel, basis: "CHAIRPERSON", known: true };
+    } else {
+      const neverRecorded = !history.some((e) => e.source === "REGISTERED");
+      const registered =
+        latest("REGISTERED")?.yearLevel ?? (neverRecorded && (term === null || current) ? this.record.registeredYearLevel : null);
+      const hitsBefore = this.guardHits;
+      const fromGrades = this.yearLevelFromGrades(term);
+      info =
+        registered !== null && registered > fromGrades
+          ? { level: registered, basis: "REGISTERED", known: true }
+          : { level: fromGrades, basis: "GRADES", known: term === null || current || upTo.length > 0 };
+      if (this.guardHits !== hitsBefore) return info;
+    }
+    this.yearLevels.set(key, info);
+    return info;
   }
 
   private pair(a: string, b: string) {
@@ -259,5 +324,23 @@ export class AuditEngine {
       throw new Error(`Unknown subject code: ${subjectCode}`);
     }
     return this.auditSubject(record, subject);
+  }
+
+  /**
+   * The student's year level for the current semester: worked out from what
+   * they passed before it (or so far, with no current semester), unless the
+   * registered level or a chairperson's override says otherwise.
+   */
+  yearLevel(record: AcademicRecord, currentTerm: string | null): YearLevelInfo {
+    return new RecordAudit(record).yearLevelAt(isValidTerm(currentTerm) ? currentTerm : null, true);
+  }
+
+  /** The whole audit and the current year level, worked out together. */
+  auditStudent(record: AcademicRecord, currentTerm: string | null): { results: AuditResult[]; yearLevel: YearLevelInfo } {
+    const audit = new RecordAudit(record);
+    return {
+      results: record.curriculum.allSubjects().map((subject) => audit.result(subject)),
+      yearLevel: audit.yearLevelAt(isValidTerm(currentTerm) ? currentTerm : null, true),
+    };
   }
 }

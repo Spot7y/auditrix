@@ -1,4 +1,5 @@
 import type { AcademicRecord } from "../AcademicRecord";
+import type { YearLevelInfo } from "../yearLevels";
 
 /**
  * Whether a subject's pass counts, and from which term.
@@ -14,6 +15,10 @@ export type Credit = { kind: "CREDITED"; term: string | null } | { kind: "PENDIN
 export interface AuditContext {
   readonly record: AcademicRecord;
   creditOf(subjectCode: string): Credit;
+  /** Whether a subject's pass counts and came before `term` (or at all, if null). */
+  countsBefore(subjectCode: string, term: string | null): boolean;
+  /** The student's year level going into `term` (or now, if null). */
+  yearLevelAt(term: string | null): YearLevelInfo;
 }
 
 export type CheckOutcome =

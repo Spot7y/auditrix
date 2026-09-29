@@ -7,7 +7,7 @@ import { compareTerms, isValidTerm, parseTerm } from "./Term";
  *  - Irregular: enrolled in less than the prescribed load.
  *
  * The prescribed load is the curriculum's subjects for the student's year
- * level and the current semester. Subjects already passed in an earlier term
+ * level (`yearLevel`, see AuditEngine.yearLevel) and the current semester. Subjects already passed in an earlier term
  * don't need to be taken again, and back subjects taken on top of the full
  * load don't make a student irregular. A student with nothing recorded for
  * the current semester isn't enrolled as far as Auditrix knows, so their
@@ -21,7 +21,7 @@ export type EnrollmentStatus =
 const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
 const YEAR_NAME: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 
-export function enrollmentStatus(record: AcademicRecord, currentTerm: string | null): EnrollmentStatus {
+export function enrollmentStatus(record: AcademicRecord, currentTerm: string | null, yearLevel: number): EnrollmentStatus {
   if (!isValidTerm(currentTerm)) {
     return { kind: "NOT_DETERMINED", reason: "The dean hasn’t set the current semester." };
   }
@@ -33,11 +33,11 @@ export function enrollmentStatus(record: AcademicRecord, currentTerm: string | n
     return { kind: "NOT_DETERMINED", reason: `No enrollment is recorded for ${currentTerm}.` };
   }
 
-  const prescribed = subjects.filter((s) => s.yearLevel === record.nominalYearLevel && s.semester === semester);
+  const prescribed = subjects.filter((s) => s.yearLevel === yearLevel && s.semester === semester);
   if (prescribed.length === 0) {
     return {
       kind: "NOT_DETERMINED",
-      reason: `The curriculum prescribes no subjects for ${YEAR_NAME[record.nominalYearLevel] ?? `year ${record.nominalYearLevel}`}, ${SEMESTER_NAME[semester]}.`,
+      reason: `The curriculum prescribes no subjects for ${YEAR_NAME[yearLevel] ?? `year ${yearLevel}`}, ${SEMESTER_NAME[semester]}.`,
     };
   }
 

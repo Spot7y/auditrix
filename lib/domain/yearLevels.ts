@@ -1,51 +1,53 @@
-import { compareTerms, formatTerm, parseTerm } from "./Term";
-
-export interface YearLevelEntry {
-  /** The student is in `yearLevel` from this term until the next entry. */
-  term: string;
-  yearLevel: number;
-}
-
 /** Year levels are 1–4 (Freshman to Senior). */
 export const MAX_YEAR_LEVEL = 4;
 
 export const YEAR_LEVEL_NAME: Record<number, string> = { 1: "Freshman", 2: "Sophomore", 3: "Junior", 4: "Senior" };
 
 /**
- * The year level recorded for a term: the latest entry at or before it.
- * Null when the history doesn't reach back that far.
+ * A year level recorded for a student from a term on:
+ *  - REGISTERED: the level they were registered or imported at, a starting
+ *    point until their grades show a higher one;
+ *  - CHAIRPERSON: a chairperson's override for a special case, or with
+ *    `yearLevel` null, back to automatic.
  */
-export function yearLevelAsOf(history: YearLevelEntry[], term: string): number | null {
-  let found: YearLevelEntry | null = null;
-  for (const entry of history) {
-    if (compareTerms(entry.term, term) > 0) continue;
-    if (!found || compareTerms(entry.term, found.term) > 0) found = entry;
+export interface YearLevelEntry {
+  term: string;
+  yearLevel: number | null;
+  source: "REGISTERED" | "CHAIRPERSON";
+}
+
+/** A student's year level, and what it's based on. */
+export interface YearLevelInfo {
+  level: number;
+  basis: "GRADES" | "REGISTERED" | "CHAIRPERSON";
+  /**
+   * False when it's from grades alone for a term nothing was recorded for,
+   * so the student may have been further along than the entered grades show.
+   */
+  known: boolean;
+}
+
+/**
+ * Share of the curriculum's units a student needs for each year level, per
+ * the KSU Operations Manual: Sophomore 25% or more, Junior more than 50%
+ * (exactly half isn't enough), Senior 75% or more.
+ */
+export function meetsUnitThreshold(level: number, percent: number): boolean {
+  if (level <= 1) return true;
+  if (level === 2) return percent >= 25;
+  if (level === 3) return percent > 50;
+  return percent >= 75;
+}
+
+/**
+ * The year level a student's finished subjects put them in: the highest
+ * level whose unit share they've reached, or whose earlier years' subjects
+ * they've all passed. `completedYears(n)` says whether every subject of years
+ * 1 to n is passed.
+ */
+export function yearLevelFromProgress(unitPercent: number, completedYears: (throughYear: number) => boolean): number {
+  for (let level = MAX_YEAR_LEVEL; level > 1; level--) {
+    if (meetsUnitThreshold(level, unitPercent) || completedYears(level - 1)) return level;
   }
-  return found?.yearLevel ?? null;
-}
-
-/**
- * The term a promotion takes effect from: students move up at the start of a
- * school year, so during the first semester that's the current term, and
- * later in the year it's the next school year's first semester.
- */
-export function promotionTerm(currentTerm: string): string {
-  const term = parseTerm(currentTerm);
-  if (!term) throw new Error(`Invalid term: ${currentTerm}`);
-  return term.semester === 1 ? formatTerm(term) : formatTerm({ year: term.year + 1, semester: 1 });
-}
-
-export type PromotionSkipReason = "SENIOR" | "DROPPED" | "TRANSFERRED_OUT";
-
-/**
- * Why a student isn't promoted by default, if they aren't: 4th-year students
- * have no next year level, and dropped or transferred-out students are no
- * longer enrolled. `latestMovement` is the student's most recent transfer,
- * shift or drop.
- */
-export function promotionSkipReason(yearLevel: number, latestMovement: string | null): PromotionSkipReason | null {
-  if (latestMovement === "DROPPED") return "DROPPED";
-  if (latestMovement === "TRANSFERRED_OUT") return "TRANSFERRED_OUT";
-  if (yearLevel >= MAX_YEAR_LEVEL) return "SENIOR";
-  return null;
+  return 1;
 }
