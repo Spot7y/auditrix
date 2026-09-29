@@ -1,6 +1,7 @@
 import { normalizeCode, findMatchingCode } from "./codeMatching";
+import { readTable } from "./tableFile";
 
-// Parsing and planning for the curriculum CSV import. Kept free of database
+// Parsing and planning for the curriculum import (CSV or .xls). Kept free of database
 // calls so the preview and the real import work from exactly the same plan.
 
 export type ParsedRequirement = { kind: "code"; code: string } | { kind: "year_standing"; level: number };
@@ -56,49 +57,6 @@ export interface CurriculumImportSummary {
   keptWithGrades: string[];
 }
 
-export function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (inQuotes) {
-      if (char === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        field += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ",") {
-        row.push(field);
-        field = "";
-      } else if (char === "\n" || char === "\r") {
-        if (char === "\r" && next === "\n") i++;
-        row.push(field);
-        rows.push(row);
-        row = [];
-        field = "";
-      } else {
-        field += char;
-      }
-    }
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((f) => f.trim().length > 0));
-}
-
 export function parseRequirementToken(raw: string): ParsedRequirement | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
@@ -111,9 +69,14 @@ export function parseRequirementToken(raw: string): ParsedRequirement | null {
   return { kind: "code", code: normalizeCode(trimmed) };
 }
 
-/** Parses the CSV text into subjects. Rows that can't be read become warnings. */
+/**
+ * Reads the subjects from a curriculum file's text (CSV, or the .xls
+ * template). Columns: code, title, units, year level, semester,
+ * prerequisites. Rows that can't be read become warnings; rows with neither
+ * a code nor a title (e.g. the template's notes) are skipped quietly.
+ */
 export function parseSubjectsCsv(text: string): { subjects: ParsedSubject[]; warnings: string[] } | { error: string } {
-  const rows = parseCsv(text);
+  const rows = readTable(text);
   if (rows.length < 2) return { error: "File appears to be empty." };
 
   const subjects: ParsedSubject[] = [];
@@ -129,6 +92,7 @@ export function parseSubjectsCsv(text: string): { subjects: ParsedSubject[]; war
     const yearLevel = Number(rawYear);
     const semester = Number(rawSemester);
 
+    if (!code && !title) continue;
     if (!code || !title || Number.isNaN(units) || Number.isNaN(yearLevel) || Number.isNaN(semester)) {
       warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
       continue;

@@ -83,6 +83,18 @@ describe("Import students", () => {
     );
     assert.equal(result.success, "Imported 3 student(s).");
   });
+
+  it("finds the columns by header in a CSV saved from the template", async () => {
+    const csv =
+      "#,Student ID,Name,First Name,Middle Name,Last Name,Ext,Gender,Course/Year/Section,Year\n" +
+      '1,26-100001,"Dela Cruz, Juan Santos",Juan,Santos,Dela Cruz,,Male,BSCpE - 1-A,2\n';
+    await importStudentsCsv(null, form({ curriculumId: "cpe-2023", file: new File([csv], "students.csv") }));
+
+    assert.deepEqual(
+      inserted.map((s) => [s.id, s.name, s.nominal_year_level]),
+      [["26-100001", "Dela Cruz, Juan Santos", 2]]
+    );
+  });
 });
 
 describe("Edit student", () => {

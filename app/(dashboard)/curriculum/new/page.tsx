@@ -47,7 +47,7 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
       <Card className="mt-6">
         <CardHeader
           title="Import the whole curriculum"
-          description="Replace this version’s subjects with the ones in a CSV file. You’ll see a preview before anything is saved."
+          description="Replace this version’s subjects with the ones in a CSV or .xls file. You’ll see a preview before anything is saved."
         />
         <CardBody>
           <ImportCurriculumModal curriculumId={data.curriculumId} />

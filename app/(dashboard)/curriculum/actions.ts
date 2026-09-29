@@ -417,7 +417,7 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
 
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) {
-    return { error: "Please choose a CSV file." };
+    return { error: "Please choose a file." };
   }
 
   const parsed = parseSubjectsCsv(await file.text());
@@ -588,7 +588,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
     curriculumId,
     changedBy: staffName,
     summary: [
-      `Imported a CSV of ${plan.subjects.length} subjects`,
+      `Imported a file of ${plan.subjects.length} subjects`,
       listed("added", plan.added),
       listed("changed", plan.changed.map((c) => c.code)),
       listed("removed", removedCodes),

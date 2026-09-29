@@ -5,88 +5,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import type { ImportResult } from "../../../../components/ImportDialog";
 import { isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    const next = text[i + 1];
-
-    if (inQuotes) {
-      if (char === '"' && next === '"') {
-        field += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        field += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ",") {
-        row.push(field);
-        field = "";
-      } else if (char === "\n" || char === "\r") {
-        if (char === "\r" && next === "\n") i++;
-        row.push(field);
-        rows.push(row);
-        row = [];
-        field = "";
-      } else {
-        field += char;
-      }
-    }
-  }
-  if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((f) => f.trim().length > 0));
-}
-
-function stripHtml(fragment: string): string {
-  return fragment
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// KSU-MIS's "Export to Excel" produces an HTML table saved with an .xls
-// extension — not a real spreadsheet file at all. This reads it directly,
-// matching columns by their header text (not position) so a future export
-// with reordered columns still parses correctly.
-function parseHtmlTable(html: string): string[][] {
-  const theadMatch = html.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
-  const tbodyMatch = html.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
-  if (!theadMatch || !tbodyMatch) return [];
-
-  function extractCells(rowHtml: string): string[] {
-    const cellMatches = [...rowHtml.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)];
-    return cellMatches.map((m) => stripHtml(m[1]));
-  }
-
-  const headerRowMatch = theadMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/i);
-  const headers = headerRowMatch ? extractCells(headerRowMatch[1]) : [];
-
-  const rowMatches = [...tbodyMatch[1].matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  const dataRows = rowMatches.map((m) => extractCells(m[1]));
-
-  return [headers, ...dataRows];
-}
-
-function isHtmlFormat(text: string): boolean {
-  const start = text.trim().slice(0, 200).toLowerCase();
-  return start.startsWith("<html") || start.includes("<table") || start.includes("<!doctype");
-}
+import { isHtmlTable, readTable } from "../../../../lib/domain/import/tableFile";
 
 export async function importStudentsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const staff = await getCurrentStaff();
@@ -110,60 +29,40 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
   const parsedStudents: ParsedStudent[] = [];
   const warnings: string[] = [];
 
-  if (isHtmlFormat(text)) {
-    const rows = parseHtmlTable(text);
-    if (rows.length < 2) {
-      return { error: "Could not find a data table in this file." };
-    }
-    const [headers, ...dataRows] = rows;
-    const normalizedHeaders = headers.map((h) => h.toLowerCase().trim());
-    const idCol = normalizedHeaders.indexOf("student id");
-    const nameCol = normalizedHeaders.indexOf("name");
-    const yearCol = normalizedHeaders.indexOf("year");
+  const rows = readTable(text);
+  if (rows.length < 2) {
+    return { error: isHtmlTable(text) ? "Could not find a data table in this file." : "File appears to be empty." };
+  }
+  const [headers, ...dataRows] = rows;
 
-    if (idCol === -1 || nameCol === -1 || yearCol === -1) {
-      return { error: "Could not find the expected columns (Student ID, Name, Year) in this file's headers." };
-    }
+  // Columns are found by their header (the template and KSU-MIS exports
+  // have "Student ID", "Name" and "Year" among others); a file without
+  // those headers is read as ID, name, year level.
+  const normalizedHeaders = headers.map((h) => h.toLowerCase().replace(/[_\s]+/g, " ").trim());
+  const column = (names: string[], fallback: number) => {
+    const index = normalizedHeaders.findIndex((h) => names.includes(h));
+    return index === -1 ? fallback : index;
+  };
+  const idCol = column(["student id", "id", "id number", "student number"], 0);
+  const nameCol = column(["name", "full name", "student name"], 1);
+  const yearCol = column(["year", "year level"], 2);
 
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i];
-      const id = normalizeStudentId(row[idCol] ?? "");
-      const name = (row[nameCol] ?? "").trim();
-      const yearLevel = Number((row[yearCol] ?? "").trim());
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i];
+    const id = normalizeStudentId(row[idCol] ?? "");
+    const name = (row[nameCol] ?? "").trim();
+    const yearLevel = Number((row[yearCol] ?? "").trim());
 
-      if (!id || !name || Number.isNaN(yearLevel) || yearLevel < 1 || yearLevel > 4) {
-        warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
-        continue;
-      }
-      if (!isValidStudentId(id)) {
-        warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
-        continue;
-      }
-      parsedStudents.push({ id, name, yearLevel });
+    if (!id && !name) continue;
+    if (!id || !name || Number.isNaN(yearLevel) || yearLevel < 1 || yearLevel > 4) {
+      warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
+      continue;
     }
-  } else {
-    const rows = parseCsv(text);
-    if (rows.length < 2) {
-      return { error: "File appears to be empty." };
+    if (!isValidStudentId(id)) {
+      warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
+      continue;
     }
-    const dataRows = rows.slice(1);
-
-    for (let i = 0; i < dataRows.length; i++) {
-      const [rawId, rawName, rawYear] = dataRows[i];
-      const id = normalizeStudentId(rawId ?? "");
-      const name = (rawName ?? "").trim();
-      const yearLevel = Number(rawYear);
-
-      if (!id || !name || Number.isNaN(yearLevel) || yearLevel < 1 || yearLevel > 4) {
-        warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
-        continue;
-      }
-      if (!isValidStudentId(id)) {
-        warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
-        continue;
-      }
-      parsedStudents.push({ id, name, yearLevel });
-    }
+    parsedStudents.push({ id, name, yearLevel });
   }
 
   if (parsedStudents.length === 0) {

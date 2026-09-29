@@ -21,9 +21,9 @@ what each student has completed, can take next, or took out of order.
   When nothing was recorded for that term and the grades alone don't show the standing, the subject is marked
   "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
-  requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
+  requirements. Import from a CSV or .xls file with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
-- **Students.** Register one at a time or import a CSV or a KSU-MIS "Export to Excel" file.
+- **Students.** Register one at a time or import a CSV or .xls file (the template, or KSU-MIS's "Export to Excel").
 - **Current semester and year levels.** The dean sets the college's current semester; grade entry starts on it.
   A student's year level follows what they've finished in their curriculum, per the KSU Operations Manual: 25% of the
   units for 2nd year, more than 50% for 3rd year, 75% for 4th year, or every subject of the earlier years. Only
@@ -125,7 +125,7 @@ The tests use Node's built-in test runner and need no database or network:
 
 - `lib/domain/__tests__/` — the audit rules (prerequisites checked by term, co-requisites, INC, year standing,
   completion), term ordering,
-  KSU grade validation, grade entry, subject-code matching, student ID format, curriculum CSV import planning,
+  KSU grade validation, grade entry, subject-code matching, student ID format, reading CSV and .xls files, curriculum import planning,
   search input handling and the password policy.
 - `tests/actions/` — server actions with Supabase replaced by an in-memory fake: permission checks for deans and
   chairpersons, and ID validation when registering, importing and editing students. These need Node 22.3+ and are
@@ -142,7 +142,7 @@ components/           App shell, import dialog and password input
 lib/domain/           Audit engine, requirements, grade entry and import logic (no framework code)
 lib/queries/          Data loading for pages
 proxy.ts              Redirects signed-out visitors to /login
-public/               CSV import templates
+public/               Import templates
 scripts/              Seed and maintenance scripts, test runner
 supabase/migrations/  Database schema, row-level security policies and functions
 tests/                Server action tests
