@@ -37,8 +37,8 @@ export default function ImportStudentsModal({ versions }: { versions: VersionOpt
         </Field>
         <FileInput id="import-file" label="File" accept=".csv,.xls" hint="CSV, or the .xls “Export to Excel” file from KSU-MIS. Up to 10 MB." />
       </ImportDialog>
-      <a href="/student-import-template.csv" download className="text-sm font-medium text-brand-700 hover:underline">
-        Download CSV template
+      <a href="/student-import-template.xls" download className="text-sm font-medium text-brand-700 hover:underline">
+        Download template (KSU-MIS format)
       </a>
     </div>
   );

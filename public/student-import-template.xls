@@ -1,0 +1,8 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Students</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/></head><body><table>
+<thead><tr><th>#</th><th>Student ID</th><th>Name</th><th>First Name</th><th>Middle Name</th><th>Last Name</th><th>Ext</th><th>Gender</th><th>Course/Year/Section</th><th>Year</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>26-100001</td><td>Dela Cruz, Juan Santos</td><td>Juan</td><td>Santos</td><td>Dela Cruz</td><td></td><td>Male</td><td>BSCpE - 1-A</td><td>1</td></tr>
+<tr><td>2</td><td>26-100002</td><td>Santos, Maria Reyes</td><td>Maria</td><td>Reyes</td><td>Santos</td><td></td><td>Female</td><td>BSCpE - 1-A</td><td>1</td></tr>
+<tr><td>3</td><td>26-100003</td><td>Reyes, Jose Garcia</td><td>Jose</td><td>Garcia</td><td>Reyes</td><td></td><td>Male</td><td>BSCpE - 1-B</td><td>1</td></tr>
+</tbody>
+</table></body></html>

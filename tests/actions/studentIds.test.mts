@@ -2,6 +2,7 @@
 import { beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import { form, importFromRoot, mockCurrentStaff, mockNext, projectFile, redirectOf } from "../helpers/modules.mjs";
+import { readFileSync } from "node:fs";
 import type { ImportResult } from "../../components/ImportDialog";
 
 let inserted: Record<string, unknown>[];
@@ -63,6 +64,24 @@ describe("Import students", () => {
     );
     assert.deepEqual(result.warnings, ['Row 3: "2411" is not a valid ID number, skipped.']);
     assert.equal(result.success, "Imported 2 student(s). 1 note(s).");
+  });
+
+  it("imports the downloadable template as it is", async () => {
+    const template = readFileSync(new URL(projectFile("public/student-import-template.xls")), "utf8");
+    const result = await importStudentsCsv(
+      null,
+      form({ curriculumId: "cpe-2023", file: new File([template], "student-import-template.xls") })
+    );
+
+    assert.deepEqual(
+      inserted.map((s) => [s.id, s.name, s.nominal_year_level]),
+      [
+        ["26-100001", "Dela Cruz, Juan Santos", 1],
+        ["26-100002", "Santos, Maria Reyes", 1],
+        ["26-100003", "Reyes, Jose Garcia", 1],
+      ]
+    );
+    assert.equal(result.success, "Imported 3 student(s).");
   });
 });
 
