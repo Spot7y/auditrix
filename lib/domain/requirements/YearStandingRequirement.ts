@@ -1,4 +1,4 @@
-import type { Requirement } from "./Requirement";
+import { MET, type AuditContext, type CheckOutcome, type Requirement } from "./Requirement";
 import type { AcademicRecord } from "../AcademicRecord";
 
 export type YearLevel = 1 | 2 | 3 | 4;
@@ -25,18 +25,17 @@ const LEVEL_NAMES: Record<YearLevel, string> = {
  *  3. Units earned cross the percentage threshold for that year
  */
 export class YearStandingRequirement implements Requirement {
-    
   constructor(public readonly level: YearLevel) {}
 
   get description(): string {
     return `${LEVEL_NAMES[this.level]} yr standing`;
   }
 
-isPending(_record: AcademicRecord): boolean {
-    return false; // year standing is computed from data, never "in progress"
+  check(context: AuditContext): CheckOutcome {
+    return this.isSatisfiedBy(context.record) ? MET : { state: "UNMET", reason: this.description };
   }
 
-  isSatisfiedBy(record: AcademicRecord): boolean {
+  private isSatisfiedBy(record: AcademicRecord): boolean {
     return (
       record.nominalYearLevel >= this.level ||
       record.hasCompletedAllSubjectsThroughYear(this.level - 1) ||

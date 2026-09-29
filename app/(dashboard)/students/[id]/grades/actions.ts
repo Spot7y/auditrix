@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../../lib/domain/supabase/serverClient";
 import { SupabaseAcademicRecordRepository } from "../../../../../lib/domain/import/SupabaseAcademicRecordRepository";
 import { GradeEntryService } from "../../../../../lib/domain/import/GradeEntryService";
+import { AuditEngine } from "../../../../../lib/domain/AuditEngine";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import type { GradeEntryResult } from "../../../../../lib/domain/import/GradeEntryResult";
 import type { RawGradeInput } from "../../../../../lib/domain/import/GradeValidator";
@@ -68,6 +69,13 @@ export async function submitTermGrades(
     return { result: null, error: "Student record not found, or not in your program." };
   }
 
+  const violationsBefore = new Set(
+    new AuditEngine()
+      .auditCurriculum(record)
+      .filter((r) => r.status === "VIOLATION")
+      .map((r) => r.subjectCode)
+  );
+
   const service = new GradeEntryService(repository);
   const result = await service.submit({ studentId, term, entries }, record.curriculum, staff.name);
 
@@ -77,7 +85,19 @@ export async function submitTermGrades(
   const allAccepted = result.rows.length > 0 && result.rows.every((r) => r.accepted);
   if (allAccepted) {
     const saved = result.rows.length === 1 ? "1 grade" : `${result.rows.length} grades`;
-    redirect(`/students/${studentId}?success=${encodeURIComponent(`Saved ${saved} for term ${term}.`)}`);
+    const params = new URLSearchParams({ success: `Saved ${saved} for term ${term}.` });
+    const newViolations = result.audit
+      .filter((r) => r.status === "VIOLATION" && !violationsBefore.has(r.subjectCode))
+      .map((r) => r.subjectCode);
+    if (newViolations.length > 0) {
+      params.set(
+        "error",
+        newViolations.length === 1
+          ? `${newViolations[0]} was taken out of order. See the audit for what was missing.`
+          : `${newViolations.length} subjects were taken out of order: ${newViolations.join(", ")}. See the audit for what was missing.`
+      );
+    }
+    redirect(`/students/${studentId}?${params}`);
   }
 
   return { result, error: null };

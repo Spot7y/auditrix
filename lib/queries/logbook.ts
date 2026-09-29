@@ -5,6 +5,8 @@ export interface LogbookEntry {
   status: string;
   grade: number | null;
   term: string | null;
+  /** Set when this grade completed an INC in a later term. */
+  resolvedTerm: string | null;
   changedBy: string;
   changedAt: string;
 }
@@ -28,6 +30,7 @@ interface LogRow {
   new_status: string;
   new_grade: number | null;
   new_term: string | null;
+  new_resolved_term: string | null;
   changed_by: string;
   changed_at: string;
 }
@@ -61,7 +64,7 @@ export async function getStudentLogbook(studentId: string): Promise<StudentLogbo
 
   const { data: logRows, error: logError } = await supabase
     .from("grade_audit_log")
-    .select("id, subject_id, new_status, new_grade, new_term, changed_by, changed_at")
+    .select("id, subject_id, new_status, new_grade, new_term, new_resolved_term, changed_by, changed_at")
     .eq("student_id", studentId)
     .order("changed_at", { ascending: true });
   if (logError) throw logError;
@@ -78,6 +81,7 @@ export async function getStudentLogbook(studentId: string): Promise<StudentLogbo
       status: row.new_status,
       grade: row.new_grade,
       term: row.new_term,
+      resolvedTerm: row.new_resolved_term,
       changedBy: row.changed_by,
       changedAt: row.changed_at,
     });

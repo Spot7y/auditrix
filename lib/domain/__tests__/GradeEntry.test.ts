@@ -90,38 +90,108 @@ describe("GradeEntryService — submitting a term's grades", () => {
     );
   });
 
-  it("flags a grade entered before its prerequisite was passed, permanently", async () => {
-    const { curriculum, record, service } = setup();
+  const grade = (subjectCode: string, value: number) => ({ subjectCode, input: { kind: "numeric" as const, value } });
+  const statusIn = (result: { audit: { subjectCode: string; status: string }[] }, code: string) =>
+    result.audit.find((a) => a.subjectCode === code)?.status;
+
+  it("flags a subject taken before its prerequisite was passed", async () => {
+    const { curriculum, service } = setup();
     const result = await service.submit(
-      {
-        studentId: "23-110414",
-        term: "23-2",
-        entries: [{ subjectCode: "CC 103", input: { kind: "numeric", value: 2.0 } }],
-      },
+      { studentId: "23-110414", term: "23-2", entries: [grade("CC 103", 2.0)] },
       curriculum,
       "test-chairperson"
     );
 
-    assert.equal(record.isInvalidEntry("CC 103"), true);
-    assert.equal(result.audit.find((a) => a.subjectCode === "CC 103")?.status, "VIOLATION");
+    assert.equal(statusIn(result, "CC 103"), "VIOLATION");
   });
 
-  it("counts a prerequisite passed earlier in the same batch", async () => {
+  it("flags a prerequisite taken in the same term, whatever order the rows are in", async () => {
+    for (const entries of [
+      [grade("CC 101", 1.75), grade("CC 103", 2.0)],
+      [grade("CC 103", 2.0), grade("CC 101", 1.75)],
+    ]) {
+      const { curriculum, service } = setup();
+      const result = await service.submit({ studentId: "23-110414", term: "23-1", entries }, curriculum, "test-chairperson");
+      assert.equal(statusIn(result, "CC 103"), "VIOLATION");
+    }
+  });
+
+  it("accepts grades entered in any order of terms", async () => {
+    const { curriculum, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "23-2", entries: [grade("CC 103", 2.0)] }, curriculum, "chair");
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 1.5)] },
+      curriculum,
+      "chair"
+    );
+    assert.equal(statusIn(result, "CC 103"), "COMPLETED");
+  });
+
+  it("keeps a violation when the grade is saved again", async () => {
+    const { curriculum, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "23-1", entries: [grade("CC 103", 2.0)] }, curriculum, "chair");
+    await service.submit({ studentId: "23-110414", term: "23-2", entries: [grade("CC 101", 1.5)] }, curriculum, "chair");
+    // Correcting CC 103's grade in the term it was taken doesn't clear the violation.
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-1", entries: [grade("CC 103", 1.75)] },
+      curriculum,
+      "chair"
+    );
+    assert.equal(statusIn(result, "CC 103"), "VIOLATION");
+  });
+
+  it("completes an INC in its original term and records when it was resolved", async () => {
     const { curriculum, record, service } = setup();
     await service.submit(
-      {
-        studentId: "23-110414",
-        term: "23-1",
-        entries: [
-          { subjectCode: "CC 101", input: { kind: "numeric", value: 1.75 } },
-          { subjectCode: "CC 103", input: { kind: "numeric", value: 2.0 } },
-        ],
-      },
+      { studentId: "23-110414", term: "23-1", entries: [{ subjectCode: "CC 101", input: { kind: "incomplete" } }] },
       curriculum,
-      "test-chairperson"
+      "chair"
+    );
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-2", entries: [grade("CC 101", 2.0)] },
+      curriculum,
+      "chair"
     );
 
-    assert.equal(record.isInvalidEntry("CC 103"), false);
+    assert.deepEqual(result.rows, [{ accepted: true, subjectCode: "CC 101", resolvedFrom: "23-1" }]);
+    assert.deepEqual(record.recordOf("CC 101"), {
+      subjectCode: "CC 101",
+      status: "PASSED",
+      grade: 2.0,
+      term: "23-1",
+      resolvedTerm: "23-2",
+    });
+  });
+
+  it("won't resolve an INC in a term before it was given", async () => {
+    const { curriculum, record, service } = setup();
+    await service.submit(
+      { studentId: "23-110414", term: "23-2", entries: [{ subjectCode: "CC 101", input: { kind: "incomplete" } }] },
+      curriculum,
+      "chair"
+    );
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 2.0)] },
+      curriculum,
+      "chair"
+    );
+
+    assert.deepEqual(result.rows, [
+      {
+        accepted: false,
+        rawCode: "CC 101",
+        reason: "The INC for CC 101 was given in 23-2, so it can't be resolved in an earlier term (23-1).",
+      },
+    ]);
+    assert.equal(record.statusOf("CC 101"), "INCOMPLETE");
+  });
+
+  it("rejects a malformed term", async () => {
+    const { curriculum, service } = setup();
+    await assert.rejects(
+      service.submit({ studentId: "23-110414", term: "2023-1", entries: [grade("CC 101", 2.0)] }, curriculum, "chair"),
+      { message: "Invalid term: 2023-1" }
+    );
   });
 
   it("returns no audit when nothing was accepted", async () => {

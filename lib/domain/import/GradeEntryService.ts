@@ -5,6 +5,8 @@ import { GradeValidator } from "./GradeValidator";
 import type { TermGradeBatch } from "./TermGradeBatch";
 import type { GradeEntryResult, GradeEntryRowResult } from "./GradeEntryResult";
 import type { CurriculumMap } from "../CurriculumMap";
+import type { SubjectRecord } from "../SubjectRecord";
+import { compareTerms, isValidTerm } from "../Term";
 
 export class GradeEntryService {
   private readonly validator = new GradeValidator();
@@ -17,6 +19,10 @@ export class GradeEntryService {
     curriculum: CurriculumMap,
     performedBy: string
   ): Promise<GradeEntryResult> {
+    if (!isValidTerm(batch.term)) {
+      throw new Error(`Invalid term: ${batch.term}`);
+    }
+
     const resolver = new SubjectCodeResolver(curriculum);
     const rows: GradeEntryRowResult[] = [];
     let anyAccepted = false;
@@ -39,22 +45,46 @@ export class GradeEntryService {
         continue;
       }
 
-      // Checked once, at the moment of entry — this becomes a permanent
-      // fact about this specific grade, not something re-checked later.
-      const isInvalidEntry = resolution.subject.requirements.some((r) => !r.isSatisfiedBy(record));
+      const code = resolution.subject.code;
+      const isFinal = validation.status === "PASSED" || validation.status === "FAILED";
+      const previous = record.recordOf(code);
+      let term = batch.term;
+      let resolvedTerm: string | null = null;
 
-      const newRecord = {
-        subjectCode: resolution.subject.code,
+      // A final grade for an INC completes the original attempt: the subject
+      // stays taken in its original term, and counts as passed only from the
+      // term the INC was resolved in.
+      if (isFinal && previous?.status === "INCOMPLETE" && isValidTerm(previous.term)) {
+        if (compareTerms(batch.term, previous.term) < 0) {
+          rows.push({
+            accepted: false,
+            rawCode: entry.subjectCode,
+            reason: `The INC for ${code} was given in ${previous.term}, so it can't be resolved in an earlier term (${batch.term}).`,
+          });
+          continue;
+        }
+        term = previous.term;
+        resolvedTerm = batch.term === previous.term ? null : batch.term;
+      } else if (isFinal && previous?.resolvedTerm === batch.term && isValidTerm(previous.term)) {
+        // Correcting the grade an INC was resolved with.
+        term = previous.term;
+        resolvedTerm = previous.resolvedTerm;
+      }
+
+      // Whether it was taken in order is worked out by the audit from the
+      // terms, not stored, so grades can be entered in any order.
+      const newRecord: SubjectRecord = {
+        subjectCode: code,
         status: validation.status,
         grade: validation.grade,
-        term: batch.term,
-        isInvalidEntry,
+        term,
+        resolvedTerm,
       };
 
       await this.repository.upsertSubjectRecord(batch.studentId, newRecord, performedBy);
       record.setSubjectRecord(newRecord);
 
-      rows.push({ accepted: true, subjectCode: resolution.subject.code });
+      rows.push({ accepted: true, subjectCode: code, ...(resolvedTerm ? { resolvedFrom: term } : {}) });
       anyAccepted = true;
     }
 

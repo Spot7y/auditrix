@@ -66,6 +66,9 @@ export interface StudentAuditRow {
   subject: Subject;
   result: AuditResult;
   grade: number | null;
+  /** The term the subject was taken, and the term its INC was resolved, if any. */
+  term: string | null;
+  resolvedTerm: string | null;
 }
 
 export interface StudentAuditData {
@@ -89,10 +92,17 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
     .single();
   if (error) throw error;
 
-  const engine = new AuditEngine();
-const rows: StudentAuditRow[] = record.curriculum
-    .allSubjects()
-    .map((subject) => ({ subject, result: engine.auditSubject(record, subject), grade: record.gradeOf(subject.code) }));
+  const results = new Map(new AuditEngine().auditCurriculum(record).map((r) => [r.subjectCode, r]));
+  const rows: StudentAuditRow[] = record.curriculum.allSubjects().map((subject) => {
+    const attempt = record.recordOf(subject.code);
+    return {
+      subject,
+      result: results.get(subject.code)!,
+      grade: record.gradeOf(subject.code),
+      term: attempt?.term ?? null,
+      resolvedTerm: attempt?.resolvedTerm ?? null,
+    };
+  });
 
   rows.sort((a, b) => {
     if (a.subject.yearLevel !== b.subject.yearLevel) return a.subject.yearLevel - b.subject.yearLevel;
@@ -116,6 +126,7 @@ export interface GradeEntrySubjectRow {
   semester: number;
   currentGrade: number | null;
   currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "IN_PROGRESS" | "NOT_TAKEN";
+  currentTerm: string | null;
 }
 
 export async function getStudentGradeEntryData(
@@ -136,6 +147,7 @@ export async function getStudentGradeEntryData(
     semester: subject.semester,
     currentGrade: record.gradeOf(subject.code),
     currentStatus: record.statusOf(subject.code),
+    currentTerm: record.recordOf(subject.code)?.term ?? null,
   }));
 
   return {

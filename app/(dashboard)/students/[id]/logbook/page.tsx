@@ -70,7 +70,12 @@ export default async function StudentLogbookPage({ params }: { params: Promise<{
                     const result = RESULT[entry.status] ?? { label: entry.status, tone: "gray" as const };
                     return (
                       <Tr key={entry.id}>
-                        <Td className="font-mono text-ink-600">{entry.term ?? "—"}</Td>
+                        <Td className="font-mono text-ink-600">
+                          {entry.term ?? "—"}
+                          {entry.resolvedTerm && (
+                            <span className="block text-xs text-ink-400">INC → {entry.resolvedTerm}</span>
+                          )}
+                        </Td>
                         <Td className="tabular text-right font-medium">{formatGrade(entry.grade)}</Td>
                         <Td>
                           <Badge tone={result.tone}>{result.label}</Badge>

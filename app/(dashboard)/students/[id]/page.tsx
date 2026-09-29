@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ClipboardPen, History, Pencil, Repeat } from "lucide-react";
+import { ClipboardPen, History, Pencil, Repeat, TriangleAlert } from "lucide-react";
+import type { Requirement } from "../../../../lib/domain/requirements/Requirement";
+import { isCorequisite } from "../../../../lib/domain/requirements/CoursePrerequisite";
 import StudentSearchBar from "../StudentSearchBar";
 import { getStudentAudit } from "../../../../lib/queries/students";
 import { getPendingShiftRequest } from "../../../../lib/queries/transitions";
@@ -18,6 +20,10 @@ const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   return { title: `Student ${id}` };
+}
+
+function requirementLabel(requirement: Requirement) {
+  return isCorequisite(requirement) ? `${requirement.description} (co-req)` : requirement.description;
 }
 
 function SummaryTile({
@@ -129,10 +135,11 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
       </div>
 
       {violations.length > 0 && (
-        <Alert tone="error" title="Subjects taken before their prerequisites" className="mb-6">
-          {violations.map((v) => v.subject.code).join(", ")} {violations.length === 1 ? "was" : "were"} graded while a
-          prerequisite was still unmet. {violations.length === 1 ? "It has" : "They have"} to be retaken once the
-          prerequisites are passed.
+        <Alert tone="error" title="Subjects taken out of order" className="mb-6">
+          {violations.map((v) => v.subject.code).join(", ")} {violations.length === 1 ? "was" : "were"} taken before a
+          prerequisite was passed, or without {violations.length === 1 ? "its" : "their"} co-requisite in the same term.
+          The credit doesn’t count, and {violations.length === 1 ? "it has" : "they have"} to be retaken once the
+          requirements are met.
         </Alert>
       )}
 
@@ -152,7 +159,8 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
                   <col className="hidden w-48 md:table-column" />
                   <col className="w-16" />
                   <col className="w-20" />
-                  <col className="w-56" />
+                  <col className="hidden w-20 sm:table-column" />
+                  <col className="w-64" />
                 </colgroup>
                 <thead>
                   <tr>
@@ -161,25 +169,36 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
                     <Th className="hidden md:table-cell">Prerequisites</Th>
                     <Th className="text-right">Units</Th>
                     <Th className="text-right">Grade</Th>
+                    <Th className="hidden sm:table-cell">Term</Th>
                     <Th>Status</Th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ subject, result, grade }) => (
+                  {rows.map(({ subject, result, grade, term, resolvedTerm }) => (
                     <Tr key={subject.code} className={result.status === "VIOLATION" ? "bg-red-50/60" : ""}>
                       <Td className="font-mono text-ink-600">{subject.code}</Td>
                       <Td className="text-ink-900">{subject.title}</Td>
                       <Td className="hidden text-xs text-ink-500 md:table-cell">
-                        {subject.requirements.length > 0 ? subject.requirements.map((r) => r.description).join(", ") : "—"}
+                        {subject.requirements.length > 0 ? subject.requirements.map(requirementLabel).join(", ") : "—"}
                       </Td>
                       <Td className="tabular text-right text-ink-600">{Number(subject.units)}</Td>
                       <Td className="tabular text-right font-medium text-ink-900">{formatGrade(grade)}</Td>
+                      <Td className="hidden font-mono text-xs text-ink-600 sm:table-cell">
+                        {term ?? "—"}
+                        {resolvedTerm && <span className="block text-ink-400">INC → {resolvedTerm}</span>}
+                      </Td>
                       <Td>
                         <StatusBadge status={result.status} />
                         {result.reasons.length > 0 && (
                           <p className="mt-1 text-xs leading-snug text-ink-500">
-                            {result.status === "UNAVAILABLE" || result.status === "VIOLATION" ? "Needs: " : ""}
-                            {result.reasons.join(", ")}
+                            {result.status === "UNAVAILABLE" ? "Needs: " : ""}
+                            {result.reasons.join("; ")}
+                          </p>
+                        )}
+                        {result.warnings.length > 0 && (
+                          <p className="mt-1 flex gap-1 text-xs leading-snug text-amber-800">
+                            <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+                            {result.warnings.join("; ")}
                           </p>
                         )}
                       </Td>

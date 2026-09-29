@@ -73,7 +73,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
 
     const { data: recordRows, error: recordsError } = await this.client
       .from("subject_records")
-      .select("subject_id, status, grade, term, is_invalid_entry")
+      .select("subject_id, status, grade, term, resolved_term")
       .eq("student_id", studentId);
     if (recordsError) throw recordsError;
 
@@ -82,7 +82,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       status: row.status as SubjectRecordStatus,
       grade: row.grade,
       term: row.term,
-      isInvalidEntry: row.is_invalid_entry ?? false,
+      resolvedTerm: row.resolved_term,
     }));
 
     return new AcademicRecord(studentId, curriculumMap, student.nominal_year_level, subjectRecords);
@@ -106,7 +106,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
 
     const { data: existing } = await this.client
       .from("subject_records")
-      .select("status, grade, term")
+      .select("status, grade, term, resolved_term")
       .eq("student_id", studentId)
       .eq("subject_id", subject.id)
       .maybeSingle();
@@ -120,7 +120,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
           status: record.status,
           grade: record.grade,
           term: record.term,
-          is_invalid_entry: record.isInvalidEntry ?? false,
+          resolved_term: record.resolvedTerm ?? null,
         },
         { onConflict: "student_id,subject_id" }
       );
@@ -132,9 +132,11 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       old_status: existing?.status ?? null,
       old_grade: existing?.grade ?? null,
       old_term: existing?.term ?? null,
+      old_resolved_term: existing?.resolved_term ?? null,
       new_status: record.status,
       new_grade: record.grade,
       new_term: record.term,
+      new_resolved_term: record.resolvedTerm ?? null,
       changed_by: performedBy,
     });
     if (logError) throw logError;

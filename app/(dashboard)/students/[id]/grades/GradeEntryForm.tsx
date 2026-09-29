@@ -20,6 +20,7 @@ interface SubjectRow {
   semester: number;
   currentGrade: number | null;
   currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "IN_PROGRESS" | "NOT_TAKEN";
+  currentTerm: string | null;
 }
 
 const initialState: SubmitGradesState = { result: null, error: null };
@@ -52,7 +53,9 @@ export default function GradeEntryForm({ studentId, subjects }: { studentId: str
   // Only grades that differ from what's recorded are submitted, so untouched
   // subjects keep their original term.
   const edits = shown.filter((s) => values[s.code] !== undefined && values[s.code] !== currentValue(s));
-  const corrections = edits.filter((s) => currentValue(s) !== "");
+  // A final grade for an INC completes it: it keeps its original term.
+  const resolutions = edits.filter((s) => s.currentStatus === "INCOMPLETE" && values[s.code] !== "INC");
+  const corrections = edits.filter((s) => currentValue(s) !== "" && !resolutions.includes(s));
   const term = termYear && termSemester ? `${termYear.padStart(2, "0")}-${termSemester}` : "";
 
   return (
@@ -152,6 +155,7 @@ export default function GradeEntryForm({ studentId, subjects }: { studentId: str
                     <Td className="text-ink-900">{s.title}</Td>
                     <Td className="text-ink-500">
                       {s.currentStatus === "IN_PROGRESS" ? "In progress" : recorded || "—"}
+                      {s.currentTerm && <span className="ml-1.5 font-mono text-xs text-ink-400">{s.currentTerm}</span>}
                     </Td>
                     <Td>
                       <Select
@@ -198,6 +202,13 @@ export default function GradeEntryForm({ studentId, subjects }: { studentId: str
                 <p>
                   {edits.map((s) => `${s.code}: ${values[s.code]}`).join(", ")}.
                 </p>
+                {resolutions.length > 0 && (
+                  <p className="mt-2">
+                    {resolutions.map((s) => `${s.code}’s INC${s.currentTerm ? ` from ${s.currentTerm}` : ""}`).join(", ")}{" "}
+                    will be completed: {resolutions.length === 1 ? "it stays" : "they stay"} taken in{" "}
+                    {resolutions.length === 1 ? "its" : "their"} original term, and a passing grade counts from {term}.
+                  </p>
+                )}
                 {corrections.length > 0 && (
                   <p className="mt-2 font-medium text-amber-800">
                     {plural(corrections.length, "existing grade")} will be replaced. The old value stays in the grade
@@ -220,7 +231,7 @@ export default function GradeEntryForm({ studentId, subjects }: { studentId: str
               row.accepted ? (
                 <li key={i} className="flex items-center gap-2 px-5 py-3 text-ink-700">
                   <CheckCircle2 className="size-4 text-status-completed" aria-hidden />
-                  {row.subjectCode} saved
+                  {row.subjectCode} saved{row.resolvedFrom ? ` (INC from ${row.resolvedFrom} completed)` : ""}
                 </li>
               ) : (
                 <li key={i} className="flex items-center gap-2 px-5 py-3 text-ink-700">

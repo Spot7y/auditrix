@@ -9,8 +9,13 @@ what each student has completed, can take next, or took out of order.
 - **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
   or Violation, with the reason (e.g. the missing prerequisite).
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
-  5.0 failing, INC, in progress). A grade entered before its prerequisites were passed is permanently flagged as
-  invalid, and the subject must be retaken.
+  5.0 failing, INC, in progress). A final grade for an INC keeps the subject in its original term and records the
+  term the INC was resolved in.
+- **Prerequisite checking by term.** Terms are written `YY-S` (1st semester, 2nd semester, then midyear). A
+  prerequisite must be passed in a term *before* the subject was taken; the same term is a violation, and so is taking
+  a subject while its prerequisite is still INC. Co-requisites must be taken in the same term and both passed; if one
+  fails, both are retaken. A subject taken out of order earns no credit, so it doesn't count toward later subjects
+  either. Because everything is worked out from the terms, grades can be entered in any order.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
   requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
@@ -65,7 +70,9 @@ Requirements: Node.js 20.9 or newer (22.3+ to run every test) and a Supabase pro
    npx supabase db push
    ```
 
-   For a local Supabase instead, run `npx supabase start` and `npx supabase migration up`.
+   For a local Supabase instead, run `npx supabase start` and `npx supabase migration up --local`.
+
+   `supabase/rollbacks/` holds SQL that undoes a feature's migration, for when that feature is taken out again.
 
 4. Optionally load the BSIT curriculum and a sample student:
 
@@ -101,7 +108,8 @@ npm test
 
 The tests use Node's built-in test runner and need no database or network:
 
-- `lib/domain/__tests__/` — the audit rules (prerequisites, pending and invalid entries, year standing, completion),
+- `lib/domain/__tests__/` — the audit rules (prerequisites checked by term, co-requisites, INC, year standing,
+  completion), term ordering,
   KSU grade validation, grade entry, subject-code matching, student ID format, curriculum CSV import planning,
   search input handling and the password policy.
 - `tests/actions/` — server actions with Supabase replaced by an in-memory fake: permission checks for deans and

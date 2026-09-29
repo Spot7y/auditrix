@@ -13,6 +13,11 @@ export class AcademicRecord {
     return this.subjectRecords.find((r) => r.subjectCode === subjectCode);
   }
 
+  /** The latest attempt recorded for a subject, if any. */
+  recordOf(subjectCode: string): SubjectRecord | undefined {
+    return this.findRecord(subjectCode);
+  }
+
   hasPassed(subjectCode: string): boolean {
     return this.findRecord(subjectCode)?.status === "PASSED";
   }
@@ -23,10 +28,6 @@ export class AcademicRecord {
 
   gradeOf(subjectCode: string): number | null {
     return this.findRecord(subjectCode)?.grade ?? null;
-  }
-
-  isInvalidEntry(subjectCode: string): boolean {
-    return this.findRecord(subjectCode)?.isInvalidEntry ?? false;
   }
 
   hasCompletedAllSubjectsThroughYear(throughYear: number): boolean {
