@@ -11,6 +11,9 @@ import { LinkButton } from "../../../components/ui/Button";
 import { Badge, type BadgeTone } from "../../../components/ui/Badge";
 import { Table, Td, Th, Tr } from "../../../components/ui/Table";
 import EmptyState from "../../../components/ui/EmptyState";
+import { getCurrentTerm } from "../../../lib/queries/yearLevels";
+import { describeTerm } from "../../../lib/domain/Term";
+import CurrentTermCard from "./CurrentTermCard";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -118,8 +121,13 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
 
 export default async function HomePage() {
   const staff = await getCurrentStaff();
-  const [summaries, transitions] = await Promise.all([getAnalytics(), getRecentTransitions()]);
+  const [summaries, transitions, currentTerm] = await Promise.all([
+    getAnalytics(),
+    getRecentTransitions(),
+    getCurrentTerm(),
+  ]);
   const isChair = staff?.role === "chairperson";
+  const isDean = staff?.role === "dean";
   const firstName = staff?.name.split(/[ ,]/)[0] ?? "";
 
   return (
@@ -127,9 +135,16 @@ export default async function HomePage() {
       <PageHeader
         title={`${greeting()}, ${firstName}`}
         description={
-          isChair
-            ? `Here’s how ${staff?.program} is doing today.`
-            : `Overview of the programs in ${staff?.collegeName ?? "your college"}.`
+          <span className="flex flex-wrap items-center gap-2">
+            {isChair
+              ? `Here’s how ${staff?.program} is doing today.`
+              : `Overview of the programs in ${staff?.collegeName ?? "your college"}.`}
+            {isChair && (
+              <Badge tone={currentTerm ? "brand" : "amber"}>
+                {currentTerm ? `${describeTerm(currentTerm.term)} (${currentTerm.term})` : "Current semester not set by the dean"}
+              </Badge>
+            )}
+          </span>
         }
         actions={
           isChair && (
@@ -148,6 +163,8 @@ export default async function HomePage() {
       />
 
       <div className="space-y-10">
+        {isDean && <CurrentTermCard current={currentTerm} collegeName={staff?.collegeName ?? "your college"} />}
+
         {summaries.length === 0 ? (
           <Card>
             <EmptyState

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { CheckCircle2, ClipboardList, XCircle } from "lucide-react";
 import { submitTermGrades, type SubmitGradesState } from "./actions";
 import { Card, CardHeader, CardBody } from "../../../../../components/ui/Card";
-import { Field, Hint, Input, Label, Select } from "../../../../../components/ui/Field";
+import { Field, Hint, Label, Select } from "../../../../../components/ui/Field";
+import TermFields from "../../../../../components/ui/TermFields";
 import { Table, Td, Th, Tr } from "../../../../../components/ui/Table";
 import { Badge } from "../../../../../components/ui/Badge";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
@@ -34,12 +35,21 @@ function currentValue(subject: SubjectRow): string {
   return "";
 }
 
-export default function GradeEntryForm({ studentId, subjects }: { studentId: string; subjects: SubjectRow[] }) {
+export default function GradeEntryForm({
+  studentId,
+  subjects,
+  currentTerm,
+}: {
+  studentId: string;
+  subjects: SubjectRow[];
+  /** The college's current semester, which "Term taken" starts on. */
+  currentTerm: string | null;
+}) {
   const [state, formAction] = useActionState(submitTermGrades, initialState);
   const [yearLevel, setYearLevel] = useState("");
   const [semester, setSemester] = useState("");
-  const [termYear, setTermYear] = useState("");
-  const [termSemester, setTermSemester] = useState("");
+  const [termYear, setTermYear] = useState(currentTerm?.split("-")[0] ?? "");
+  const [termSemester, setTermSemester] = useState(currentTerm?.split("-")[1] ?? "");
   const [values, setValues] = useState<Record<string, string>>({});
 
   const shown = useMemo(
@@ -84,36 +94,16 @@ export default function GradeEntryForm({ studentId, subjects }: { studentId: str
           </Field>
           <div className="sm:col-span-2">
             <Label htmlFor="termYear">Term taken</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="termYear"
-                name="termYear"
-                type="number"
-                required
-                min={0}
-                max={99}
-                placeholder="25"
-                value={termYear}
-                onChange={(e) => setTermYear(e.target.value)}
-                className="w-24"
-                aria-label="School year, two digits"
-              />
-              <span className="text-ink-400">–</span>
-              <Select
-                name="termSemester"
-                required
-                value={termSemester}
-                onChange={(e) => setTermSemester(e.target.value)}
-                className="w-44"
-                aria-label="Semester taken"
-              >
-                <option value="">Semester…</option>
-                <option value="1">1 · First</option>
-                <option value="2">2 · Second</option>
-                <option value="3">3 · Midyear</option>
-              </Select>
-            </div>
-            <Hint>Two-digit school year and semester, e.g. 25 – 1.</Hint>
+            <TermFields
+              year={termYear}
+              semester={termSemester}
+              onYearChange={(e) => setTermYear(e.target.value)}
+              onSemesterChange={(e) => setTermSemester(e.target.value)}
+            />
+            <Hint>
+              Two-digit school year and semester, e.g. 25 – 1.
+              {currentTerm && ` Starts on the current semester (${currentTerm}); change it for grades from an earlier term.`}
+            </Hint>
           </div>
         </CardBody>
       </Card>

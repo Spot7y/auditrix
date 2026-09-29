@@ -20,6 +20,10 @@ what each student has completed, can take next, or took out of order.
   requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
 - **Students.** Register one at a time or import a CSV or a KSU-MIS "Export to Excel" file.
+- **Current semester and year levels.** The dean sets the college's current semester; grade entry starts on it.
+  Each student's year level is kept by semester: registration and imports record it, **Promote students** moves a
+  whole class up one year at the start of a school year (everyone is checked except 4th-year, dropped and
+  transferred-out students), and a single student's year level can be changed or back-filled from their Edit page.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook.
@@ -33,8 +37,8 @@ what each student has completed, can take next, or took out of order.
 
 | Role        | Can                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------ |
-| Chairperson | Manage their program's curriculum and students, enter grades, record shifts, transfers and drops |
-| Dean        | See their college's programs and students, create programs, reassign chairpersons                |
+| Chairperson | Manage their program's curriculum and students, enter grades, promote students, record shifts, transfers and drops |
+| Dean        | See their college's programs and students, set the current semester, create programs, reassign chairpersons |
 
 Access is enforced by Supabase row-level security. Actions that need the admin key (creating accounts, shift-ins)
 check permissions in the server action and do their database writes in one transaction.

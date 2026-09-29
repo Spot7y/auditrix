@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getStudentGradeEntryData } from "../../../../../lib/queries/students";
+import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
 import PageHeader from "../../../../../components/ui/PageHeader";
 import GradeEntryForm from "./GradeEntryForm";
 
@@ -8,7 +9,7 @@ export const metadata: Metadata = { title: "Enter grades" };
 
 export default async function GradeEntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await getStudentGradeEntryData(id);
+  const [data, currentTerm] = await Promise.all([getStudentGradeEntryData(id), getCurrentTerm()]);
   if (!data) notFound();
 
   const subjects = [...data.subjects].sort(
@@ -23,7 +24,7 @@ export default async function GradeEntryPage({ params }: { params: Promise<{ id:
         title="Enter grades"
         description={`${data.studentName} · ${data.program}`}
       />
-      <GradeEntryForm studentId={id} subjects={subjects} />
+      <GradeEntryForm studentId={id} subjects={subjects} currentTerm={currentTerm?.term ?? null} />
     </div>
   );
 }
