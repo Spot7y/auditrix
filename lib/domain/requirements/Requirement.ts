@@ -20,6 +20,12 @@ export type CheckOutcome =
   | { state: "MET" }
   /** Can't be decided yet, e.g. the prerequisite is still in progress. */
   | { state: "PENDING"; reason: string }
+  /**
+   * Couldn't be confirmed from what's recorded, but may well have been met,
+   * e.g. year standing in a term with no year level recorded. Shown as a
+   * warning to check, not a violation.
+   */
+  | { state: "VERIFY"; reason: string }
   | { state: "UNMET"; reason: string };
 
 export const MET: CheckOutcome = { state: "MET" };

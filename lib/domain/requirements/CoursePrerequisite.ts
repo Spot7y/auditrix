@@ -23,10 +23,10 @@ export class CoursePrerequisite implements Requirement {
 
   check(context: AuditContext, asOf: string | null): CheckOutcome {
     const code = this.subjectCode;
-    const credit = context.creditOf(code);
     const attempt = context.record.recordOf(code);
 
     if (asOf === null || !isValidTerm(asOf)) {
+      const credit = context.creditOf(code);
       if (credit.kind === "CREDITED") return MET;
       if (credit.kind === "PENDING") return { state: "PENDING", reason: code };
       return { state: "UNMET", reason: code };
@@ -34,16 +34,21 @@ export class CoursePrerequisite implements Requirement {
 
     // Taken in term `asOf`: the prerequisite must have been passed, and
     // count, in an earlier term.
-    if (credit.kind === "CREDITED" && (credit.term === null || compareTerms(credit.term, asOf) < 0)) {
-      return MET;
-    }
-
     const takenTerm = attempt && isValidTerm(attempt.term) ? attempt.term : null;
-    const takenBefore = takenTerm !== null && compareTerms(takenTerm, asOf) < 0;
-
     if (takenTerm !== null && compareTerms(takenTerm, asOf) === 0) {
       return { state: "UNMET", reason: `${code} was taken in the same term (${asOf})` };
     }
+    if (takenTerm !== null && compareTerms(takenTerm, asOf) > 0) {
+      return attempt?.status === "PASSED"
+        ? { state: "UNMET", reason: `${code} was passed only in ${attempt.resolvedTerm ?? takenTerm}` }
+        : { state: "UNMET", reason: `${code} was not passed before ${asOf}` };
+    }
+
+    const credit = context.creditOf(code);
+    if (credit.kind === "CREDITED" && (credit.term === null || compareTerms(credit.term, asOf) < 0)) {
+      return MET;
+    }
+    const takenBefore = takenTerm !== null;
     if (takenBefore && attempt?.status === "IN_PROGRESS") {
       return { state: "PENDING", reason: `${code} (${takenTerm}) has no final grade yet` };
     }

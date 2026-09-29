@@ -16,6 +16,11 @@ what each student has completed, can take next, or took out of order.
   a subject while its prerequisite is still INC. Co-requisites must be taken in the same term and both passed; if one
   fails, both are retaken. A subject taken out of order earns no credit, so it doesn't count toward later subjects
   either. Because everything is worked out from the terms, grades can be entered in any order.
+- **Year standing at the time taken.** A year-standing requirement is met by the year level, by having passed every
+  earlier year's subjects, or by units passed (Sophomore 25% or more, Junior more than 50%, Senior 75% or more, per
+  the KSU Operations Manual). For a subject already taken, each is checked as of that term, using the year level
+  history. When no year level is recorded for that term and the grades alone don't show the standing, the subject is
+  marked "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
   requirements. Import from CSV with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).

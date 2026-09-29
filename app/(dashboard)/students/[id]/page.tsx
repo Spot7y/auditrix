@@ -74,6 +74,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
     .filter((r) => r.result.status === "COMPLETED")
     .reduce((sum, r) => sum + Number(r.subject.units), 0);
   const violations = data.rows.filter((r) => r.result.status === "VIOLATION");
+  const toVerify = data.rows.filter((r) => r.result.warnings.some((w) => w.startsWith("Year standing: please verify")));
   const progress = totalUnits ? Math.round((earnedUnits / totalUnits) * 100) : 0;
 
   return (
@@ -140,6 +141,14 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
           prerequisite was passed, or without {violations.length === 1 ? "its" : "their"} co-requisite in the same term.
           The credit doesn’t count, and {violations.length === 1 ? "it has" : "they have"} to be retaken once the
           requirements are met.
+        </Alert>
+      )}
+
+      {toVerify.length > 0 && (
+        <Alert tone="warning" title="Year standing: please verify" className="mb-6">
+          {toVerify.map((r) => r.subject.code).join(", ")} needed a year standing that the grades alone don’t show, and no
+          year level is recorded for the term {toVerify.length === 1 ? "it was" : "they were"} taken. Check the
+          student’s year level at the time and record it under Edit → Year level.
         </Alert>
       )}
 

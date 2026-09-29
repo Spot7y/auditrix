@@ -85,7 +85,17 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       resolvedTerm: row.resolved_term,
     }));
 
-    return new AcademicRecord(studentId, curriculumMap, student.nominal_year_level, subjectRecords);
+    const { data: yearLevelRows, error: yearLevelsError } = await this.client
+      .from("student_year_levels")
+      .select("effective_term, year_level")
+      .eq("student_id", studentId);
+    if (yearLevelsError) throw yearLevelsError;
+    const yearLevelHistory = (yearLevelRows ?? []).map((row) => ({
+      term: row.effective_term as string,
+      yearLevel: row.year_level as number,
+    }));
+
+    return new AcademicRecord(studentId, curriculumMap, student.nominal_year_level, subjectRecords, yearLevelHistory);
   }
 
   async upsertSubjectRecord(studentId: string, record: SubjectRecord, performedBy: string): Promise<void> {

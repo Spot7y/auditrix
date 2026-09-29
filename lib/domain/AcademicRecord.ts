@@ -1,13 +1,21 @@
 import type { CurriculumMap } from "./CurriculumMap";
 import type { SubjectRecord, SubjectRecordStatus } from "./SubjectRecord";
+import { yearLevelAsOf, type YearLevelEntry } from "./yearLevels";
 
 export class AcademicRecord {
   constructor(
     public readonly studentId: string,
     public readonly curriculum: CurriculumMap,
     public readonly nominalYearLevel: number,
-    private readonly subjectRecords: SubjectRecord[]
+    private readonly subjectRecords: SubjectRecord[],
+    /** The student's year level by term, as far back as it was recorded. */
+    public readonly yearLevelHistory: YearLevelEntry[] = []
   ) {}
+
+  /** The year level recorded for a term, or null when the history doesn't reach it. */
+  yearLevelIn(term: string): number | null {
+    return yearLevelAsOf(this.yearLevelHistory, term);
+  }
 
   private findRecord(subjectCode: string): SubjectRecord | undefined {
     return this.subjectRecords.find((r) => r.subjectCode === subjectCode);
@@ -28,24 +36,6 @@ export class AcademicRecord {
 
   gradeOf(subjectCode: string): number | null {
     return this.findRecord(subjectCode)?.grade ?? null;
-  }
-
-  hasCompletedAllSubjectsThroughYear(throughYear: number): boolean {
-    if (throughYear <= 0) return true;
-    const required = this.curriculum.subjectsThroughYear(throughYear);
-    return required.every((subject) => this.hasPassed(subject.code));
-  }
-
-  unitCompletionPercentage(): number {
-    const earnedUnits = this.subjectRecords
-      .filter((r) => r.status === "PASSED")
-      .reduce((sum, r) => {
-        const subject = this.curriculum.findSubject(r.subjectCode);
-        return sum + (subject?.units ?? 0);
-      }, 0);
-
-    const totalUnits = this.curriculum.totalUnits();
-    return totalUnits > 0 ? (earnedUnits / totalUnits) * 100 : 0;
   }
 
   setSubjectRecord(newRecord: SubjectRecord): void {

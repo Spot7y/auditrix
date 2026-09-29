@@ -10,9 +10,11 @@ interface TakenCheck {
   violations: string[];
   /** Requirements that can't be decided yet, e.g. a prerequisite with no final grade. */
   pending: string[];
+  /** Requirements that couldn't be confirmed from the records; the credit still counts. */
+  verify: string[];
 }
 
-type Unmet = Exclude<CheckOutcome, { state: "MET" }>;
+type Unmet = Extract<CheckOutcome, { state: "UNMET" | "PENDING" }>;
 
 const NO_CREDIT: Credit = { kind: "NONE" };
 const PENDING_CREDIT: Credit = { kind: "PENDING" };
@@ -33,6 +35,8 @@ class RecordAudit implements AuditContext {
   private readonly credits = new Map<string, Credit>();
   private readonly checks = new Map<string, TakenCheck>();
   private readonly computing = new Set<string>();
+  /** Times the cycle guard answered; anything worked out through it isn't cached. */
+  private guardHits = 0;
 
   constructor(readonly record: AcademicRecord) {
     for (const subject of record.curriculum.allSubjects()) {
@@ -81,15 +85,17 @@ class RecordAudit implements AuditContext {
 
     const subject = this.record.curriculum.findSubject(code);
     const attempt = this.record.recordOf(code);
-    const result: TakenCheck = { violations: [], pending: [] };
+    const result: TakenCheck = { violations: [], pending: [], verify: [] };
     if (!subject || !attempt || attempt.status === "NOT_TAKEN") return result;
 
+    const hitsBefore = this.guardHits;
     const asOf = isValidTerm(attempt.term) ? attempt.term : null;
     for (const requirement of subject.requirements) {
       if (isCorequisite(requirement)) continue;
       const outcome = requirement.check(this, asOf);
       if (outcome.state === "UNMET") result.violations.push(outcome.reason);
       else if (outcome.state === "PENDING") result.pending.push(outcome.reason);
+      else if (outcome.state === "VERIFY") result.verify.push(outcome.reason);
     }
     for (const partner of this.corequisitesOf(code)) {
       const other = this.record.recordOf(partner);
@@ -100,7 +106,7 @@ class RecordAudit implements AuditContext {
       }
     }
 
-    this.checks.set(code, result);
+    if (this.guardHits === hitsBefore) this.checks.set(code, result);
     return result;
   }
 
@@ -108,12 +114,16 @@ class RecordAudit implements AuditContext {
     const cached = this.credits.get(code);
     if (cached) return cached;
     // A prerequisite cycle in the curriculum can't be satisfied.
-    if (this.computing.has(code)) return NO_CREDIT;
+    if (this.computing.has(code)) {
+      this.guardHits += 1;
+      return NO_CREDIT;
+    }
 
+    const hitsBefore = this.guardHits;
     this.computing.add(code);
     try {
       const credit = this.computeCredit(code);
-      this.credits.set(code, credit);
+      if (this.guardHits === hitsBefore) this.credits.set(code, credit);
       return credit;
     } finally {
       this.computing.delete(code);
@@ -160,6 +170,7 @@ class RecordAudit implements AuditContext {
     if (!isValidTerm(attempt.term)) {
       warnings.push("No term recorded, so the order of its prerequisites couldn't be checked");
     }
+    warnings.push(...check.verify);
 
     if (check.violations.length > 0) {
       return make("VIOLATION", check.violations, [...warnings, ...check.pending]);
@@ -211,7 +222,7 @@ class RecordAudit implements AuditContext {
     const unmet = subject.requirements
       .filter((r) => !isCorequisite(r))
       .map((r) => r.check(this, null))
-      .filter((o): o is Unmet => o.state !== "MET");
+      .filter((o): o is Unmet => o.state === "UNMET" || o.state === "PENDING");
 
     // Co-requisites are taken together, so each one's own requirements
     // have to be met now as well.

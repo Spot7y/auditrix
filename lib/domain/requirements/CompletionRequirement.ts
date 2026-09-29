@@ -22,11 +22,16 @@ export class CompletionRequirement implements Requirement {
     let missing = 0;
     let waiting = 0;
     for (const subject of others) {
+      const attempt = context.record.recordOf(subject.code);
+      // Taken in or after `term`: it can't count, and isn't worked out.
+      if (term !== null && attempt && isValidTerm(attempt.term) && compareTerms(attempt.term, term) >= 0) {
+        missing += 1;
+        continue;
+      }
       const credit = context.creditOf(subject.code);
       if (credit.kind === "CREDITED" && (term === null || credit.term === null || compareTerms(credit.term, term) < 0)) {
         continue;
       }
-      const attempt = context.record.recordOf(subject.code);
       const stillOpen =
         term === null
           ? credit.kind === "PENDING"

@@ -4,7 +4,7 @@ import { AuditEngine } from "../AuditEngine";
 import { AcademicRecord } from "../AcademicRecord";
 import { CurriculumMap } from "../CurriculumMap";
 import { CoursePrerequisite } from "../requirements/CoursePrerequisite";
-import { YearStandingRequirement } from "../requirements/YearStandingRequirement";
+import { YearStandingRequirement, meetsUnitThreshold } from "../requirements/YearStandingRequirement";
 import { CompletionRequirement } from "../requirements/CompletionRequirement";
 import type { Subject } from "../Subject";
 import type { SubjectRecord, SubjectRecordStatus } from "../SubjectRecord";
@@ -338,8 +338,13 @@ describe("YearStandingRequirement — satisfied by any one of three conditions",
     assert.equal(cc300(1, passed("GE 101", "GE 102", "GE 201", "GE 202", "GE 203")).status, "AVAILABLE");
   });
 
-  it("exactly 50% of the curriculum's units passed", () => {
-    assert.equal(cc300(1, passed("GE 101", "GE 102", "GE 201")).status, "AVAILABLE");
+  it("more than 50% of the curriculum's units passed", () => {
+    // 4 of 6 subjects: 67%.
+    assert.equal(cc300(1, passed("GE 101", "GE 102", "GE 201", "GE 202")).status, "AVAILABLE");
+  });
+
+  it("exactly 50% isn't enough for Junior standing", () => {
+    assert.equal(cc300(1, passed("GE 101", "GE 102", "GE 201")).status, "UNAVAILABLE");
   });
 
   it("none of the three", () => {
@@ -349,6 +354,89 @@ describe("YearStandingRequirement — satisfied by any one of three conditions",
       reasons: ["Third yr standing"],
       warnings: [],
     });
+  });
+
+  it("uses the handbook's thresholds: Sophomore 25%, Junior over 50%, Senior 75%", () => {
+    assert.equal(meetsUnitThreshold(2, 24.9), false);
+    assert.equal(meetsUnitThreshold(2, 25), true);
+    assert.equal(meetsUnitThreshold(3, 50), false);
+    assert.equal(meetsUnitThreshold(3, 50.1), true);
+    assert.equal(meetsUnitThreshold(4, 74.9), false);
+    assert.equal(meetsUnitThreshold(4, 75), true);
+  });
+});
+
+describe("YearStandingRequirement — as of the term the subject was taken", () => {
+  // Same 18-unit curriculum: CC 300 needs Third yr standing.
+  const curriculum = new CurriculumMap("BSIT", [
+    subject("GE 101", { yearLevel: 1 }),
+    subject("GE 102", { yearLevel: 1 }),
+    subject("GE 201", { yearLevel: 2 }),
+    subject("GE 202", { yearLevel: 2 }),
+    subject("GE 203", { yearLevel: 2 }),
+    subject("CC 300", { yearLevel: 3, requirements: [new YearStandingRequirement(3)] }),
+  ]);
+  const cc300 = (nominalYear: number, records: SubjectRecord[], history: { term: string; yearLevel: number }[] = []) =>
+    engine.auditEnrollment(new AcademicRecord("S", curriculum, nominalYear, records, history), "CC 300");
+  const firstTwoYears = [
+    taken("GE 101", "24-1"),
+    taken("GE 102", "24-1"),
+    taken("GE 201", "25-1"),
+    taken("GE 202", "25-1"),
+  ];
+
+  it("accepts the year level recorded for that term", () => {
+    const result = cc300(3, [taken("CC 300", "26-1")], [
+      { term: "24-1", yearLevel: 1 },
+      { term: "26-1", yearLevel: 3 },
+    ]);
+    assert.equal(result.status, "COMPLETED");
+    assert.deepEqual(result.warnings, []);
+  });
+
+  it("is a violation when the recorded year level and the grades both fall short", () => {
+    const result = cc300(3, [taken("GE 101", "24-1"), taken("CC 300", "25-1")], [{ term: "24-1", yearLevel: 1 }]);
+    assert.deepEqual(result.reasons, ["Third yr standing in 25-1"]);
+    assert.equal(result.status, "VIOLATION");
+  });
+
+  it("accepts enough units passed before that term, whatever the year level", () => {
+    const result = cc300(1, [...firstTwoYears, taken("CC 300", "25-2")], [{ term: "24-1", yearLevel: 1 }]);
+    assert.equal(result.status, "COMPLETED");
+  });
+
+  it("doesn't count units passed in the same term or later", () => {
+    const result = cc300(3, [...firstTwoYears, taken("CC 300", "25-1")], [{ term: "24-1", yearLevel: 1 }]);
+    assert.equal(result.status, "VIOLATION");
+  });
+
+  it("asks to verify, rather than flagging, when no year level is recorded for that term", () => {
+    const result = cc300(3, [taken("GE 101", "24-1"), taken("CC 300", "25-1")]);
+    assert.deepEqual(result, {
+      subjectCode: "CC 300",
+      status: "COMPLETED",
+      reasons: [],
+      warnings: ["Year standing: please verify (Third yr standing in 25-1; no year level is recorded for that term)"],
+    });
+  });
+
+  it("credits a later subject that builds on one checked by units", () => {
+    const withNext = new CurriculumMap("BSIT", [
+      ...curriculum.allSubjects(),
+      subject("CC 310", { yearLevel: 3, requirements: [prereq("CC 300")] }),
+    ]);
+    const record = new AcademicRecord("S", withNext, 3, [
+      ...firstTwoYears,
+      taken("CC 300", "25-2"),
+      taken("CC 310", "26-1"),
+    ]);
+    const results = engine.auditCurriculum(record);
+    assert.equal(statusOf(results, "CC 300")?.status, "COMPLETED");
+    assert.equal(statusOf(results, "CC 310")?.status, "COMPLETED");
+  });
+
+  it("uses the current year level for what can be taken now", () => {
+    assert.equal(cc300(3, [], [{ term: "24-1", yearLevel: 1 }]).status, "AVAILABLE");
   });
 });
 
