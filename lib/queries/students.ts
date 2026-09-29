@@ -4,6 +4,8 @@ import { AuditEngine } from "../domain/AuditEngine";
 import type { AuditResult } from "../domain/AuditResult";
 import type { Subject } from "../domain/Subject";
 import { searchTerms } from "../domain/searchTerms";
+import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentStatus";
+import { getCurrentTerm } from "./yearLevels";
 
 export interface StudentSearchResult {
   id: string;
@@ -76,6 +78,8 @@ export interface StudentAuditData {
   studentName: string;
   program: string;
   nominalYearLevel: number;
+  /** Regular or irregular this semester, per the Operations Manual. */
+  enrollment: EnrollmentStatus;
   rows: StudentAuditRow[];
 }
 
@@ -115,6 +119,7 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
     studentName: studentRow.name,
     program: record.curriculum.program,
     nominalYearLevel: record.nominalYearLevel,
+    enrollment: enrollmentStatus(record, (await getCurrentTerm())?.term ?? null),
     rows,
   };
 }

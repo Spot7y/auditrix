@@ -32,7 +32,12 @@ what each student has completed, can take next, or took out of order.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook.
-- **Overview dashboard.** Per program: curriculum versions, students by year level and recent moves.
+- **Regular and irregular students.** Per the KSU Operations Manual, a student is regular when enrolled this semester
+  in the full prescribed load (the curriculum's subjects for their year level and the current semester, not counting
+  ones already passed) and irregular when enrolled in less. Back subjects on top of a full load don't change that.
+  With nothing recorded for the current semester, the status is "not determined" and the student isn't counted.
+- **Overview dashboard.** Per program: regular and irregular students, students with violations, curriculum versions,
+  students by year level and recent moves.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,

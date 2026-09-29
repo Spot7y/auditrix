@@ -10,7 +10,8 @@ import { formatGrade, plural } from "../../../../lib/format";
 import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../../components/ui/Card";
 import { LinkButton } from "../../../../components/ui/Button";
-import { Badge, StatusBadge } from "../../../../components/ui/Badge";
+import { Badge, StatusBadge, type BadgeTone } from "../../../../components/ui/Badge";
+import type { EnrollmentStatus } from "../../../../lib/domain/enrollmentStatus";
 import { Table, Td, Th, Tr } from "../../../../components/ui/Table";
 import Alert from "../../../../components/ui/Alert";
 
@@ -24,6 +25,26 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 function requirementLabel(requirement: Requirement) {
   return isCorequisite(requirement) ? `${requirement.description} (co-req)` : requirement.description;
+}
+
+/** Regular or irregular this semester, with the reason on hover. */
+function EnrollmentBadge({ status }: { status: EnrollmentStatus }) {
+  const [tone, label, detail]: [BadgeTone, string, string] =
+    status.kind === "REGULAR"
+      ? ["green", "Regular", `Enrolled in the full prescribed load for ${status.term}.`]
+      : status.kind === "IRREGULAR"
+        ? [
+            "amber",
+            "Irregular",
+            `Not enrolled in ${status.missing.join(", ")} from the prescribed load for ${status.term}.`,
+          ]
+        : ["gray", "Regular/irregular not determined", status.reason];
+  return (
+    <span title={detail} className="inline-flex items-center gap-1.5">
+      <Badge tone={tone}>{label}</Badge>
+      {status.kind === "IRREGULAR" && <span className="text-xs text-ink-500">missing {status.missing.join(", ")}</span>}
+    </span>
+  );
 }
 
 function SummaryTile({
@@ -94,6 +115,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
         description={
           <span className="flex flex-wrap items-center gap-2">
             {data.program} · {YEAR_LABEL[data.nominalYearLevel] ?? `Year ${data.nominalYearLevel}`} standing
+            <EnrollmentBadge status={data.enrollment} />
             {isPending && <Badge tone="amber">Pending shift request</Badge>}
           </span>
         }

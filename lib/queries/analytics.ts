@@ -2,6 +2,8 @@ import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
 import { getCurrentStaff } from "./staff";
+import { getCurrentTerm } from "./yearLevels";
+import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentStatus";
 
 export interface CurriculumVersionInfo {
   effectiveYear: number;
@@ -17,6 +19,8 @@ export interface ProgramSummary {
   byYearLevel: Record<number, number>;
   regularStudents: number;
   irregularStudents: number;
+  /** No enrollment recorded for the current semester, so neither regular nor irregular. */
+  undeterminedStudents: number;
   droppedCount: number;
   shiftedInCount: number;
   shiftedOutCount: number;
@@ -53,6 +57,7 @@ function emptySummary(program: string): ProgramSummary {
     byYearLevel: { 1: 0, 2: 0, 3: 0, 4: 0 },
     regularStudents: 0,
     irregularStudents: 0,
+    undeterminedStudents: 0,
     droppedCount: 0,
     shiftedInCount: 0,
     shiftedOutCount: 0,
@@ -85,6 +90,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
 
   const repository = new SupabaseAcademicRecordRepository(supabase);
   const engine = new AuditEngine();
+  const currentTerm = await getCurrentTerm();
 
   for (const row of (studentRows ?? []) as StudentRow[]) {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
@@ -93,29 +99,24 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
 
     const record = await repository.getRecord(row.id);
     let hasViolation = false;
-    let isIrregular = false;
+    // Regular / irregular per the KSU Operations Manual: enrolled this
+    // semester in the full prescribed load, or less. Students with no
+    // enrollment recorded aren't counted either way.
+    let enrollment: EnrollmentStatus["kind"] = "NOT_DETERMINED";
 
     if (record) {
       const auditResults = engine.auditCurriculum(record);
       hasViolation = auditResults.some((r) => r.status === "VIOLATION");
-
-      // Irregular: a FAILED subject from an earlier year, still unretaken —
-      // per the adviser's confirmed definition, distinct from "at risk"
-      // (which is about right-now enrollment eligibility, not history).
-      for (const subject of record.curriculum.allSubjects()) {
-        if (subject.yearLevel < row.nominal_year_level && record.statusOf(subject.code) === "FAILED") {
-          isIrregular = true;
-          break;
-        }
-      }
+      enrollment = enrollmentStatus(record, currentTerm?.term ?? null).kind;
     }
 
     summary.totalStudents += 1;
     summary.byYearLevel[row.nominal_year_level] = (summary.byYearLevel[row.nominal_year_level] ?? 0) + 1;
     if (hasViolation) summary.atRiskStudents += 1;
     else summary.clearStudents += 1;
-    if (isIrregular) summary.irregularStudents += 1;
-    else summary.regularStudents += 1;
+    if (enrollment === "REGULAR") summary.regularStudents += 1;
+    else if (enrollment === "IRREGULAR") summary.irregularStudents += 1;
+    else summary.undeterminedStudents += 1;
   }
 
   // Curriculum versions — year + subject count per program.

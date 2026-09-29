@@ -54,8 +54,18 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Total students" value={s.totalStudents} />
-        <Stat label="Regular" value={s.regularStudents} tone="good" hint="No failed subject from an earlier year" />
-        <Stat label="Irregular" value={s.irregularStudents} tone={s.irregularStudents ? "warn" : "default"} hint="Has a failed earlier-year subject" />
+        <Stat
+          label="Regular"
+          value={s.regularStudents}
+          tone="good"
+          hint={`Full prescribed load${s.undeterminedStudents ? ` · ${s.undeterminedStudents} not determined` : ""}`}
+        />
+        <Stat
+          label="Irregular"
+          value={s.irregularStudents}
+          tone={s.irregularStudents ? "warn" : "default"}
+          hint="Less than the prescribed load"
+        />
         <Stat label="With violations" value={s.atRiskStudents} tone={s.atRiskStudents ? "bad" : "default"} hint="Subjects taken out of order" />
       </div>
 
