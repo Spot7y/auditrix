@@ -13,6 +13,7 @@ import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
 import EmptyState from "../../../../../components/ui/EmptyState";
 import { plural } from "../../../../../lib/format";
+import { compareTerms, isValidTerm } from "../../../../../lib/domain/Term";
 
 interface SubjectRow {
   code: string;
@@ -65,12 +66,23 @@ export default function GradeEntryForm({
   const edits = shown.filter((s) => values[s.code] !== undefined && values[s.code] !== currentValue(s));
   // A final grade for an INC completes it: it keeps its original term.
   const resolutions = edits.filter((s) => s.currentStatus === "INCOMPLETE" && values[s.code] !== "INC");
-  const corrections = edits.filter((s) => currentValue(s) !== "" && !resolutions.includes(s));
   const term = termYear && termSemester ? `${termYear.padStart(2, "0")}-${termSemester}` : "";
+  // Only the latest attempt is kept, so a grade from an earlier term than the
+  // recorded one would replace a newer grade. Saving it needs confirming.
+  const isEarlier = (s: SubjectRow) =>
+    isValidTerm(term) && isValidTerm(s.currentTerm) && compareTerms(term, s.currentTerm) < 0;
+  const replacesLater = edits.filter((s) => isEarlier(s) && !resolutions.includes(s));
+  const corrections = edits.filter(
+    (s) => currentValue(s) !== "" && !resolutions.includes(s) && !replacesLater.includes(s)
+  );
 
   return (
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="studentId" value={studentId} />
+      {/* Confirmed in the save dialog, which warns about these. */}
+      {replacesLater.map((s) => (
+        <input key={s.code} type="hidden" name="replaceLaterTerm" value={s.code} />
+      ))}
 
       <Card>
         <CardHeader title="1. Choose the term" description="Pick the curriculum semester to show and the term the grades were earned in." />
@@ -163,6 +175,9 @@ export default function GradeEntryForm({
                           </option>
                         ))}
                       </Select>
+                      {changed && isEarlier(s) && (
+                        <p className="mt-1 text-xs leading-snug text-amber-800">Recorded grade is from a later term</p>
+                      )}
                     </Td>
                   </Tr>
                 );
@@ -185,7 +200,7 @@ export default function GradeEntryForm({
         ) : (
           <ConfirmButton
             tone="primary"
-            confirmLabel="Save grades"
+            confirmLabel={replacesLater.length > 0 ? "Replace and save" : "Save grades"}
             title={`Save ${plural(edits.length, "grade")} for term ${term}?`}
             description={
               <>
@@ -197,6 +212,15 @@ export default function GradeEntryForm({
                     {resolutions.map((s) => `${s.code}’s INC${s.currentTerm ? ` from ${s.currentTerm}` : ""}`).join(", ")}{" "}
                     will be completed: {resolutions.length === 1 ? "it stays" : "they stay"} taken in{" "}
                     {resolutions.length === 1 ? "its" : "their"} original term, and a passing grade counts from {term}.
+                  </p>
+                )}
+                {replacesLater.length > 0 && (
+                  <p className="mt-2 font-medium text-red-800">
+                    {replacesLater.map((s) => `${s.code} (${s.currentTerm})`).join(", ")}{" "}
+                    {replacesLater.length === 1 ? "already has a grade" : "already have grades"} from a later term than{" "}
+                    {term}. Only the latest attempt is kept, so saving replaces{" "}
+                    {replacesLater.length === 1 ? "it" : "them"}; the old grade stays in the grade logbook. Continue only
+                    if the later term was entered by mistake.
                   </p>
                 )}
                 {corrections.length > 0 && (

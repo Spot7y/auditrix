@@ -77,7 +77,9 @@ export async function submitTermGrades(
   );
 
   const service = new GradeEntryService(repository);
-  const result = await service.submit({ studentId, term, entries }, record.curriculum, staff.name);
+  // Subjects the chairperson confirmed may replace a grade from a later term.
+  const replaceLaterTerm = formData.getAll("replaceLaterTerm").map(String);
+  const result = await service.submit({ studentId, term, entries, replaceLaterTerm }, record.curriculum, staff.name);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");

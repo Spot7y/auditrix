@@ -69,6 +69,21 @@ export class GradeEntryService {
         // Correcting the grade an INC was resolved with.
         term = previous.term;
         resolvedTerm = previous.resolvedTerm;
+      } else if (
+        previous &&
+        isValidTerm(previous.term) &&
+        compareTerms(batch.term, previous.term) < 0 &&
+        !(batch.replaceLaterTerm ?? []).includes(code)
+      ) {
+        // Only the latest attempt is kept, so an older grade entered now
+        // would replace the newer one (e.g. a 5.0 from 24-1 over the pass
+        // from 25-1). Allowed only as a confirmed correction of the term.
+        rows.push({
+          accepted: false,
+          rawCode: entry.subjectCode,
+          reason: `${code} already has a grade from ${previous.term}, a later term than ${batch.term}. Only the latest attempt is kept, so it wasn't replaced. If ${previous.term} was entered by mistake, save again and confirm the correction.`,
+        });
+        continue;
       }
 
       // Whether it was taken in order is worked out by the audit from the

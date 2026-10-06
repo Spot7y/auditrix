@@ -186,6 +186,48 @@ describe("GradeEntryService — submitting a term's grades", () => {
     assert.equal(record.statusOf("CC 101"), "INCOMPLETE");
   });
 
+  it("won't let a grade from an earlier term replace a later one", async () => {
+    const { curriculum, record, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "24-1", entries: [grade("CC 101", 1.5)] }, curriculum, "chair");
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 5.0)] },
+      curriculum,
+      "chair"
+    );
+
+    assert.deepEqual(result.rows, [
+      {
+        accepted: false,
+        rawCode: "CC 101",
+        reason:
+          "CC 101 already has a grade from 24-1, a later term than 23-1. Only the latest attempt is kept, so it wasn't replaced. If 24-1 was entered by mistake, save again and confirm the correction.",
+      },
+    ]);
+    assert.deepEqual([record.statusOf("CC 101"), record.recordOf("CC 101")?.term], ["PASSED", "24-1"]);
+  });
+
+  it("replaces a later-term grade when confirmed as a correction", async () => {
+    const { curriculum, record, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "24-1", entries: [grade("CC 101", 1.5)] }, curriculum, "chair");
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 1.5)], replaceLaterTerm: ["CC 101"] },
+      curriculum,
+      "chair"
+    );
+
+    assert.deepEqual(result.rows, [{ accepted: true, subjectCode: "CC 101" }]);
+    assert.equal(record.recordOf("CC 101")?.term, "23-1");
+  });
+
+  it("still takes a correction in the same term and a retake in a later one", async () => {
+    const { curriculum, record, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 5.0)] }, curriculum, "chair");
+    await service.submit({ studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 3.0)] }, curriculum, "chair");
+    assert.equal(record.gradeOf("CC 101"), 3.0);
+    await service.submit({ studentId: "23-110414", term: "23-2", entries: [grade("CC 101", 1.75)] }, curriculum, "chair");
+    assert.deepEqual([record.gradeOf("CC 101"), record.recordOf("CC 101")?.term], [1.75, "23-2"]);
+  });
+
   it("rejects a malformed term", async () => {
     const { curriculum, service } = setup();
     await assert.rejects(

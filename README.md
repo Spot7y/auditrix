@@ -10,7 +10,8 @@ what each student has completed, can take next, or took out of order.
   or Violation, with the reason (e.g. the missing prerequisite).
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
   5.0 failing, INC, in progress). A final grade for an INC keeps the subject in its original term and records the
-  term the INC was resolved in.
+  term the INC was resolved in. Only the latest attempt of a subject is kept, so a grade from an earlier term than the
+  recorded one is refused unless the chairperson confirms it corrects a wrong term.
 - **Prerequisite checking by term.** Terms are written `YY-S` (1st semester, 2nd semester, then midyear). A
   prerequisite must be passed in a term *before* the subject was taken; the same term is a violation, and so is taking
   a subject while its prerequisite is still INC. Co-requisites must be taken in the same term and both passed; if one
