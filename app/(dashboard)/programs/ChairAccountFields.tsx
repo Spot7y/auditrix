@@ -5,6 +5,7 @@ import { Wand2 } from "lucide-react";
 import { Field, Input } from "../../../components/ui/Field";
 import { Button } from "../../../components/ui/Button";
 import { MIN_PASSWORD_LENGTH } from "../../../lib/domain/passwordPolicy";
+import PasswordChecklist from "../../../components/PasswordChecklist";
 
 // No look-alike characters (0/O, 1/l/I), so it can be read out or copied by hand.
 const ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -34,7 +35,7 @@ export default function ChairAccountFields() {
         label="Temporary password"
         htmlFor="chairPassword"
         className="sm:col-span-2"
-        hint={`At least ${MIN_PASSWORD_LENGTH} characters with letters and numbers. Give it to the chairperson yourself; it isn’t emailed. They’ll choose their own password when they first log in.`}
+        hint="Give it to the chairperson yourself; it isn’t emailed. They’ll choose their own password when they first log in."
       >
         <div className="flex gap-2">
           <Input
@@ -51,6 +52,9 @@ export default function ChairAccountFields() {
             <Wand2 aria-hidden />
             Generate
           </Button>
+        </div>
+        <div className="mt-2">
+          <PasswordChecklist password={password} />
         </div>
       </Field>
     </div>

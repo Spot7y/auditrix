@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { getCurrentStaff } from "../../lib/queries/staff";
-import { MIN_PASSWORD_LENGTH } from "../../lib/domain/passwordPolicy";
 import { logout } from "../login/actions";
 import { setFirstPassword } from "./actions";
 import AuthLayout from "../../components/AuthLayout";
-import PasswordInput from "../../components/PasswordInput";
+import NewPasswordFields from "../../components/NewPasswordFields";
 import Alert from "../../components/ui/Alert";
 import SubmitButton from "../../components/ui/SubmitButton";
 
@@ -36,19 +35,7 @@ export default async function ChangePasswordPage({ searchParams }: { searchParam
       )}
 
       <form action={setFirstPassword} className="mt-6 space-y-4">
-        <PasswordInput
-          name="newPassword"
-          label="New password"
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-          hint={`At least ${MIN_PASSWORD_LENGTH} characters, with letters and numbers.`}
-        />
-        <PasswordInput
-          name="confirmPassword"
-          label="Confirm new password"
-          minLength={MIN_PASSWORD_LENGTH}
-          autoComplete="new-password"
-        />
+        <NewPasswordFields />
         <SubmitButton block pendingLabel="Saving…">
           Save password and continue
         </SubmitButton>

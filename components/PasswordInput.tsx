@@ -11,6 +11,8 @@ export default function PasswordInput({
   minLength,
   autoComplete,
   hint,
+  value,
+  onChange,
 }: {
   name: string;
   label: string;
@@ -18,6 +20,9 @@ export default function PasswordInput({
   minLength?: number;
   autoComplete?: string;
   hint?: string;
+  /** Pass both to control the field, e.g. to check the password as it's typed. */
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
   const id = useId();
@@ -33,6 +38,8 @@ export default function PasswordInput({
           required={required}
           minLength={minLength}
           autoComplete={autoComplete}
+          value={value}
+          onChange={onChange && ((e) => onChange(e.target.value))}
           className={`${inputClasses} pr-10`}
         />
         <button

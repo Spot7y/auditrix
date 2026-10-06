@@ -41,7 +41,8 @@ what each student has completed, can take next, or took out of order.
 - **Overview dashboard.** Per program: regular and irregular students, students with violations, curriculum versions,
   students by year level and recent moves.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
-  New chairpersons must replace the temporary password their dean set when they first log in.
+  New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
+  field ticks each password rule green as it's met.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
   saving grades) ask for confirmation first, and every result is shown as a notification.
 

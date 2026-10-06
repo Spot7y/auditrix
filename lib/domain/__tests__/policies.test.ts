@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { searchTerms } from "../searchTerms";
-import { MIN_PASSWORD_LENGTH, passwordProblem } from "../passwordPolicy";
+import { MIN_PASSWORD_LENGTH, PASSWORD_RULES, passwordProblem } from "../passwordPolicy";
 
 describe("student search terms", () => {
   it("splits a “Last, First” name into words", () => {
@@ -41,5 +41,20 @@ describe("password policy", () => {
   it("accepts a good password", () => {
     assert.equal(passwordProblem("goodpass9", "goodpass9"), null);
     assert.equal(passwordProblem("V7T62cBwN6WV"), null);
+  });
+
+  it("ticks every rule in the checklist exactly when the password is accepted", () => {
+    for (const password of ["", "abc", "abc123", "abcdefgh", "12345678", "goodpass9", "V7T62cBwN6WV"]) {
+      const allTicked = PASSWORD_RULES.every((rule) => rule.test(password));
+      assert.equal(allTicked, passwordProblem(password) === null, password);
+    }
+    assert.deepEqual(
+      PASSWORD_RULES.map((rule) => [rule.label, rule.test("abc12")]),
+      [
+        ["At least 8 characters", false],
+        ["Contains a letter", true],
+        ["Contains a number", true],
+      ]
+    );
   });
 });
