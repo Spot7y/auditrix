@@ -4,7 +4,7 @@ import { ArrowRight, BookOpen, History, Search, UserPlus, Users } from "lucide-r
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { getAnalytics, type ProgramSummary } from "../../../lib/queries/analytics";
 import { getRecentTransitions } from "../../../lib/queries/transitions";
-import { formatDate, TRANSITION_LABEL } from "../../../lib/format";
+import { formatDate, plural, TRANSITION_LABEL } from "../../../lib/format";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { LinkButton } from "../../../components/ui/Button";
@@ -49,7 +49,7 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
     <section className="space-y-4">
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-semibold text-ink-900">{s.program}</h2>
-        <Badge tone="brand">{s.totalStudents} students</Badge>
+        <Badge tone="brand">{plural(s.totalStudents, "student")}</Badge>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -102,7 +102,7 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
                     <BookOpen className="size-4 text-ink-400" aria-hidden />
                     {v.effectiveYear} curriculum
                   </span>
-                  <span className="tabular text-ink-500">{v.subjectCount} subjects</span>
+                  <span className="tabular text-ink-500">{plural(v.subjectCount, "subject")}</span>
                 </li>
               ))}
             </ul>
