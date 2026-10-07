@@ -238,7 +238,8 @@ are the whole page). They were taken from a local copy of the system with **samp
 
 | File | Shows |
 | --- | --- |
-| `01-first-login-password` | A new chairperson choosing a password; checklist partly green |
+| `13-dean-creates-chairperson` | The dean creating a program and its chairperson account (temporary password) |
+| `01-first-login-password` | That new chairperson's first login: the change-password page opens by itself; with the short password `abc1` the checklist is only partly green |
 | `02-dean-dashboard` | Dean's dashboard with the Current semester card |
 | `03-chairperson-dashboard` | Regular/irregular, violations, students by year level |
 | `04-curriculum-import-preview` (`04a` = the dialog) | Curriculum import: what will be added/changed/removed, before saving |
