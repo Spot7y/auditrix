@@ -232,6 +232,27 @@ accepting a shift) run as single database transactions.
 
 ## 8. Screens to capture for Chapter 4
 
+Screenshots of most of these are in `docs/screenshots/` (1440×900 window at 2× resolution, PNG; the `-full` files
+are the whole page). They were taken from a local copy of the system with **sample data and placeholder names**
+(e.g. "Dela Cruz, Juan Santos", chairperson "Juana Reyes", dean "Maria Santos"), not real students.
+
+| File | Shows |
+| --- | --- |
+| `01-first-login-password` | A new chairperson choosing a password; checklist partly green |
+| `02-dean-dashboard` | Dean's dashboard with the Current semester card |
+| `03-chairperson-dashboard` | Regular/irregular, violations, students by year level |
+| `04-curriculum-import-preview` (`04a` = the dialog) | Curriculum import: what will be added/changed/removed, before saving |
+| `05-grade-logbook` | Every grade recorded for a student, including a correction |
+| `06-edit-student-year-level` | Year level: automatic or set by hand, with its history |
+| `07-grade-save-confirmation` | Confirmation before saving a corrected grade |
+| `08-earlier-term-warning` (`08a` = the row note) | Warning before an earlier-term grade replaces a later one |
+| `09-import-students-dialog` | Importing students from CSV or the KSU-MIS .xls |
+| `10-student-audit` | A regular student's audit (statuses, terms, year level) |
+| `11-student-audit-violation` | A student with a subject taken out of order |
+| `12-shift-in` | Accepting a shifting student |
+
+Full list of screens worth showing:
+
 1. Login page.
 2. First-login password change with the green checklist.
 3. Dean dashboard with the **Current semester** card.
