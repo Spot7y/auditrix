@@ -62,8 +62,10 @@ applies, the student's **year level** and **Regular / Irregular** status.
 ### 2.2 Grade entry
 - Grades are entered per term (`YY-S`, e.g. 25-1), for the subjects of a chosen curriculum year and semester.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
-  and INC. (There is no 4.0.) The system also understands "in progress", but the grade form doesn't offer it yet;
-  see section 10.
+  and INC. (There is no 4.0.) **In progress** is also a choice, for subjects the student is taking this semester.
+- **Bulk "in progress":** each subject has a tick box; ticking several (or all, from the header) and clicking
+  **Mark as in progress** sets them all at once. Subjects already passed can't be ticked. A subject still in progress
+  from an earlier term that's marked again moves to the chosen term.
 - Only changed grades are saved; changing an existing grade is a correction and asks for confirmation.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
@@ -160,8 +162,8 @@ instead of a violation.
   already passed in an earlier term aren't expected again. Back subjects on top of a full load don't make a student
   irregular.
 - **Enrollment** means grades or "in progress" recorded for the current semester. With nothing recorded, the status is
-  **"Not determined"** and the student isn't counted either way. (Because the grade form can't record "in progress"
-  yet, a student's status for the current semester is known only once their grades for it are entered.)
+  **"Not determined"** and the student isn't counted either way. At the start of a semester the chairperson marks
+  the subjects each student is taking as **in progress**, so the status is known before any grades come in.
 
 ---
 
@@ -212,7 +214,8 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-09-29/30 — automatic year levels (adviser's decision), KSU-MIS-style student template, .xls support for both
   imports.
 - 2026-10-06 — protection against an earlier-term grade replacing a later one; password checklist.
-- 2026-10-08 — both imports read Excel workbooks (.xlsx); the development "N" indicator hidden.
+- 2026-10-08 — both imports read Excel workbooks (.xlsx); the development "N" indicator hidden; `npm run db:save`
+  to keep data through a database reset; "In progress" in the grade form, with ticking several subjects at once.
 
 ---
 
@@ -300,8 +303,8 @@ locally.
 
 ## 10. Limitations and recommendations (for Chapter 5)
 
-- The grade form can't record **"in progress"** yet, so current enrollment (regular/irregular) is known only once
-  grades are entered.
+- Current enrollment (regular/irregular) depends on the chairperson marking each student's subjects **in
+  progress** every semester; it isn't read from the KSU-MIS enrollment records.
 - Only the **latest attempt** of each subject is kept as the student's record (all attempts remain in the logbook).
 - Year levels and year standing are only as accurate as the grades entered; older grades of existing students
   should be encoded.

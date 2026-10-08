@@ -2,13 +2,14 @@
 
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ClipboardList, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, Clock, XCircle } from "lucide-react";
 import { submitTermGrades, type SubmitGradesState } from "./actions";
 import { Card, CardHeader, CardBody } from "../../../../../components/ui/Card";
 import { Field, Hint, Label, Select } from "../../../../../components/ui/Field";
 import TermFields from "../../../../../components/ui/TermFields";
 import { Table, Td, Th, Tr } from "../../../../../components/ui/Table";
 import { Badge } from "../../../../../components/ui/Badge";
+import { Button } from "../../../../../components/ui/Button";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
 import EmptyState from "../../../../../components/ui/EmptyState";
@@ -26,10 +27,17 @@ interface SubjectRow {
 }
 
 const initialState: SubmitGradesState = { result: null, error: null };
-const GRADE_OPTIONS = ["1.0", "1.25", "1.50", "1.75", "2.0", "2.25", "2.50", "2.75", "3.0", "5.0", "INC"];
+const GRADE_OPTIONS = ["1.0", "1.25", "1.50", "1.75", "2.0", "2.25", "2.50", "2.75", "3.0", "5.0", "INC", "IP"];
+const IN_PROGRESS = "IP";
+
+/** How a grade option reads on screen. */
+function gradeLabel(value: string): string {
+  return value === IN_PROGRESS ? "In progress" : value;
+}
 
 function currentValue(subject: SubjectRow): string {
   if (subject.currentStatus === "INCOMPLETE") return "INC";
+  if (subject.currentStatus === "IN_PROGRESS") return IN_PROGRESS;
   if ((subject.currentStatus === "PASSED" || subject.currentStatus === "FAILED") && subject.currentGrade !== null) {
     return GRADE_OPTIONS.find((o) => Number(o) === subject.currentGrade) ?? "";
   }
@@ -52,6 +60,8 @@ export default function GradeEntryForm({
   const [termYear, setTermYear] = useState(currentTerm?.split("-")[0] ?? "");
   const [termSemester, setTermSemester] = useState(currentTerm?.split("-")[1] ?? "");
   const [values, setValues] = useState<Record<string, string>>({});
+  // Subjects ticked for marking as in progress all at once.
+  const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const shown = useMemo(
     () =>
@@ -61,20 +71,45 @@ export default function GradeEntryForm({
     [subjects, yearLevel, semester]
   );
 
-  // Only grades that differ from what's recorded are submitted, so untouched
-  // subjects keep their original term.
-  const edits = shown.filter((s) => values[s.code] !== undefined && values[s.code] !== currentValue(s));
-  // A final grade for an INC completes it: it keeps its original term.
-  const resolutions = edits.filter((s) => s.currentStatus === "INCOMPLETE" && values[s.code] !== "INC");
   const term = termYear && termSemester ? `${termYear.padStart(2, "0")}-${termSemester}` : "";
+  // Only grades that differ from what's recorded are submitted, so untouched
+  // subjects keep their original term. A subject in progress from an earlier
+  // term that's marked in progress again is being taken now, so it moves to
+  // this term.
+  const isChange = (s: SubjectRow, value: string) =>
+    value !== currentValue(s) || (value === IN_PROGRESS && s.currentTerm !== term);
+  const edits = shown.filter((s) => values[s.code] !== undefined && isChange(s, values[s.code]));
+  const moved = edits.filter((s) => s.currentStatus === "IN_PROGRESS" && values[s.code] === IN_PROGRESS);
+  // A final grade for an INC completes it: it keeps its original term.
+  // (Marking it in progress instead means it's being taken again.)
+  const resolutions = edits.filter(
+    (s) => s.currentStatus === "INCOMPLETE" && values[s.code] !== "INC" && values[s.code] !== IN_PROGRESS
+  );
   // Only the latest attempt is kept, so a grade from an earlier term than the
   // recorded one would replace a newer grade. Saving it needs confirming.
   const isEarlier = (s: SubjectRow) =>
     isValidTerm(term) && isValidTerm(s.currentTerm) && compareTerms(term, s.currentTerm) < 0;
   const replacesLater = edits.filter((s) => isEarlier(s) && !resolutions.includes(s));
   const corrections = edits.filter(
-    (s) => currentValue(s) !== "" && !resolutions.includes(s) && !replacesLater.includes(s)
+    (s) => currentValue(s) !== "" && !resolutions.includes(s) && !replacesLater.includes(s) && !moved.includes(s)
   );
+
+  // A subject already passed isn't taken again, so it can't be ticked; its
+  // grade can still be corrected from its own dropdown.
+  const checkable = shown.filter((s) => s.currentStatus !== "PASSED");
+  const checkedShown = checkable.filter((s) => checked.has(s.code));
+  const allChecked = checkable.length > 0 && checkedShown.length === checkable.length;
+  const toggle = (code: string) =>
+    setChecked((c) => {
+      const next = new Set(c);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  const markInProgress = () => {
+    setValues((v) => ({ ...v, ...Object.fromEntries(checkedShown.map((s) => [s.code, IN_PROGRESS])) }));
+    setChecked(new Set());
+  };
 
   return (
     <form action={formAction} className="space-y-6">
@@ -123,7 +158,7 @@ export default function GradeEntryForm({
       <Card>
         <CardHeader
           title="2. Enter grades"
-          description="Only subjects you change are saved. Changing an existing grade counts as a correction."
+          description="Only subjects you change are saved. Changing an existing grade counts as a correction. Tick subjects the student is taking now to mark them in progress all at once."
           actions={edits.length > 0 && <Badge tone="brand">{plural(edits.length, "grade")} to save</Badge>}
         />
         {!yearLevel || !semester ? (
@@ -131,59 +166,107 @@ export default function GradeEntryForm({
         ) : shown.length === 0 ? (
           <EmptyState icon={ClipboardList} title="No subjects in that semester" />
         ) : (
-          <Table className="table-fixed">
-            <colgroup>
-              <col className="w-28" />
-              <col />
-              <col className="w-32" />
-              <col className="w-36" />
-            </colgroup>
-            <thead>
-              <tr>
-                <Th>Code</Th>
-                <Th>Subject</Th>
-                <Th>Recorded</Th>
-                <Th>New grade</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((s) => {
-                const recorded = currentValue(s);
-                const value = values[s.code] ?? recorded;
-                const changed = value !== recorded;
-                return (
-                  <Tr key={s.code} className={changed ? (recorded ? "bg-amber-50/70" : "bg-brand-50/60") : ""}>
-                    <Td className="font-mono text-ink-600">{s.code}</Td>
-                    <Td className="text-ink-900">{s.title}</Td>
-                    <Td className="text-ink-500">
-                      {s.currentStatus === "IN_PROGRESS" ? "In progress" : recorded || "—"}
-                      {s.currentTerm && <span className="ml-1.5 font-mono text-xs text-ink-400">{s.currentTerm}</span>}
-                    </Td>
-                    <Td>
-                      <Select
-                        name={changed ? `grade:${s.code}` : undefined}
-                        value={value}
-                        onChange={(e) => setValues((v) => ({ ...v, [s.code]: e.target.value }))}
-                        aria-label={`Grade for ${s.code}`}
-                        className="h-9"
-                      >
-                        {/* An existing grade can be corrected but not blanked out. */}
-                        {!recorded && <option value="">—</option>}
-                        {GRADE_OPTIONS.map((o) => (
-                          <option key={o} value={o}>
-                            {o}
-                          </option>
-                        ))}
-                      </Select>
-                      {changed && isEarlier(s) && (
-                        <p className="mt-1 text-xs leading-snug text-amber-800">Recorded grade is from a later term</p>
-                      )}
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </tbody>
-          </Table>
+          <>
+            {checkedShown.length > 0 && (
+              <div className="flex flex-wrap items-center gap-3 border-b border-line bg-brand-50/60 px-5 py-2.5 text-sm">
+                <span className="font-medium text-ink-800">{plural(checkedShown.length, "subject")} ticked</span>
+                <Button size="sm" onClick={markInProgress}>
+                  <Clock aria-hidden />
+                  Mark as in progress
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setChecked(new Set())}>
+                  Clear
+                </Button>
+              </div>
+            )}
+            <Table className="table-fixed">
+              <colgroup>
+                <col className="w-12" />
+                <col className="w-28" />
+                <col />
+                <col className="w-40" />
+                <col className="w-44" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <Th>
+                    <input
+                      type="checkbox"
+                      aria-label="Tick every subject not yet passed"
+                      className="size-4 cursor-pointer accent-brand-600 align-middle disabled:cursor-default"
+                      checked={allChecked}
+                      disabled={checkable.length === 0}
+                      ref={(el) => {
+                        if (el) el.indeterminate = checkedShown.length > 0 && !allChecked;
+                      }}
+                      onChange={() =>
+                        setChecked((c) => {
+                          const next = new Set(c);
+                          for (const s of checkable) {
+                            if (allChecked) next.delete(s.code);
+                            else next.add(s.code);
+                          }
+                          return next;
+                        })
+                      }
+                    />
+                  </Th>
+                  <Th>Code</Th>
+                  <Th>Subject</Th>
+                  <Th>Recorded</Th>
+                  <Th>New grade</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((s) => {
+                  const recorded = currentValue(s);
+                  const value = values[s.code] ?? recorded;
+                  const changed = values[s.code] !== undefined && isChange(s, value);
+                  return (
+                    <Tr key={s.code} className={changed ? (recorded ? "bg-amber-50/70" : "bg-brand-50/60") : ""}>
+                      <Td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Tick ${s.code}`}
+                          title={s.currentStatus === "PASSED" ? "Already passed" : undefined}
+                          className="mt-0.5 size-4 cursor-pointer accent-brand-600 disabled:cursor-default disabled:opacity-40"
+                          checked={checked.has(s.code)}
+                          disabled={s.currentStatus === "PASSED"}
+                          onChange={() => toggle(s.code)}
+                        />
+                      </Td>
+                      <Td className="font-mono text-ink-600">{s.code}</Td>
+                      <Td className="text-ink-900">{s.title}</Td>
+                      <Td className="text-ink-500">
+                        {recorded ? gradeLabel(recorded) : "—"}
+                        {s.currentTerm && <span className="ml-1.5 whitespace-nowrap font-mono text-xs text-ink-400">{s.currentTerm}</span>}
+                      </Td>
+                      <Td>
+                        <Select
+                          name={changed ? `grade:${s.code}` : undefined}
+                          value={value}
+                          onChange={(e) => setValues((v) => ({ ...v, [s.code]: e.target.value }))}
+                          aria-label={`Grade for ${s.code}`}
+                          className="h-9"
+                        >
+                          {/* An existing grade can be corrected but not blanked out. */}
+                          {!recorded && <option value="">—</option>}
+                          {GRADE_OPTIONS.map((o) => (
+                            <option key={o} value={o}>
+                              {gradeLabel(o)}
+                            </option>
+                          ))}
+                        </Select>
+                        {changed && isEarlier(s) && (
+                          <p className="mt-1 text-xs leading-snug text-amber-800">Recorded grade is from a later term</p>
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          </>
         )}
       </Card>
 
@@ -205,7 +288,7 @@ export default function GradeEntryForm({
             description={
               <>
                 <p>
-                  {edits.map((s) => `${s.code}: ${values[s.code]}`).join(", ")}.
+                  {edits.map((s) => `${s.code}: ${gradeLabel(values[s.code])}`).join(", ")}.
                 </p>
                 {resolutions.length > 0 && (
                   <p className="mt-2">
@@ -221,6 +304,13 @@ export default function GradeEntryForm({
                     {term}. Only the latest attempt is kept, so saving replaces{" "}
                     {replacesLater.length === 1 ? "it" : "them"}; the old grade stays in the grade logbook. Continue only
                     if the later term was entered by mistake.
+                  </p>
+                )}
+                {moved.length > 0 && (
+                  <p className="mt-2">
+                    {moved.map((s) => `${s.code} (${s.currentTerm})`).join(", ")}{" "}
+                    {moved.length === 1 ? "was" : "were"} in progress from an earlier term and will be in progress in{" "}
+                    {term} instead.
                   </p>
                 )}
                 {corrections.length > 0 && (
