@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/run-tests.mjs"
+    "test": "node scripts/run-tests.mjs",
+    "db:save": "node scripts/save-data.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",

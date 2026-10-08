@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# data saved with `npm run db:save` (real accounts and student records)
+/supabase/seed.sql

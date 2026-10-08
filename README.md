@@ -92,6 +92,16 @@ Requirements: Node.js 20.9 or newer (22.3+ to run every test) and a Supabase pro
 
    `supabase/rollbacks/` holds SQL that undoes a feature's migration, for when that feature is taken out again.
 
+   To keep the data you've entered through a reset of the local database, save it first:
+
+   ```bash
+   npm run db:save            # writes everything (accounts, curricula, students, grades) to supabase/seed.sql
+   npx supabase db reset      # rebuilds the database, then loads supabase/seed.sql
+   ```
+
+   Run `npm run db:save` again whenever there's new data worth keeping. The file holds real accounts and student
+   records, so it is kept out of Git. Without it, a reset leaves an empty database.
+
 4. Optionally load the BSIT curriculum and a sample student:
 
    ```bash
@@ -115,6 +125,7 @@ from the app; the first dean account is created in Supabase Studio.
 | `npm run build` / `npm start`       | Production build and server                                            |
 | `npm run lint`                      | ESLint                                                                 |
 | `npm test`                          | Run the automated tests                                                |
+| `npm run db:save`                   | Save the local database's data to `supabase/seed.sql` for `db reset`   |
 | `npx tsx scripts/seed-bsit.ts`      | Seed the BSIT curriculum and a sample student                          |
 | `npx tsx scripts/check-supabase.ts` | Manual check of grade entry against the real database (uses seed data) |
 
