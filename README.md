@@ -14,7 +14,8 @@ what each student has completed, can take next, or took out of order.
   prerequisites aren't met yet. A final grade for an INC keeps the subject in its original term and records the
   term the INC was resolved in. Only the latest attempt of a subject is kept, so a grade from an earlier term than the
   recorded one is refused unless the chairperson confirms it corrects a wrong term.
-- **Prerequisite checking by term.** Terms are written `YY-S` (1st semester, 2nd semester, then midyear). A
+- **Prerequisite checking by term.** Terms are written as on KSU records: `25-1`, `25-2`, and for the
+  midyear `26-S`, which carries the year of the semester after it (25-2 → 26-S → 26-1). A
   prerequisite must be passed in a term *before* the subject was taken; the same term is a violation, and so is taking
   a subject while its prerequisite is still INC. Co-requisites must be taken in the same term and both passed; if one
   fails, both are retaken. A subject taken out of order earns no credit, so it doesn't count toward later subjects

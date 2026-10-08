@@ -207,10 +207,11 @@ describe("AuditEngine — prerequisites are checked by term", () => {
     );
   });
 
-  it("orders the midyear after the second semester and before the next school year", () => {
-    assert.equal(statusOf(audit([taken("CC 101", "24-2"), taken("CC 103", "24-3")]), "CC 103")?.status, "COMPLETED");
-    assert.equal(statusOf(audit([taken("CC 101", "24-3"), taken("CC 103", "25-1")]), "CC 103")?.status, "COMPLETED");
-    assert.equal(statusOf(audit([taken("CC 101", "25-1"), taken("CC 103", "24-3")]), "CC 103")?.status, "VIOLATION");
+  it("orders the midyear as KSU records do: 24-S comes after 23-2 and before 24-1", () => {
+    assert.equal(statusOf(audit([taken("CC 101", "23-2"), taken("CC 103", "24-S")]), "CC 103")?.status, "COMPLETED");
+    assert.equal(statusOf(audit([taken("CC 101", "24-S"), taken("CC 103", "24-1")]), "CC 103")?.status, "COMPLETED");
+    assert.equal(statusOf(audit([taken("CC 101", "24-1"), taken("CC 103", "24-S")]), "CC 103")?.status, "VIOLATION");
+    assert.equal(statusOf(audit([taken("CC 101", "24-2"), taken("CC 103", "24-S")]), "CC 103")?.status, "VIOLATION");
   });
 
   it("waits while a prerequisite from an earlier term has no final grade", () => {
@@ -234,7 +235,7 @@ describe("AuditEngine — INC", () => {
     engine.auditEnrollment(new AcademicRecord("S", curriculum, 1, records), "CC 103");
 
   it("counts a resolved INC as passed from the term it was resolved", () => {
-    assert.equal(cc103([resolved("24-2"), taken("CC 103", "24-3")]).status, "COMPLETED");
+    assert.equal(cc103([resolved("24-2"), taken("CC 103", "25-S")]).status, "COMPLETED");
   });
 
   it("flags a subject taken while its prerequisite was still INC", () => {

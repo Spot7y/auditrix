@@ -39,16 +39,15 @@ export async function submitTermGrades(
   const termYearRaw = String(formData.get("termYear") ?? "").trim();
   const termSemesterRaw = String(formData.get("termSemester") ?? "").trim();
   const termYear = Number(termYearRaw);
-  const termSemester = Number(termSemesterRaw);
 
   if (!termYearRaw || Number.isNaN(termYear) || termYear < 0 || termYear > 99) {
     return { result: null, error: "Enter a valid 2-digit year (e.g. 25)." };
   }
-  if (!termSemesterRaw || Number.isNaN(termSemester) || termSemester < 1 || termSemester > 3) {
-    return { result: null, error: "Semester must be 1, 2, or 3 (Midyear)." };
+  if (!["1", "2", "S"].includes(termSemesterRaw)) {
+    return { result: null, error: "Semester must be 1, 2, or S (Midyear)." };
   }
 
-  const term = `${String(termYear).padStart(2, "0")}-${termSemester}`;
+  const term = `${String(termYear).padStart(2, "0")}-${termSemesterRaw}`;
 
   const entries: { subjectCode: string; input: RawGradeInput }[] = [];
   for (const [key, value] of formData.entries()) {

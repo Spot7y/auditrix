@@ -99,7 +99,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
               <Label htmlFor="termYear">From term</Label>
               <TermFields
                 defaultYear={term ? String(term.year).padStart(2, "0") : ""}
-                defaultSemester={term ? String(term.semester) : ""}
+                defaultSemester={currentTerm?.term.split("-")[1] ?? ""}
               />
               <Hint>Defaults to the current semester.</Hint>
             </div>

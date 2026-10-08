@@ -114,8 +114,10 @@ Sources used:
   (Freshman to Senior) and regular/irregular student.
 
 ### 3.1 Terms
-Written `YY-S`: the school year's first two digits and the semester (1 = first, 2 = second, 3 = midyear).
-Order: 25-1 → 25-2 → 25-3 (midyear) → 26-1.
+Written as on KSU records: the school year's first two digits and the semester (1 = first, 2 = second, S = midyear).
+The midyear carries the year of the semester after it, so the order is 25-1 → 25-2 → 26-S (midyear) → 26-1, exactly as
+the terms are listed on a student's KSU record. (Earlier versions wrote the midyear as 25-3 after 25-2; that was
+changed so chairpersons can type the term exactly as it appears on the record.)
 
 ### 3.2 Prerequisites (Handbook: a prerequisite must be passed *prior to* taking the subject; credit for a subject
 taken without it is nullified)
@@ -218,6 +220,8 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-10-06 — protection against an earlier-term grade replacing a later one; password checklist.
 - 2026-10-08 — both imports read Excel workbooks (.xlsx); the development "N" indicator hidden; `npm run db:save`
   to keep data through a database reset; "In progress" in the grade form, with ticking several subjects at once.
+- 2026-10-08 — midyear terms written as on KSU records (26-S, between 25-2 and 26-1); ticking all skips subjects the
+  student can't take yet; student pages follow the curriculum's subject order.
 
 ---
 
@@ -279,7 +283,7 @@ Full list of screens worth showing:
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 154, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 156, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |

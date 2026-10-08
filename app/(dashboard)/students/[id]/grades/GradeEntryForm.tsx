@@ -153,7 +153,7 @@ export default function GradeEntryForm({
               onSemesterChange={(e) => setTermSemester(e.target.value)}
             />
             <Hint>
-              Two-digit school year and semester, e.g. 25 – 1.
+              Two-digit school year and semester as on the KSU record, e.g. 25 – 1. Midyear is S: 26 – S comes before 26 – 1.
               {currentTerm && ` Starts on the current semester (${currentTerm}); change it for grades from an earlier term.`}
             </Hint>
           </div>
