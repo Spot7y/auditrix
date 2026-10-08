@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The development-only "N" indicator defaults to the bottom-left corner,
-  // where it covers the sidebar's account and log out controls.
-  devIndicators: { position: "bottom-right" },
+  // Hide the round "N" indicator Next.js shows while developing. Build and
+  // runtime errors are still shown when they happen.
+  devIndicators: false,
   experimental: {
     serverActions: {
       // Server actions default to a 1 MB request limit, which a large
