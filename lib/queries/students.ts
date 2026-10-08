@@ -148,6 +148,10 @@ export interface GradeEntrySubjectRow {
   currentGrade: number | null;
   currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "IN_PROGRESS" | "NOT_TAKEN";
   currentTerm: string | null;
+  /** Whether the student can take it now (or is already taking it, in order), per the audit. */
+  canTake: boolean;
+  /** Why not, when they can't. */
+  blockedReason: string | null;
 }
 
 export async function getStudentGradeEntryData(
@@ -161,15 +165,30 @@ export async function getStudentGradeEntryData(
   const { data: studentRow, error } = await supabase.from("students").select("name").eq("id", studentId).single();
   if (error) throw error;
 
-  const subjects: GradeEntrySubjectRow[] = record.curriculum.allSubjects().map((subject) => ({
-    code: subject.code,
-    title: subject.title,
-    yearLevel: subject.yearLevel,
-    semester: subject.semester,
-    currentGrade: record.gradeOf(subject.code),
-    currentStatus: record.statusOf(subject.code),
-    currentTerm: record.recordOf(subject.code)?.term ?? null,
-  }));
+  const audit = new Map(new AuditEngine().auditCurriculum(record).map((r) => [r.subjectCode, r]));
+  const subjects: GradeEntrySubjectRow[] = record.curriculum.allSubjects().map((subject) => {
+    const status = record.statusOf(subject.code);
+    const result = audit.get(subject.code)!;
+    const canTake = result.status === "AVAILABLE" || (status === "IN_PROGRESS" && result.status === "PENDING");
+    return {
+      code: subject.code,
+      title: subject.title,
+      yearLevel: subject.yearLevel,
+      semester: subject.semester,
+      currentGrade: record.gradeOf(subject.code),
+      currentStatus: status,
+      currentTerm: record.recordOf(subject.code)?.term ?? null,
+      canTake,
+      blockedReason:
+        canTake || status === "PASSED" || result.reasons.length === 0
+          ? null
+          : result.status === "VIOLATION"
+            ? `Taken out of order: ${result.reasons.join("; ")}`
+            : result.status === "UNAVAILABLE"
+              ? `Can’t take yet. Needs: ${result.reasons.join("; ")}`
+              : `Can’t take yet: ${result.reasons.join("; ")}`,
+    };
+  });
 
   return {
     studentId: record.studentId,

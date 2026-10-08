@@ -24,6 +24,8 @@ interface SubjectRow {
   currentGrade: number | null;
   currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "IN_PROGRESS" | "NOT_TAKEN";
   currentTerm: string | null;
+  canTake: boolean;
+  blockedReason: string | null;
 }
 
 const initialState: SubmitGradesState = { result: null, error: null };
@@ -98,7 +100,10 @@ export default function GradeEntryForm({
   // grade can still be corrected from its own dropdown.
   const checkable = shown.filter((s) => s.currentStatus !== "PASSED");
   const checkedShown = checkable.filter((s) => checked.has(s.code));
-  const allChecked = checkable.length > 0 && checkedShown.length === checkable.length;
+  // Ticking all leaves out subjects the student can't take yet (e.g. a
+  // prerequisite not passed); those can still be ticked one by one.
+  const takeable = checkable.filter((s) => s.canTake);
+  const allChecked = takeable.length > 0 && takeable.every((s) => checked.has(s.code));
   const toggle = (code: string) =>
     setChecked((c) => {
       const next = new Set(c);
@@ -192,22 +197,20 @@ export default function GradeEntryForm({
                   <Th>
                     <input
                       type="checkbox"
-                      aria-label="Tick every subject not yet passed"
+                      aria-label="Tick every subject the student can take"
+                      title="Tick every subject the student can take"
                       className="size-4 cursor-pointer accent-brand-600 align-middle disabled:cursor-default"
                       checked={allChecked}
-                      disabled={checkable.length === 0}
+                      disabled={takeable.length === 0}
                       ref={(el) => {
                         if (el) el.indeterminate = checkedShown.length > 0 && !allChecked;
                       }}
                       onChange={() =>
-                        setChecked((c) => {
-                          const next = new Set(c);
-                          for (const s of checkable) {
-                            if (allChecked) next.delete(s.code);
-                            else next.add(s.code);
-                          }
-                          return next;
-                        })
+                        setChecked((c) =>
+                          allChecked
+                            ? new Set([...c].filter((code) => !takeable.some((s) => s.code === code)))
+                            : new Set([...c, ...takeable.map((s) => s.code)])
+                        )
                       }
                     />
                   </Th>
@@ -236,7 +239,12 @@ export default function GradeEntryForm({
                         />
                       </Td>
                       <Td className="font-mono text-ink-600">{s.code}</Td>
-                      <Td className="text-ink-900">{s.title}</Td>
+                      <Td className="text-ink-900">
+                        {s.title}
+                        {s.blockedReason && (
+                          <p className="mt-0.5 text-xs leading-snug text-amber-800">{s.blockedReason}</p>
+                        )}
+                      </Td>
                       <Td className="text-ink-500">
                         {recorded ? gradeLabel(recorded) : "—"}
                         {s.currentTerm && <span className="ml-1.5 whitespace-nowrap font-mono text-xs text-ink-400">{s.currentTerm}</span>}

@@ -64,8 +64,10 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
   and INC. (There is no 4.0.) **In progress** is also a choice, for subjects the student is taking this semester.
 - **Bulk "in progress":** each subject has a tick box; ticking several (or all, from the header) and clicking
-  **Mark as in progress** sets them all at once. Subjects already passed can't be ticked. A subject still in progress
-  from an earlier term that's marked again moves to the chosen term.
+  **Mark as in progress** sets them all at once. Subjects already passed can't be ticked. Ticking all leaves out
+  subjects the student can't take yet (e.g. "Can't take yet. Needs: MATH 111"); those can still be ticked one by one
+  if the student is enrolled anyway, and the audit then flags them as violations. A subject still in progress from an
+  earlier term that's marked again moves to the chosen term.
 - Only changed grades are saved; changing an existing grade is a correction and asks for confirmation.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
