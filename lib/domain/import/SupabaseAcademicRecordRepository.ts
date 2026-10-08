@@ -54,7 +54,11 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
     const { data: subjectRows, error: subjectsError } = await this.client
       .from("subjects")
       .select("id, curriculum_id, code, title, units, year_level, semester")
-      .in("curriculum_id", curriculumIds);
+      .in("curriculum_id", curriculumIds)
+      // The order the curriculum page shows (and the chairperson arranged).
+      .order("year_level")
+      .order("semester")
+      .order("created_at");
     if (subjectsError) throw subjectsError;
 
     const idToCode = new Map((subjectRows ?? []).map((s) => [s.id, s.code as string]));

@@ -12,9 +12,8 @@ export default async function GradeEntryPage({ params }: { params: Promise<{ id:
   const [data, currentTerm] = await Promise.all([getStudentGradeEntryData(id), getCurrentTerm()]);
   if (!data) notFound();
 
-  const subjects = [...data.subjects].sort(
-    (a, b) => a.yearLevel - b.yearLevel || a.semester - b.semester || a.code.localeCompare(b.code)
-  );
+  // Within a semester, subjects keep the curriculum's own order.
+  const subjects = [...data.subjects].sort((a, b) => a.yearLevel - b.yearLevel || a.semester - b.semester);
 
   return (
     <div className="mx-auto max-w-4xl">

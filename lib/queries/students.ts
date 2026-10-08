@@ -127,11 +127,8 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
     };
   });
 
-  rows.sort((a, b) => {
-    if (a.subject.yearLevel !== b.subject.yearLevel) return a.subject.yearLevel - b.subject.yearLevel;
-    if (a.subject.semester !== b.subject.semester) return a.subject.semester - b.subject.semester;
-    return a.subject.code.localeCompare(b.subject.code);
-  });
+  // Within a semester, subjects keep the curriculum's own order.
+  rows.sort((a, b) => a.subject.yearLevel - b.subject.yearLevel || a.subject.semester - b.subject.semester);
 
   return {
     studentId: record.studentId,
