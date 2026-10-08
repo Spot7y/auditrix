@@ -1,7 +1,7 @@
 import { normalizeCode, findMatchingCode } from "./codeMatching";
 import { readTable } from "./tableFile";
 
-// Parsing and planning for the curriculum import (CSV or .xls). Kept free of database
+// Parsing and planning for the curriculum import (CSV, .xlsx or .xls). Kept free of database
 // calls so the preview and the real import work from exactly the same plan.
 
 export type ParsedRequirement = { kind: "code"; code: string } | { kind: "year_standing"; level: number };
@@ -69,14 +69,20 @@ export function parseRequirementToken(raw: string): ParsedRequirement | null {
   return { kind: "code", code: normalizeCode(trimmed) };
 }
 
+export type ParsedSubjects = { subjects: ParsedSubject[]; warnings: string[] } | { error: string };
+
+/** Reads the subjects from a curriculum CSV or .xls template's text; see `parseSubjectRows`. */
+export function parseSubjectsCsv(text: string): ParsedSubjects {
+  return parseSubjectRows(readTable(text));
+}
+
 /**
- * Reads the subjects from a curriculum file's text (CSV, or the .xls
- * template). Columns: code, title, units, year level, semester,
- * prerequisites. Rows that can't be read become warnings; rows with neither
- * a code nor a title (e.g. the template's notes) are skipped quietly.
+ * Reads the subjects from a curriculum file's rows, header first.
+ * Columns: code, title, units, year level, semester, prerequisites. Rows that
+ * can't be read become warnings; rows with neither a code nor a title (e.g.
+ * the template's notes) are skipped quietly.
  */
-export function parseSubjectsCsv(text: string): { subjects: ParsedSubject[]; warnings: string[] } | { error: string } {
-  const rows = readTable(text);
+export function parseSubjectRows(rows: string[][]): ParsedSubjects {
   if (rows.length < 2) return { error: "File appears to be empty." };
 
   const subjects: ParsedSubject[] = [];

@@ -22,9 +22,10 @@ what each student has completed, can take next, or took out of order.
   When nothing was recorded for that term and the grades alone don't show the standing, the subject is marked
   "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
-  requirements. Import from a CSV or .xls file with a preview of what will be added, changed or removed before anything is saved.
+  requirements. Import from an Excel (.xlsx or .xls) or CSV file with a preview of what will be added, changed or removed before anything is saved.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
-- **Students.** Register one at a time or import a CSV or .xls file (the template, or KSU-MIS's "Export to Excel").
+- **Students.** Register one at a time or import an Excel (.xlsx or .xls) or CSV file (the template, or KSU-MIS's
+  "Export to Excel"). Files in the old Excel 97–2003 format need to be saved again as .xlsx or CSV first.
 - **Current semester and year levels.** The dean sets the college's current semester; grade entry starts on it.
   A student's year level follows what they've finished in their curriculum, per the KSU Operations Manual: 25% of the
   units for 2nd year, more than 50% for 3rd year, 75% for 4th year, or every subject of the earlier years. Only
@@ -60,7 +61,7 @@ check permissions in the server action and do their database writes in one trans
 
 - [Next.js 16](https://nextjs.org) (App Router, server actions) with React 19 and Tailwind CSS 4 (Inter font, KSU green theme)
 - [Supabase](https://supabase.com): Postgres, Auth and row-level security
-- `@react-pdf/renderer` for the curriculum PDF export, and Lucide for icons
+- `@react-pdf/renderer` for the curriculum PDF export, ExcelJS for reading .xlsx imports, and Lucide for icons
 
 ## Getting started
 
@@ -127,7 +128,7 @@ The tests use Node's built-in test runner and need no database or network:
 
 - `lib/domain/__tests__/` — the audit rules (prerequisites checked by term, co-requisites, INC, year standing,
   completion), term ordering,
-  KSU grade validation, grade entry, subject-code matching, student ID format, reading CSV and .xls files, curriculum import planning,
+  KSU grade validation, grade entry, subject-code matching, student ID format, reading Excel, CSV and .xls files, curriculum import planning,
   search input handling and the password policy.
 - `tests/actions/` — server actions with Supabase replaced by an in-memory fake: permission checks for deans and
   chairpersons, and ID validation when registering, importing and editing students. These need Node 22.3+ and are

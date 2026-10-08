@@ -13,7 +13,7 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
       <ImportDialog
         triggerLabel="Import curriculum"
         title="Import curriculum"
-        description="Replace this version’s subjects with the ones in a CSV or .xls file."
+        description="Replace this version’s subjects with the ones in an Excel or CSV file."
         action={importSubjectsCsv}
         doneHref={`/curriculum?version=${curriculumId}`}
         preview={{ action: previewSubjectsCsv, render: (summary) => <ImportSummary summary={summary} /> }}
@@ -22,8 +22,8 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
         <FileInput
           id="import-curriculum-file"
           label="File"
-          accept=".csv,.xls"
-          hint="CSV or .xls. Columns: code, title, units, year level, semester, prerequisites (separate several with “;”)."
+          accept=".xlsx,.xls,.csv"
+          hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester, prerequisites (separate several with “;”)."
         />
         <Alert tone="warning">
           Subjects that aren’t in the file are removed, and prerequisites are replaced with the ones in the file.

@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { logCurriculumChange } from "../../../lib/queries/curriculumHistory";
+import { readTableFile } from "../../../lib/domain/import/tableFile";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
 import type { ImportResult, PreviewResult } from "../../../components/ImportDialog";
 import {
-  parseSubjectsCsv,
+  parseSubjectRows,
   planCurriculumImport,
   type CurriculumImportPlan,
   type CurriculumImportSummary,
@@ -420,7 +421,9 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
     return { error: "Please choose a file." };
   }
 
-  const parsed = parseSubjectsCsv(await file.text());
+  const table = await readTableFile(new Uint8Array(await file.arrayBuffer()));
+  if ("error" in table) return { error: table.error };
+  const parsed = parseSubjectRows(table.rows);
   if ("error" in parsed) return { error: parsed.error };
 
   const supabase = await createServerClientForUser();

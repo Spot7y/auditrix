@@ -76,12 +76,13 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Versions per program by effective year (e.g. BSCpE 2019, 2023); a new version can copy an existing one.
 - Subjects (code, title, units, year level, semester including **midyear**) and requirements: prerequisite,
   co-requisite, year standing, "all subjects completed".
-- **Import** from CSV or .xls, with a **preview** of what will be added, changed or removed before saving.
+- **Import** from Excel (.xlsx or .xls) or CSV, with a **preview** of what will be added, changed or removed before saving.
 - **Export** to CSV or PDF.
 - A **change history** per version (who changed what, when).
 
 ### 2.4 Students
-- Register one at a time, or **import** a CSV or .xls file (the template, or the KSU-MIS "Export to Excel" file).
+- Register one at a time, or **import** an Excel (.xlsx or .xls) or CSV file (the template, or the KSU-MIS "Export to
+  Excel" file).
   The student template uses the KSU-MIS layout.
 - Edit ID number and name; ID numbers are validated (e.g. 24-113792).
 - **Shifting:** the releasing chairperson files a shift request; the receiving program's chairperson accepts the
@@ -211,6 +212,7 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-09-29/30 — automatic year levels (adviser's decision), KSU-MIS-style student template, .xls support for both
   imports.
 - 2026-10-06 — protection against an earlier-term grade replacing a later one; password checklist.
+- 2026-10-08 — both imports read Excel workbooks (.xlsx); the development "N" indicator hidden.
 
 ---
 
@@ -247,7 +249,7 @@ are the whole page). They were taken from a local copy of the system with **samp
 | `06-edit-student-year-level` | Year level: automatic or set by hand, with its history |
 | `07-grade-save-confirmation` | Confirmation before saving a corrected grade |
 | `08-earlier-term-warning` (`08a` = the row note) | Warning before an earlier-term grade replaces a later one |
-| `09-import-students-dialog` | Importing students from CSV or the KSU-MIS .xls |
+| `09-import-students-dialog` | Importing students from Excel, CSV or the KSU-MIS .xls |
 | `10-student-audit` | A regular student's audit (statuses, terms, year level) |
 | `11-student-audit-violation` | A student with a subject taken out of order |
 | `12-shift-in` | Accepting a shifting student |
@@ -272,7 +274,7 @@ Full list of screens worth showing:
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 149, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 154, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |
@@ -280,7 +282,7 @@ Full list of screens worth showing:
 | Year level & standing | Operations Manual thresholds (25 / >50 / 75%); finishing earlier years; only grades before the current semester; failed and out-of-order subjects excluded; registered level and chairperson override; year standing as of the term taken; "please verify" |
 | Regular/irregular | full load, back subjects on top, already passed, missing subjects, failed earlier, graded in the current term, not determined (no enrollment, no semester set, nothing prescribed) |
 | Grade entry | KSU grade values; rejected rows with reasons; same-term violations in any row order; entry order doesn't matter; violations survive re-saving; INC completion and its term; earlier-term protection and confirmed correction; malformed terms |
-| Imports | curriculum CSV/.xls parsing and the import preview plan; reading CSV, KSU-MIS .xls and Excel re-saved .xls; student template import |
+| Imports | curriculum CSV/.xls parsing and the import preview plan; reading CSV, Excel workbooks (.xlsx), KSU-MIS .xls and Excel re-saved .xls; old Excel 97-2003 and damaged files; student template and .xlsx import |
 | Other rules | subject-code matching, student ID format, search terms, password policy (and checklist agreement) |
 | Server actions & permissions | registering/importing/editing students (ID validation); dean/chairperson permission checks for reassigning chairpersons, creating programs and accepting shift-ins |
 
@@ -288,7 +290,7 @@ Full list of screens worth showing:
 system (PostgreSQL + the app) with sample CEIT data, logging in as dean and chairpersons and clicking through each
 feature: violations and their reasons, INC completion, the out-of-order warning after saving, setting the current
 semester, automatic year levels moving up with grades and semesters, chairperson overrides, regular/irregular
-counts, .xls imports, the earlier-term warning and the password checklist. All scenarios passed after fixes.
+counts, .xls and .xlsx imports, the earlier-term warning and the password checklist. All scenarios passed after fixes.
 
 **Not done yet** (don't report results for these): user acceptance testing with actual chairpersons/deans, an
 evaluation questionnaire (e.g. ISO 25010), and testing on a hosted (online) deployment. The system currently runs
@@ -304,7 +306,8 @@ locally.
 - Year levels and year standing are only as accurate as the grades entered; older grades of existing students
   should be encoded.
 - No **bulk grade import** yet; grades are entered student by student.
-- Real Excel files (.xlsx, Excel 97-2003 .xls) aren't read; CSV and the web-page .xls (KSU-MIS export / templates) are.
+- Files in the old Excel 97-2003 format aren't read (the system asks for them to be saved as .xlsx or CSV); Excel
+  workbooks (.xlsx), CSV and the web-page .xls (KSU-MIS export / templates) are.
 - No student-facing access and no printable student evaluation yet.
 - Not yet connected to KSU-MIS or the Registrar (the system has no access to them); data is entered or imported.
 - Possible future features: suggested load for next semester (preventing violations before enrollment), printable
@@ -323,7 +326,7 @@ locally.
 | `lib/domain/enrollmentStatus.ts` | Regular / irregular |
 | `lib/domain/import/GradeEntryService.ts` | Saving grades, INC completion, earlier-term protection |
 | `lib/domain/import/GradeValidator.ts` | KSU grade values |
-| `lib/domain/import/tableFile.ts`, `curriculumImport.ts` | Reading CSV/.xls, curriculum import plan |
+| `lib/domain/import/tableFile.ts`, `curriculumImport.ts` | Reading Excel/CSV/.xls, curriculum import plan |
 | `lib/domain/passwordPolicy.ts` | Password rules |
 | `app/(dashboard)/…` | Pages and server actions |
 | `supabase/migrations/` | Database schema, security policies, functions |

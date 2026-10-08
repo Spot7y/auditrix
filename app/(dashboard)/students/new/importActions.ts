@@ -5,7 +5,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import type { ImportResult } from "../../../../components/ImportDialog";
 import { isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
-import { isHtmlTable, readTable } from "../../../../lib/domain/import/tableFile";
+import { readTableFile } from "../../../../lib/domain/import/tableFile";
 
 export async function importStudentsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const staff = await getCurrentStaff();
@@ -23,15 +23,15 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
     return { error: "Please choose a file." };
   }
 
-  const text = await file.text();
-
   type ParsedStudent = { id: string; name: string; yearLevel: number };
   const parsedStudents: ParsedStudent[] = [];
   const warnings: string[] = [];
 
-  const rows = readTable(text);
+  const table = await readTableFile(new Uint8Array(await file.arrayBuffer()));
+  if ("error" in table) return { error: table.error };
+  const { rows } = table;
   if (rows.length < 2) {
-    return { error: isHtmlTable(text) ? "Could not find a data table in this file." : "File appears to be empty." };
+    return { error: table.kind === "html" ? "Could not find a data table in this file." : "File appears to be empty." };
   }
   const [headers, ...dataRows] = rows;
 

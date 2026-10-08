@@ -85,7 +85,7 @@ export default async function NewStudentPage() {
       <Card className="mt-6">
         <CardHeader
           title="Import a class list"
-          description="Upload a CSV, or the “Export to Excel” file from KSU-MIS, to register many students at once."
+          description="Upload an Excel or CSV file, or the “Export to Excel” file from KSU-MIS, to register many students at once."
         />
         <CardBody>
           <ImportStudentsModal versions={versions?.versions ?? []} />

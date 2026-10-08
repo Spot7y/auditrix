@@ -129,7 +129,7 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
           <EmptyState
             icon={BookOpen}
             title="No subjects in this version"
-            description="Add subjects one by one or import the whole curriculum from a CSV or .xls file."
+            description="Add subjects one by one or import the whole curriculum from an Excel or CSV file."
             action={<LinkButton href={`/curriculum/new?curriculumId=${data.curriculumId}`}>Add subjects</LinkButton>}
           />
         </Card>
