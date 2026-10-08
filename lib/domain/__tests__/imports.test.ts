@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { findMatchingCode, normalizeCode } from "../import/codeMatching";
 import { parseSubjectsCsv, planCurriculumImport, type ExistingSubject } from "../import/curriculumImport";
 import { isValidStudentId, normalizeStudentId } from "../studentId";
@@ -64,6 +65,21 @@ describe("curriculum CSV parsing", () => {
         },
       ],
     });
+  });
+
+  it("reads S as the midyear, and 3 from older files", () => {
+    const result = parseSubjectsCsv([header, "CC 101,Intro,3,1,S,", "CC 102,Prog,3,1,s,", "CC 103,HCI,3,1,3,", "CC 104,X,3,1,4,"].join("\n"));
+    assert.ok("subjects" in result);
+    assert.deepEqual(result.subjects.map((s) => [s.code, s.semester]), [["CC 101", 3], ["CC 102", 3], ["CC 103", 3]]);
+    assert.deepEqual(result.warnings, ["Row 5: missing or invalid data, skipped."]);
+  });
+
+  it("reads the downloadable template as it is", () => {
+    const template = readFileSync(new URL("../../../public/curriculum-import-template.csv", import.meta.url), "utf8");
+    const result = parseSubjectsCsv(template);
+    assert.ok("subjects" in result);
+    assert.deepEqual(result.warnings, []);
+    assert.deepEqual(result.subjects.find((s) => s.code === "CC 103")?.semester, 3);
   });
 
   it("skips unreadable and repeated rows with a note", () => {

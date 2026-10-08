@@ -71,7 +71,8 @@ export async function GET(request: Request) {
         csvField(s.title),
         String(s.units),
         String(s.year_level),
-        String(s.semester),
+        // Midyear is written S, as on KSU records.
+        s.semester === 3 ? "S" : String(s.semester),
         csvField(requirementText),
       ].join(",")
     );

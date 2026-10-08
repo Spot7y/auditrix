@@ -57,6 +57,16 @@ export interface CurriculumImportSummary {
   keptWithGrades: string[];
 }
 
+/** 1, 2, or S for the midyear (3 is still read, from older files). */
+function parseSemester(raw: string | undefined): number {
+  const value = (raw ?? "").trim().toUpperCase();
+  if (value === "S" || value === "3" || value === "MIDYEAR") return 3;
+  if (value === "1" || value === "2") return Number(value);
+  return NaN;
+}
+
+const semesterLabel = (semester: number) => (semester === 3 ? "S" : String(semester));
+
 export function parseRequirementToken(raw: string): ParsedRequirement | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
@@ -78,7 +88,8 @@ export function parseSubjectsCsv(text: string): ParsedSubjects {
 
 /**
  * Reads the subjects from a curriculum file's rows, header first.
- * Columns: code, title, units, year level, semester, prerequisites. Rows that
+ * Columns: code, title, units, year level, semester (1, 2 or S for the
+ * midyear), prerequisites. Rows that
  * can't be read become warnings; rows with neither a code nor a title (e.g.
  * the template's notes) are skipped quietly.
  */
@@ -96,7 +107,7 @@ export function parseSubjectRows(rows: string[][]): ParsedSubjects {
     const title = (rawTitle ?? "").trim();
     const units = Number(rawUnits);
     const yearLevel = Number(rawYear);
-    const semester = Number(rawSemester);
+    const semester = parseSemester(rawSemester);
 
     if (!code && !title) continue;
     if (!code || !title || Number.isNaN(units) || Number.isNaN(yearLevel) || Number.isNaN(semester)) {
@@ -187,7 +198,9 @@ export function planCurriculumImport(
     if (current.title !== s.title) changes.push(`title "${current.title}" → "${s.title}"`);
     if (Number(current.units) !== s.units) changes.push(`units ${current.units} → ${s.units}`);
     if (current.year_level !== s.yearLevel) changes.push(`year ${current.year_level} → ${s.yearLevel}`);
-    if (current.semester !== s.semester) changes.push(`semester ${current.semester} → ${s.semester}`);
+    if (current.semester !== s.semester) {
+      changes.push(`semester ${semesterLabel(current.semester)} → ${semesterLabel(s.semester)}`);
+    }
     const before = [...currentRequirements].sort().join(", ");
     const after = [...newRequirements].sort().join(", ");
     if (before !== after) changes.push(`prerequisites ${before || "none"} → ${after || "none"}`);
