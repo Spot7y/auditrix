@@ -117,6 +117,11 @@ Requirements: Node.js 20.9 or newer (22.3+ to run every test) and a Supabase pro
    npm run dev
    ```
 
+For a presentation, `npx tsx scripts/seed-demo.ts` fills each year level of every program with an uploaded curriculum
+up to 10 students and gives them grades up to the current semester, including a few that show a failed subject, an
+INC, a retake, a subject taken out of order and an irregular load. Students that already have grades are left alone.
+It only shows what it would do; add `--apply` to do it, and remove it all again later with `--remove --apply`.
+
 Staff accounts are Supabase Auth users with a matching row in the `staff` table. Deans create chairperson accounts
 from the app; the first dean account is created in Supabase Studio.
 
@@ -130,6 +135,7 @@ from the app; the first dean account is created in Supabase Studio.
 | `npm test`                          | Run the automated tests                                                |
 | `npm run db:save`                   | Save the local database's data to `supabase/seed.sql` for `db reset`   |
 | `npx tsx scripts/seed-bsit.ts`      | Seed the BSIT curriculum and a sample student                          |
+| `npx tsx scripts/seed-demo.ts`      | Demo students and grades for a presentation (see below)                |
 | `npx tsx scripts/check-supabase.ts` | Manual check of grade entry against the real database (uses seed data) |
 
 ## Testing

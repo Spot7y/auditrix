@@ -45,6 +45,64 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
     if (students.length === 0) return records;
 
     const curriculumIds = [...new Set(students.map((s) => s.curriculum_id))];
+    const { maps: curriculumMaps, codeById: idToCode } = await this.loadCurricula(curriculumIds);
+
+    const subjectRecords = new Map<string, SubjectRecord[]>();
+    const history = new Map<string, YearLevelEntry[]>();
+    for (const part of chunks(students.map((s) => s.id))) {
+      const { data: recordRows, error: recordsError } = await this.client
+        .from("subject_records")
+        .select("student_id, subject_id, status, grade, term, resolved_term")
+        .in("student_id", part);
+      if (recordsError) throw recordsError;
+      for (const row of recordRows ?? []) {
+        const list = subjectRecords.get(row.student_id) ?? [];
+        list.push({
+          subjectCode: idToCode.get(row.subject_id) ?? "UNKNOWN",
+          status: row.status as SubjectRecordStatus,
+          grade: row.grade,
+          term: row.term,
+          resolvedTerm: row.resolved_term,
+        });
+        subjectRecords.set(row.student_id, list);
+      }
+
+      const { data: yearLevelRows, error: yearLevelsError } = await this.client
+        .from("student_year_levels")
+        .select("student_id, effective_term, year_level, source")
+        .in("student_id", part);
+      if (yearLevelsError) throw yearLevelsError;
+      for (const row of yearLevelRows ?? []) {
+        const list = history.get(row.student_id) ?? [];
+        list.push({ term: row.effective_term, yearLevel: row.year_level, source: row.source });
+        history.set(row.student_id, list);
+      }
+    }
+
+    for (const student of students) {
+      const curriculum = curriculumMaps.get(student.curriculum_id);
+      if (!curriculum) continue;
+      records.set(
+        student.id,
+        new AcademicRecord(
+          student.id,
+          curriculum,
+          student.nominal_year_level,
+          subjectRecords.get(student.id) ?? [],
+          history.get(student.id) ?? []
+        )
+      );
+    }
+    return records;
+  }
+
+  /**
+   * Curriculum versions with their subjects (in the curriculum page's order)
+   * and requirements, by curriculum ID, plus each subject's code by its ID.
+   */
+  async loadCurricula(
+    curriculumIds: string[]
+  ): Promise<{ maps: Map<string, CurriculumMap>; codeById: Map<string, string> }> {
     const { data: curricula, error: curriculaError } = await this.client
       .from("curricula")
       .select("id, program")
@@ -103,53 +161,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       curriculumMaps.set(curriculum.id, new CurriculumMap(curriculum.program, subjects));
     }
 
-    const subjectRecords = new Map<string, SubjectRecord[]>();
-    const history = new Map<string, YearLevelEntry[]>();
-    for (const part of chunks(students.map((s) => s.id))) {
-      const { data: recordRows, error: recordsError } = await this.client
-        .from("subject_records")
-        .select("student_id, subject_id, status, grade, term, resolved_term")
-        .in("student_id", part);
-      if (recordsError) throw recordsError;
-      for (const row of recordRows ?? []) {
-        const list = subjectRecords.get(row.student_id) ?? [];
-        list.push({
-          subjectCode: idToCode.get(row.subject_id) ?? "UNKNOWN",
-          status: row.status as SubjectRecordStatus,
-          grade: row.grade,
-          term: row.term,
-          resolvedTerm: row.resolved_term,
-        });
-        subjectRecords.set(row.student_id, list);
-      }
-
-      const { data: yearLevelRows, error: yearLevelsError } = await this.client
-        .from("student_year_levels")
-        .select("student_id, effective_term, year_level, source")
-        .in("student_id", part);
-      if (yearLevelsError) throw yearLevelsError;
-      for (const row of yearLevelRows ?? []) {
-        const list = history.get(row.student_id) ?? [];
-        list.push({ term: row.effective_term, yearLevel: row.year_level, source: row.source });
-        history.set(row.student_id, list);
-      }
-    }
-
-    for (const student of students) {
-      const curriculum = curriculumMaps.get(student.curriculum_id);
-      if (!curriculum) continue;
-      records.set(
-        student.id,
-        new AcademicRecord(
-          student.id,
-          curriculum,
-          student.nominal_year_level,
-          subjectRecords.get(student.id) ?? [],
-          history.get(student.id) ?? []
-        )
-      );
-    }
-    return records;
+    return { maps: curriculumMaps, codeById: idToCode };
   }
 
   async upsertSubjectRecord(studentId: string, record: SubjectRecord, performedBy: string): Promise<void> {
