@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "../app/login/actions";
+import IdleLogout from "./IdleLogout";
 import type { CurrentStaff } from "../lib/queries/staff";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; roles?: CurrentStaff["role"][] };
@@ -160,6 +161,7 @@ export default function AppShell({ staff, children }: { staff: CurrentStaff; chi
 
   return (
     <div className="min-h-screen lg:pl-64">
+      <IdleLogout />
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-line bg-white lg:block">
         <SidebarContent staff={staff} />
       </aside>

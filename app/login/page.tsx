@@ -8,8 +8,19 @@ import SubmitButton from "../../components/ui/SubmitButton";
 
 export const metadata: Metadata = { title: "Log in" };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+// The only messages this page shows: links can pass a code, never the text.
+const ERRORS: Record<string, string> = {
+  credentials: "Incorrect email or password.",
+  "too-many": "Too many login attempts. Wait a few minutes, then try again.",
+};
+const NOTICES: Record<string, string> = {
+  idle: "You were signed out after 30 minutes without activity. Log in again to continue.",
+};
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; reason?: string }> }) {
+  const params = await searchParams;
+  const error = ERRORS[params.error ?? ""];
+  const notice = NOTICES[params.reason ?? ""];
 
   return (
     <AuthLayout>
@@ -19,6 +30,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       {error && (
         <Alert tone="error" className="mt-6">
           {error}
+        </Alert>
+      )}
+      {notice && !error && (
+        <Alert tone="info" className="mt-6">
+          {notice}
         </Alert>
       )}
 

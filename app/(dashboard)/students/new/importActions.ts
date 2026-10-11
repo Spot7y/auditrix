@@ -6,6 +6,7 @@ import { getCurrentStaff } from "../../../../lib/queries/staff";
 import type { ImportResult } from "../../../../components/ImportDialog";
 import { isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
 import { readTableFile } from "../../../../lib/domain/import/tableFile";
+import { userMessage } from "../../../../lib/userMessage";
 
 export async function importStudentsCsv(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
   const staff = await getCurrentStaff();
@@ -87,7 +88,7 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
     });
 
     if (error) {
-      warnings.push(`${s.name} (${s.id}): ${error.message}`);
+      warnings.push(`${s.name} (${s.id}): ${userMessage(error)}`);
       continue;
     }
 

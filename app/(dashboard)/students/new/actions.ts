@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
+import { userMessage } from "../../../../lib/userMessage";
 
 export async function registerStudent(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -33,7 +34,7 @@ export async function registerStudent(formData: FormData) {
   });
 
   if (error) {
-    const message = error.code === "23505" ? `A student with the ID ${id} is already registered.` : error.message;
+    const message = error.code === "23505" ? `A student with the ID ${id} is already registered.` : userMessage(error);
     redirect(`/students/new?error=${encodeURIComponent(message)}`);
   }
 

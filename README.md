@@ -55,6 +55,38 @@ what each student has completed, can take next, or took out of order.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
   saving grades) ask for confirmation first, and every result is shown as a notification.
 
+## Security
+
+- **Access by role, checked three times.** Every page checks the user's role (a chairperson can't open a dean's
+  page by typing its address, and the other way around), every server action checks it again, and PostgreSQL
+  row-level security limits each chairperson to their program and each dean to their college.
+- **The database keeps the history.** Grade changes are written to the grade logbook by a database trigger, with the
+  signed-in user's name and the server's time; nobody can write, change or delete logbook entries directly. Student
+  movements and curriculum changes are stamped the same way. Grades must be KSU grades that match their status, and
+  terms must look like `25-1` or `26-S`.
+- **Accounts.** Passwords are stored by Supabase Auth as bcrypt hashes and must have 8+ characters with a letter and a
+  number. After 5 wrong passwords an account is blocked for 15 minutes, and users are signed out after 30 minutes
+  without activity (with a minute's warning). New chairpersons must replace their temporary password.
+- **Browser protections.** A Content Security Policy, no framing by other sites (clickjacking), `nosniff`, a strict
+  referrer policy and, in production, HSTS. Technical database errors are logged on the server, not shown.
+- **Locked records.** A dropped or transferred-out student's record can't be changed until it's reopened.
+
+**Running it on a laptop:** the local Supabase listens on the whole network with well-known default keys, and its
+Studio has no password. Before using Auditrix on a shared network (e.g. school Wi-Fi), block those ports from other
+computers. In PowerShell **as Administrator**:
+
+```powershell
+New-NetFirewallRule -DisplayName "Auditrix: block local Supabase from the network" -Direction Inbound -Protocol TCP -LocalPort 54321-54324 -Action Block
+```
+
+Auditrix itself keeps working on the laptop (`localhost`). To let other devices use it, prefer
+`npm run dev:https` (encrypted, with a self-signed certificate the browser will warn about) over plain `npm run dev`,
+which sends passwords and grades over the network unencrypted. For real use, host it (e.g. Supabase cloud and an HTTPS
+host) with your own keys and a strong database password.
+
+The backup file from `npm run db:save` (`supabase/seed.sql`) holds every record and the password hashes; keep it
+private. `.env.local` holds the secret key, which bypasses all of the above; never share it.
+
 ## Roles
 
 | Role        | Can                                                                                              |

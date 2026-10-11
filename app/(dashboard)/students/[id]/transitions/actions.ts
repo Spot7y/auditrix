@@ -6,6 +6,7 @@ import { createServerClientForUser } from "../../../../../lib/domain/supabase/se
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { LOCK_LABEL } from "../../../../../lib/format";
+import { userMessage } from "../../../../../lib/userMessage";
 
 export async function recordDropped(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -26,7 +27,7 @@ export async function recordDropped(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
@@ -53,7 +54,7 @@ export async function recordTransferOut(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
@@ -79,7 +80,7 @@ export async function recordTransferIn(formData: FormData) {
     to_program: staff!.program,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");
@@ -102,7 +103,7 @@ export async function requestShiftOut(formData: FormData) {
   if (error) {
     const message = error.message.toLowerCase().includes("duplicate") || error.message.toLowerCase().includes("unique")
       ? "This student already has a pending shift request."
-      : error.message;
+      : userMessage(error);
     redirect(`/students/${studentId}?error=${encodeURIComponent(message)}`);
   }
 
@@ -119,7 +120,7 @@ export async function cancelShiftRequest(formData: FormData) {
 
   const supabase = await createServerClientForUser();
   const { error } = await supabase.from("shift_requests").delete().eq("student_id", studentId);
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   redirect(`/students/${studentId}?success=${encodeURIComponent("Shift request cancelled.")}`);
@@ -157,7 +158,7 @@ export async function reopenRecord(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");

@@ -5,6 +5,7 @@ import { createServerClientForUser } from "../../../lib/domain/supabase/serverCl
 import { createAdminClient } from "../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { passwordProblem } from "../../../lib/domain/passwordPolicy";
+import { userMessage } from "../../../lib/userMessage";
 
 export async function updateName(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -15,7 +16,7 @@ export async function updateName(formData: FormData) {
 
   const supabase = await createServerClientForUser();
   const { data: updated, error } = await supabase.from("staff").update({ name }).eq("id", staff!.id).select("id");
-  if (error) redirect(`/settings?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/settings?error=${encodeURIComponent(userMessage(error))}`);
   // Row-level security turns a disallowed update into "0 rows changed", not an error.
   if (!updated || updated.length === 0) {
     redirect(`/settings?error=${encodeURIComponent("Your name couldn't be saved. Ask your administrator to apply the latest database update.")}`);
@@ -55,7 +56,7 @@ export async function updatePassword(formData: FormData) {
   }
 
   const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-  if (updateError) redirect(`/settings?error=${encodeURIComponent(updateError.message)}`);
+  if (updateError) redirect(`/settings?error=${encodeURIComponent(userMessage(updateError))}`);
 
   redirect("/settings?success=" + encodeURIComponent("Password updated."));
 }

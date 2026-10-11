@@ -180,7 +180,11 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
     return { maps: curriculumMaps, codeById: idToCode };
   }
 
-  async upsertSubjectRecord(studentId: string, record: SubjectRecord, performedBy: string): Promise<void> {
+  /**
+   * Saves a subject's grade. The database writes the grade logbook entry
+   * itself (who, from the login, and when), so the name passed in isn’t needed.
+   */
+  async upsertSubjectRecord(studentId: string, record: SubjectRecord): Promise<void> {
     const { data: student, error: studentError } = await this.client
       .from("students")
       .select("curriculum_id")
@@ -196,13 +200,6 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       .single();
     if (subjectError) throw subjectError;
 
-    const { data: existing } = await this.client
-      .from("subject_records")
-      .select("status, grade, term, resolved_term")
-      .eq("student_id", studentId)
-      .eq("subject_id", subject.id)
-      .maybeSingle();
-
     const { error: upsertError } = await this.client
       .from("subject_records")
       .upsert(
@@ -217,23 +214,5 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
         { onConflict: "student_id,subject_id" }
       );
     if (upsertError) throw upsertError;
-
-    const { error: logError } = await this.client.from("grade_audit_log").insert({
-      student_id: studentId,
-      subject_id: subject.id,
-      old_status: existing?.status ?? null,
-      old_grade: existing?.grade ?? null,
-      old_term: existing?.term ?? null,
-      old_resolved_term: existing?.resolved_term ?? null,
-      new_status: record.status,
-      new_grade: record.grade,
-      new_term: record.term,
-      new_resolved_term: record.resolvedTerm ?? null,
-      changed_by: performedBy,
-      // The app's clock rather than the database's: a local database in
-      // Docker can run behind after the computer sleeps.
-      changed_at: new Date().toISOString(),
-    });
-    if (logError) throw logError;
   }
 }

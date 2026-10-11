@@ -231,6 +231,34 @@ the order grades are entered, and all five cases above are covered by automated 
   student can't take yet; student pages follow the curriculum's subject order.
 - 2026-10-11 — dropped/transferred-out records locked (with reopening); student list filters; dean's program table and
   tabs; grade logbook times taken from the app's clock; large tables read a page at a time; demo data script.
+- 2026-10-12 — security: role check on every page, database-written audit trail, grade validation in the database,
+  Next.js 16.4.0, security headers, idle sign-out, login blocking, plain error messages.
+
+---
+
+## 6b. Security (what protects the data)
+
+| Threat | Protection in Auditrix |
+| --- | --- |
+| Opening another role's page by address (broken access control) | Every page checks the role; server actions check it again; row-level security in the database. Tested: a chairperson opening a dean's page (and the reverse) is sent back to their dashboard. |
+| Seeing another program's students (IDOR) | Row-level security: a chairperson opening another program's student gets "Page not found". |
+| Changing grades without a trace, or faking the logbook | A database trigger writes every grade change to the logbook with the signed-in user's name and the server's time; direct writes, edits and deletes of the logbook are refused. Tested by connecting to the database directly as a chairperson. |
+| Invalid grades (e.g. 4.0, "Passed" with 5.0) | Database check constraints accept only KSU grades that match their status, and valid terms. |
+| Privilege escalation (a chairperson making themselves dean) | Staff can only change their own name; role, program and college can't be changed by users. |
+| SQL injection | No SQL is built from user input; all access goes through Supabase's parameterized API; search input is stripped of filter syntax. |
+| Cross-site scripting (XSS) | React escapes all output; no raw HTML is rendered; Content Security Policy. |
+| Cross-site request forgery (CSRF) | Next.js server actions only accept requests from Auditrix's own pages. |
+| Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY`. |
+| Password guessing | 8+ characters with a letter and a number (also enforced by Supabase); an account is blocked for 15 minutes after 5 wrong passwords; Supabase's own rate limit. |
+| Unattended computer | Signed out after 30 minutes without activity, with a warning. |
+| Stolen database / backups | Passwords stored only as bcrypt hashes; the backup file is kept out of Git. |
+| Man-in-the-middle | HTTPS when hosted (with HSTS); `npm run dev:https` for demos over a network. |
+| Known vulnerabilities in libraries | Next.js upgraded to 16.4.0 (16.2.12 had critical advisories); `npm audit` shows 2 moderate, unexploitable in Auditrix. |
+| Revealing system details in errors | Technical errors are logged on the server; users see plain messages. |
+
+**Limitation (for Chapter 5):** in the local setup, Supabase listens on the network with default keys and a
+password-less Studio; the README gives a firewall rule to block it. A real deployment needs hosting with its own
+keys, HTTPS and backups. Login blocking is kept in the server's memory (reset on restart; one server only).
 
 ---
 
@@ -248,7 +276,7 @@ Security: row-level security on every table, scoped by role (chairperson → own
 Operations that must all succeed together (creating a program with its chairperson, replacing a chairperson,
 accepting a shift) run as single database transactions.
 
-29 migrations in `supabase/migrations/` build the schema step by step. The app reads large tables a page at a time,
+30 migrations in `supabase/migrations/` build the schema step by step. The app reads large tables a page at a time,
 since the Supabase API returns at most 1,000 rows per request.
 
 ---
@@ -295,7 +323,7 @@ Full list of screens worth showing:
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 156, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 163, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |

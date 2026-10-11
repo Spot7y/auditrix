@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { describeTerm, isValidTerm } from "../../../lib/domain/Term";
+import { userMessage } from "../../../lib/userMessage";
 
 function fail(message: string): never {
   redirect(`/home?error=${encodeURIComponent(message)}`);
@@ -27,7 +28,7 @@ export async function setCurrentTerm(formData: FormData) {
       { college_id: staff.collegeId, current_term: term, set_by: staff.name, set_at: new Date().toISOString() },
       { onConflict: "college_id" }
     );
-  if (error) fail(error.message);
+  if (error) fail(userMessage(error));
 
   revalidatePath("/", "layout");
   redirect(`/home?success=${encodeURIComponent(`The current semester is now ${describeTerm(term)} (${term}).`)}`);

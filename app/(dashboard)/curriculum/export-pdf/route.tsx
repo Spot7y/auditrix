@@ -2,6 +2,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import CurriculumPdfDocument from "./CurriculumPdfDocument";
+import { userMessage } from "../../../../lib/userMessage";
 
 export const runtime = "nodejs";
 
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     .order("year_level")
     .order("semester")
     .order("created_at");
-  if (subjectsError) return new Response(subjectsError.message, { status: 500 });
+  if (subjectsError) return new Response(userMessage(subjectsError, "Could not export the curriculum."), { status: 500 });
 
   const typedSubjectRows = (subjectRows ?? []) as Array<{
     id: string;
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
     .from("requirements")
     .select("subject_id, type, required_subject_id, required_year_level")
     .in("subject_id", subjectIds);
-  if (requirementsError) return new Response(requirementsError.message, { status: 500 });
+  if (requirementsError) return new Response(userMessage(requirementsError, "Could not export the curriculum."), { status: 500 });
 
   const requirementsBySubject = new Map<string, string[]>();
   for (const r of requirementRows ?? []) {

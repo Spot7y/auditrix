@@ -1,5 +1,6 @@
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import { userMessage } from "../../../../lib/userMessage";
 
 function csvField(value: string): string {
   if (/[",\n]/.test(value)) {
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
     .order("year_level")
     .order("semester")
     .order("created_at");
-  if (subjectsError) return new Response(subjectsError.message, { status: 500 });
+  if (subjectsError) return new Response(userMessage(subjectsError, "Could not export the curriculum."), { status: 500 });
 
   const idToCode = new Map((subjectRows ?? []).map((s) => [s.id, s.code as string]));
   const subjectIds = (subjectRows ?? []).map((s) => s.id);
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
     .from("requirements")
     .select("subject_id, type, required_subject_id, required_year_level")
     .in("subject_id", subjectIds);
-  if (requirementsError) return new Response(requirementsError.message, { status: 500 });
+  if (requirementsError) return new Response(userMessage(requirementsError, "Could not export the curriculum."), { status: 500 });
 
   const requirementsBySubject = new Map<string, string[]>();
   for (const r of requirementRows ?? []) {

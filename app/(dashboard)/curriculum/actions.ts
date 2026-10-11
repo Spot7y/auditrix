@@ -16,6 +16,7 @@ import {
   type ExistingRequirement,
   type ExistingSubject,
 } from "../../../lib/domain/import/curriculumImport";
+import { userMessage } from "../../../lib/userMessage";
 
 const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
 
@@ -47,14 +48,14 @@ export async function createCurriculumVersion(formData: FormData) {
     .insert({ program: staff.program, effective_year: effectiveYear })
     .select()
     .single();
-  if (newCurriculumError) redirect(`/curriculum?error=${encodeURIComponent(newCurriculumError.message)}`);
+  if (newCurriculumError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(newCurriculumError))}`);
 
   if (sourceCurriculum) {
     const { data: sourceSubjects, error: subjectsError } = await supabase
       .from("subjects")
       .select("id, code, title, units, year_level, semester")
       .eq("curriculum_id", sourceCurriculum.id);
-    if (subjectsError) redirect(`/curriculum?error=${encodeURIComponent(subjectsError.message)}`);
+    if (subjectsError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(subjectsError))}`);
 
     const oldToNewSubjectId = new Map<string, string>();
     for (const s of sourceSubjects ?? []) {
@@ -70,7 +71,7 @@ export async function createCurriculumVersion(formData: FormData) {
         })
         .select()
         .single();
-      if (insertError) redirect(`/curriculum?error=${encodeURIComponent(insertError.message)}`);
+      if (insertError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(insertError))}`);
       oldToNewSubjectId.set(s.id as string, newSubject!.id as string);
     }
 
@@ -80,7 +81,7 @@ export async function createCurriculumVersion(formData: FormData) {
         .from("requirements")
         .select("subject_id, type, required_subject_id, required_year_level")
         .in("subject_id", oldSubjectIds);
-      if (reqFetchError) redirect(`/curriculum?error=${encodeURIComponent(reqFetchError.message)}`);
+      if (reqFetchError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(reqFetchError))}`);
 
       for (const r of sourceRequirements ?? []) {
         const newSubjectId = oldToNewSubjectId.get(r.subject_id as string);
@@ -94,7 +95,7 @@ export async function createCurriculumVersion(formData: FormData) {
           required_subject_id: newRequiredSubjectId ?? null,
           required_year_level: r.required_year_level,
         });
-        if (reqInsertError) redirect(`/curriculum?error=${encodeURIComponent(reqInsertError.message)}`);
+        if (reqInsertError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(reqInsertError))}`);
       }
     }
   }
@@ -133,7 +134,7 @@ export async function createSubject(formData: FormData) {
     semester,
   });
   if (error) {
-    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : error.message;
+    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : userMessage(error);
     redirect(`/curriculum/new?curriculumId=${curriculumId}&error=${encodeURIComponent(message)}`);
   }
 
@@ -171,7 +172,7 @@ export async function updateSubject(formData: FormData) {
     .update({ code, title, units, year_level: yearLevel, semester })
     .eq("id", subjectId);
   if (error) {
-    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : error.message;
+    const message = error.code === "23505" ? `${code} is already in this curriculum version.` : userMessage(error);
     redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(message)}`);
   }
 
@@ -253,11 +254,11 @@ export async function addRequirement(formData: FormData) {
     const { error } = await supabase
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_year_level: requiredYearLevel });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
     added = `year ${requiredYearLevel} standing`;
   } else if (type === "COMPLETION") {
     const { error } = await supabase.from("requirements").insert({ subject_id: subjectId, type });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
     added = "all subjects completed";
   } else {
     const requiredCodeRaw = String(formData.get("requiredSubjectCode") ?? "");
@@ -277,7 +278,7 @@ export async function addRequirement(formData: FormData) {
     const { error } = await supabase
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_subject_id: matched!.id });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
     added = type === "COREQUISITE" ? `${matched!.code} (corequisite)` : matched!.code;
   }
 
@@ -308,7 +309,7 @@ export async function deleteRequirement(formData: FormData) {
     .maybeSingle();
 
   const { error } = await supabase.from("requirements").delete().eq("id", requirementId);
-  if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
 
   const subject = one(requirement?.subject);
   if (requirement && subject) {
@@ -432,7 +433,7 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
     .from("subjects")
     .select("id, code, title, units, year_level, semester")
     .eq("curriculum_id", curriculumId);
-  if (existingError) return { error: existingError.message };
+  if (existingError) return { error: userMessage(existingError) };
   const existing = (existingRows ?? []) as ExistingSubject[];
 
   let existingRequirements: ExistingRequirement[] = [];
@@ -444,7 +445,7 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
         "subject_id",
         existing.map((s) => s.id)
       );
-    if (error) return { error: error.message };
+    if (error) return { error: userMessage(error) };
     existingRequirements = (data ?? []) as ExistingRequirement[];
   }
 
@@ -454,7 +455,7 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
   const gradedSubjectIds = new Set<string>();
   if (notInFileIds.length > 0) {
     const { data, error } = await supabase.from("subject_records").select("subject_id").in("subject_id", notInFileIds);
-    if (error) return { error: error.message };
+    if (error) return { error: userMessage(error) };
     for (const r of data ?? []) gradedSubjectIds.add(r.subject_id as string);
   }
 
@@ -514,7 +515,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
       .select()
       .single();
     if (error) {
-      warnings.push(`${s.code}: ${error.message}`);
+      warnings.push(`${s.code}: ${userMessage(error)}`);
       continue;
     }
     codeToId.set(s.code, data.id);
@@ -528,7 +529,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   if (idsToClear.length > 0) {
     const { error: clearError } = await supabase.from("requirements").delete().in("subject_id", idsToClear);
     if (clearError) {
-      warnings.push(`Could not clear existing requirements before re-import: ${clearError.message}`);
+      warnings.push(`Could not clear existing requirements before re-import: ${userMessage(clearError)}`);
     }
   }
 
@@ -537,7 +538,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   for (const s of plan.removed) {
     const { error: removeError } = await supabase.from("subjects").delete().eq("id", s.id);
     if (removeError) {
-      warnings.push(`Could not remove "${s.code}": ${removeError.message}`);
+      warnings.push(`Could not remove "${s.code}": ${userMessage(removeError)}`);
     } else {
       removedCount++;
       removedCodes.push(s.code);
@@ -559,7 +560,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
           type: "YEAR_STANDING",
           required_year_level: req.level,
         });
-        if (error) warnings.push(`${s.code} (Year ${req.level} standing): ${error.message}`);
+        if (error) warnings.push(`${s.code} (Year ${req.level} standing): ${userMessage(error)}`);
         continue;
       }
 
@@ -571,7 +572,7 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
         type: "PREREQUISITE",
         required_subject_id: matched.id,
       });
-      if (error) warnings.push(`${s.code} → ${req.code}: ${error.message}`);
+      if (error) warnings.push(`${s.code} → ${req.code}: ${userMessage(error)}`);
     }
   }
 
