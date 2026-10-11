@@ -14,6 +14,7 @@ import EmptyState from "../../../components/ui/EmptyState";
 import { getCurrentTerm } from "../../../lib/queries/yearLevels";
 import { describeTerm } from "../../../lib/domain/Term";
 import CurrentTermCard from "./CurrentTermCard";
+import { requireRole } from "../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -214,6 +215,7 @@ function ProgramPicker({ programs, selected }: { programs: string[]; selected: s
 }
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ program?: string }> }) {
+  await requireRole("chairperson", "dean");
   const { program: requested } = await searchParams;
   const staff = await getCurrentStaff();
   const [summaries, transitions, currentTerm] = await Promise.all([

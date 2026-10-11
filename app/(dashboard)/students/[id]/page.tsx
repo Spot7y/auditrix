@@ -17,6 +17,7 @@ import type { EnrollmentStatus } from "../../../../lib/domain/enrollmentStatus";
 import type { YearLevelInfo } from "../../../../lib/domain/yearLevels";
 import { Table, Td, Th, Tr } from "../../../../components/ui/Table";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second semester", 3: "Midyear" };
@@ -81,6 +82,9 @@ function SummaryTile({
 }
 
 export default async function StudentAuditPage({ params }: { params: Promise<{ id: string }> }) {
+  const staff = await requireRole("chairperson", "dean");
+  // Deans can look at a student's audit, but only the chairperson changes it.
+  const isChair = staff.role === "chairperson";
   const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();
@@ -109,12 +113,14 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <LinkButton href="/students" variant="ghost" size="sm" className="-ml-3 text-ink-500">
-          ← All students
+        <LinkButton href={isChair ? "/students" : "/home"} variant="ghost" size="sm" className="-ml-3 text-ink-500">
+          {isChair ? "← All students" : "← Dashboard"}
         </LinkButton>
-        <div className="w-full sm:w-80">
-          <StudentSearchBar placeholder="Find another student…" />
-        </div>
+        {isChair && (
+          <div className="w-full sm:w-80">
+            <StudentSearchBar placeholder="Find another student…" />
+          </div>
+        )}
       </div>
 
       <PageHeader
@@ -133,7 +139,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
         }
         actions={
           <>
-            {!lock && (
+            {isChair && !lock && (
               <LinkButton href={`/students/${id}/edit`} variant="secondary">
                 <Pencil aria-hidden />
                 Edit
@@ -143,11 +149,13 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               <History aria-hidden />
               Grade logbook
             </LinkButton>
-            <LinkButton href={`/students/${id}/transitions`} variant="secondary">
-              <Repeat aria-hidden />
-              Transfer / shift
-            </LinkButton>
-            {!lock && (
+            {isChair && (
+              <LinkButton href={`/students/${id}/transitions`} variant="secondary">
+                <Repeat aria-hidden />
+                Transfer / shift
+              </LinkButton>
+            )}
+            {isChair && !lock && (
               <LinkButton href={`/students/${id}/grades`}>
                 <ClipboardPen aria-hidden />
                 Enter grades
@@ -170,6 +178,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               Grades, details and year level can’t be changed. The audit and grade logbook stay available.
             </p>
           </div>
+          {isChair && (
           <form action={reopenRecord}>
             <input type="hidden" name="studentId" value={id} />
             <ConfirmButton
@@ -182,6 +191,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               Reopen record
             </ConfirmButton>
           </form>
+          )}
         </div>
       )}
 

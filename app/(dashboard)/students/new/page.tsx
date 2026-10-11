@@ -9,10 +9,12 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import { Field, Input, Select } from "../../../../components/ui/Field";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Register student" };
 
 export default async function NewStudentPage() {
+  await requireRole("chairperson");
   const staff = await getCurrentStaff();
   const versions = await getCurriculumVersionsForStaff();
 

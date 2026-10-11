@@ -7,10 +7,12 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Add subject" };
 
 export default async function NewSubjectPage({ searchParams }: { searchParams: Promise<{ curriculumId?: string }> }) {
+  await requireRole("chairperson");
   const { curriculumId } = await searchParams;
   const data = await getCurriculumForStaff(curriculumId);
 

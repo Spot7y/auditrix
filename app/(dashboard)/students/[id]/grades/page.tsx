@@ -5,10 +5,12 @@ import { getStudentGradeEntryData } from "../../../../../lib/queries/students";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
 import PageHeader from "../../../../../components/ui/PageHeader";
 import GradeEntryForm from "./GradeEntryForm";
+import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Enter grades" };
 
 export default async function GradeEntryPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const [data, currentTerm] = await Promise.all([getStudentGradeEntryData(id), getCurrentTerm()]);
   if (!data) notFound();

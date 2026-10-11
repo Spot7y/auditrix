@@ -11,10 +11,12 @@ import { Button } from "../../../../components/ui/Button";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import EmptyState from "../../../../components/ui/EmptyState";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Shift in a student" };
 
 export default async function ShiftInPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
+  await requireRole("chairperson");
   const { id } = await searchParams;
   const staff = await getCurrentStaff();
   const versions = await getCurriculumVersionsForStaff();

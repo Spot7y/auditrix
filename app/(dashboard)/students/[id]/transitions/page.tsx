@@ -9,6 +9,7 @@ import PageHeader from "../../../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../../../components/ui/Card";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
+import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Transfer or shift" };
 
@@ -66,6 +67,7 @@ function ActionCard({
 }
 
 export default async function StudentTransitionsPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();

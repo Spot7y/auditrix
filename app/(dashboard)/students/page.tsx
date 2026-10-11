@@ -10,6 +10,7 @@ import { LinkButton } from "../../../components/ui/Button";
 import { Table, Td, Th, Tr } from "../../../components/ui/Table";
 import EmptyState from "../../../components/ui/EmptyState";
 import StudentFilter from "./StudentFilter";
+import { requireRole } from "../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Students" };
 
@@ -36,6 +37,7 @@ export default async function StudentsPage({
 }: {
   searchParams: Promise<{ q?: string; year?: string; curriculum?: string; status?: string }>;
 }) {
+  await requireRole("chairperson");
   const { q = "", year, curriculum, status } = await searchParams;
   const filters: StudentListFilters = {
     q,

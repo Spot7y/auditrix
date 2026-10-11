@@ -15,6 +15,7 @@ import { LinkButton } from "../../../../../components/ui/Button";
 import { Table, Td, Th, Tr } from "../../../../../components/ui/Table";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import TermFields from "../../../../../components/ui/TermFields";
+import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Edit student" };
 
@@ -27,6 +28,7 @@ const BASIS: Record<YearLevelInfo["basis"], string> = {
 };
 
 export default async function EditStudentPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const [data, currentTerm, history] = await Promise.all([getStudentAudit(id), getCurrentTerm(), getYearLevelHistory(id)]);
   if (!data) notFound();

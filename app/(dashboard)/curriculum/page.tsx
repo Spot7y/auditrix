@@ -17,6 +17,7 @@ import { Badge } from "../../../components/ui/Badge";
 import { Table, Td, Th, Tr } from "../../../components/ui/Table";
 import Alert from "../../../components/ui/Alert";
 import EmptyState from "../../../components/ui/EmptyState";
+import { requireRole } from "../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Curriculum" };
 
@@ -41,6 +42,7 @@ function MoveButton({ action, subjectId, direction }: { action: (f: FormData) =>
 }
 
 export default async function CurriculumPage({ searchParams }: { searchParams: Promise<{ version?: string }> }) {
+  await requireRole("chairperson");
   const { version } = await searchParams;
   const [versions, data] = await Promise.all([getCurriculumVersionsForStaff(), getCurriculumForStaff(version)]);
 
