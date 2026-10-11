@@ -20,7 +20,11 @@ export const TRANSITION_LABEL: Record<string, string> = {
   SHIFTED_IN: "Shifted in",
   SHIFTED_OUT: "Shifted out",
   DROPPED: "Dropped",
+  REOPENED: "Record reopened",
 };
+
+/** Why a student's record is locked. */
+export const LOCK_LABEL: Record<string, string> = { DROPPED: "Dropped", TRANSFERRED_OUT: "Transferred out" };
 
 /** "1 subject", "3 subjects". */
 export function plural(count: number, word: string, pluralWord = `${word}s`): string {

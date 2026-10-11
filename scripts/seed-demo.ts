@@ -14,11 +14,13 @@
 //
 // Everything is recorded as "Demo data" (in the grade logbook and the new
 // students' year-level history), which is how --remove finds it again.
+// Dropped and transferred-out students are skipped; their records are locked.
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "../lib/domain/supabase/adminClient";
+import { fetchAll } from "../lib/domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../lib/domain/import/SupabaseAcademicRecordRepository";
 import { AcademicRecord } from "../lib/domain/AcademicRecord";
 import { AuditEngine } from "../lib/domain/AuditEngine";
@@ -95,14 +97,9 @@ function gradeDate(term: string, offsetDays: number): string {
   return new Date(Math.min(date.getTime(), Date.now())).toISOString();
 }
 
-async function selectAll<T>(client: SupabaseClient, table: string, columns: string): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await client.from(table).select(columns).range(from, from + 999);
-    if (error) throw error;
-    rows.push(...((data ?? []) as T[]));
-    if (!data || data.length < 1000) return rows;
-  }
+/** Every row of a table, a page at a time in a stable order. */
+function selectAll<T>(client: SupabaseClient, table: string, columns: string, orderBy = "id"): Promise<T[]> {
+  return fetchAll<T>((from, to) => client.from(table).select(columns).order(orderBy).range(from, to) as unknown as PromiseLike<{ data: T[] | null; error: unknown }>);
 }
 
 async function insertAll(client: SupabaseClient, table: string, rows: object[]) {
@@ -301,11 +298,11 @@ async function main() {
     "id, program, effective_year, college_id"
   );
   const subjectRows = await selectAll<{ id: string; curriculum_id: string; code: string }>(client, "subjects", "id, curriculum_id, code");
-  const terms = await selectAll<{ college_id: string; current_term: string }>(client, "college_terms", "college_id, current_term");
-  const students = await selectAll<{ id: string; name: string; curriculum_id: string; nominal_year_level: number }>(
+  const terms = await selectAll<{ college_id: string; current_term: string }>(client, "college_terms", "college_id, current_term", "college_id");
+  const students = await selectAll<{ id: string; name: string; curriculum_id: string; nominal_year_level: number; record_status: string }>(
     client,
     "students",
-    "id, name, curriculum_id, nominal_year_level"
+    "id, name, curriculum_id, nominal_year_level, record_status"
   );
   const gradedIds = new Set((await selectAll<{ student_id: string }>(client, "subject_records", "student_id")).map((r) => r.student_id));
 
@@ -343,7 +340,10 @@ async function main() {
       continue;
     }
 
-    const programStudents = students.filter((s) => versions.some((v) => v.id === s.curriculum_id));
+    // Dropped and transferred-out students are locked, and no longer count.
+    const programStudents = students.filter(
+      (s) => s.record_status === "ACTIVE" && versions.some((v) => v.id === s.curriculum_id)
+    );
     const existing = await repository.getRecords(programStudents.map((s) => s.id));
     const engine = new AuditEngine();
     // The year level the student's page shows.

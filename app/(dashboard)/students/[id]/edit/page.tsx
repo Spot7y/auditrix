@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getStudentAudit } from "../../../../../lib/queries/students";
 import { getCurrentTerm, getYearLevelHistory } from "../../../../../lib/queries/yearLevels";
 import { STUDENT_ID_HINT } from "../../../../../lib/domain/studentId";
@@ -29,6 +30,9 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const [data, currentTerm, history] = await Promise.all([getStudentAudit(id), getCurrentTerm(), getYearLevelHistory(id)]);
   if (!data) notFound();
+  if (await getRecordLock(id)) {
+    redirect(`/students/${id}?error=${encodeURIComponent("This record is locked. Reopen it to make changes.")}`);
+  }
 
   const term = currentTerm ? parseTerm(currentTerm.term) : null;
 

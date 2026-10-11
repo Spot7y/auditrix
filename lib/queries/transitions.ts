@@ -93,3 +93,31 @@ export async function lookupPendingShiftStudent(studentId: string): Promise<Pend
 
   return { studentId: request.student_id, studentName: student.name, fromProgram: request.from_program };
 }
+export interface RecordLock {
+  status: "DROPPED" | "TRANSFERRED_OUT";
+  /** When and by whom the drop or transfer out was recorded. */
+  since: string | null;
+  by: string | null;
+}
+
+/**
+ * Null while the student's record is open; otherwise why it's locked. A
+ * dropped or transferred-out student's grades, details and year level can't
+ * be changed until a chairperson reopens the record.
+ */
+export async function getRecordLock(studentId: string): Promise<RecordLock | null> {
+  const supabase = await createServerClientForUser();
+  const { data: student, error } = await supabase.from("students").select("record_status").eq("id", studentId).maybeSingle();
+  if (error) throw error;
+  if (!student || student.record_status === "ACTIVE") return null;
+
+  const { data: entry } = await supabase
+    .from("student_transitions")
+    .select("recorded_at, recorded_by")
+    .eq("student_id", studentId)
+    .eq("type", student.record_status)
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return { status: student.record_status, since: entry?.recorded_at ?? null, by: entry?.recorded_by ?? null };
+}

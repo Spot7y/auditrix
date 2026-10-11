@@ -9,6 +9,7 @@ import type { Subject } from "../Subject";
 import type { SubjectRecord, SubjectRecordStatus } from "../SubjectRecord";
 import type { YearLevelEntry } from "../yearLevels";
 import { CompletionRequirement } from "../requirements/CompletionRequirement";
+import { fetchAll } from "../supabase/fetchAll";
 
 /** Keeps each request's list of IDs short enough for a URL. */
 const CHUNK = 100;
@@ -38,9 +39,11 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
 
     const students: { id: string; nominal_year_level: number; curriculum_id: string }[] = [];
     for (const part of chunks(ids)) {
-      const { data, error } = await this.client.from("students").select("id, nominal_year_level, curriculum_id").in("id", part);
-      if (error) throw error;
-      students.push(...(data ?? []));
+      students.push(
+        ...(await fetchAll((from, to) =>
+          this.client.from("students").select("id, nominal_year_level, curriculum_id").in("id", part).order("id").range(from, to)
+        ))
+      );
     }
     if (students.length === 0) return records;
 
@@ -50,12 +53,16 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
     const subjectRecords = new Map<string, SubjectRecord[]>();
     const history = new Map<string, YearLevelEntry[]>();
     for (const part of chunks(students.map((s) => s.id))) {
-      const { data: recordRows, error: recordsError } = await this.client
-        .from("subject_records")
-        .select("student_id, subject_id, status, grade, term, resolved_term")
-        .in("student_id", part);
-      if (recordsError) throw recordsError;
-      for (const row of recordRows ?? []) {
+      // A student can have a record for every subject, so this runs past one page.
+      const recordRows = await fetchAll((from, to) =>
+        this.client
+          .from("subject_records")
+          .select("student_id, subject_id, status, grade, term, resolved_term")
+          .in("student_id", part)
+          .order("id")
+          .range(from, to)
+      );
+      for (const row of recordRows) {
         const list = subjectRecords.get(row.student_id) ?? [];
         list.push({
           subjectCode: idToCode.get(row.subject_id) ?? "UNKNOWN",
@@ -67,12 +74,15 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
         subjectRecords.set(row.student_id, list);
       }
 
-      const { data: yearLevelRows, error: yearLevelsError } = await this.client
-        .from("student_year_levels")
-        .select("student_id, effective_term, year_level, source")
-        .in("student_id", part);
-      if (yearLevelsError) throw yearLevelsError;
-      for (const row of yearLevelRows ?? []) {
+      const yearLevelRows = await fetchAll((from, to) =>
+        this.client
+          .from("student_year_levels")
+          .select("student_id, effective_term, year_level, source")
+          .in("student_id", part)
+          .order("id")
+          .range(from, to)
+      );
+      for (const row of yearLevelRows) {
         const list = history.get(row.student_id) ?? [];
         list.push({ term: row.effective_term, yearLevel: row.year_level, source: row.source });
         history.set(row.student_id, list);
@@ -109,27 +119,33 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       .in("id", curriculumIds);
     if (curriculaError) throw curriculaError;
 
-    const { data: subjectRows, error: subjectsError } = await this.client
-      .from("subjects")
-      .select("id, curriculum_id, code, title, units, year_level, semester")
-      .in("curriculum_id", curriculumIds)
-      // The order the curriculum page shows (and the chairperson arranged).
-      .order("year_level")
-      .order("semester")
-      .order("created_at");
-    if (subjectsError) throw subjectsError;
+    const subjectRows = await fetchAll((from, to) =>
+      this.client
+        .from("subjects")
+        .select("id, curriculum_id, code, title, units, year_level, semester")
+        .in("curriculum_id", curriculumIds)
+        // The order the curriculum page shows (and the chairperson arranged).
+        .order("year_level")
+        .order("semester")
+        .order("created_at")
+        .order("id")
+        .range(from, to)
+    );
 
-    const idToCode = new Map((subjectRows ?? []).map((s) => [s.id, s.code as string]));
+    const idToCode = new Map(subjectRows.map((s) => [s.id, s.code as string]));
 
     const requirementsBySubject = new Map<string, Requirement[]>();
-    for (const part of chunks((subjectRows ?? []).map((s) => s.id))) {
-      const { data: requirementRows, error: requirementsError } = await this.client
-        .from("requirements")
-        .select("subject_id, type, required_subject_id, required_year_level")
-        .in("subject_id", part);
-      if (requirementsError) throw requirementsError;
+    for (const part of chunks(subjectRows.map((s) => s.id))) {
+      const requirementRows = await fetchAll((from, to) =>
+        this.client
+          .from("requirements")
+          .select("subject_id, type, required_subject_id, required_year_level")
+          .in("subject_id", part)
+          .order("id")
+          .range(from, to)
+      );
 
-      for (const row of requirementRows ?? []) {
+      for (const row of requirementRows) {
         const requirement: Requirement =
           row.type === "YEAR_STANDING"
             ? new YearStandingRequirement(row.required_year_level as 1 | 2 | 3 | 4)
@@ -148,7 +164,7 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
 
     const curriculumMaps = new Map<string, CurriculumMap>();
     for (const curriculum of curricula ?? []) {
-      const subjects: Subject[] = (subjectRows ?? [])
+      const subjects: Subject[] = subjectRows
         .filter((row) => row.curriculum_id === curriculum.id)
         .map((row) => ({
           code: row.code,
@@ -214,6 +230,9 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
       new_term: record.term,
       new_resolved_term: record.resolvedTerm ?? null,
       changed_by: performedBy,
+      // The app's clock rather than the database's: a local database in
+      // Docker can run behind after the computer sleeps.
+      changed_at: new Date().toISOString(),
     });
     if (logError) throw logError;
   }

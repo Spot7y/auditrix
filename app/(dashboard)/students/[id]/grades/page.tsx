@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getStudentGradeEntryData } from "../../../../../lib/queries/students";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
 import PageHeader from "../../../../../components/ui/PageHeader";
@@ -11,6 +12,9 @@ export default async function GradeEntryPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const [data, currentTerm] = await Promise.all([getStudentGradeEntryData(id), getCurrentTerm()]);
   if (!data) notFound();
+  if (await getRecordLock(id)) {
+    redirect(`/students/${id}?error=${encodeURIComponent("This record is locked. Reopen it to enter grades.")}`);
+  }
 
   // Within a semester, subjects keep the curriculum's own order.
   const subjects = [...data.subjects].sort((a, b) => a.yearLevel - b.yearLevel || a.semester - b.semester);

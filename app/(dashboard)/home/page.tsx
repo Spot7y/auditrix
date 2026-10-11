@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, BookOpen, History, Search, UserPlus, Users } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronRight, History, Search, UserPlus, Users } from "lucide-react";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { getAnalytics, type ProgramSummary } from "../../../lib/queries/analytics";
 import { getRecentTransitions } from "../../../lib/queries/transitions";
@@ -25,6 +25,7 @@ const TRANSITION_TONE: Record<string, BadgeTone> = {
   SHIFTED_IN: "brand",
   SHIFTED_OUT: "gray",
   DROPPED: "red",
+  REOPENED: "green",
 };
 
 function greeting() {
@@ -129,7 +130,91 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
   );
 }
 
-export default async function HomePage() {
+/** The dean's view of every program at once: one row each, opening that program's section. */
+function ProgramsTable({ summaries }: { summaries: ProgramSummary[] }) {
+  const total = (pick: (s: ProgramSummary) => number) => summaries.reduce((n, s) => n + pick(s), 0);
+  return (
+    <Card>
+      <CardHeader title="All programs" description="Open a program to see its year levels, curriculum versions and student movements." />
+      <Table>
+        <thead>
+          <tr>
+            <Th>Program</Th>
+            <Th className="text-right">Students</Th>
+            <Th className="text-right">Regular</Th>
+            <Th className="text-right">Irregular</Th>
+            <Th className="text-right">With violations</Th>
+            <Th className="hidden text-right sm:table-cell">Curricula</Th>
+            <Th>
+              <span className="sr-only">Open</span>
+            </Th>
+          </tr>
+        </thead>
+        <tbody>
+          {summaries.map((s) => (
+            <Tr key={s.program} className="group">
+              <Td>
+                <Link href={`/home?program=${encodeURIComponent(s.program)}`} className="font-medium text-ink-900 group-hover:text-brand-700">
+                  {s.program}
+                </Link>
+              </Td>
+              <Td className="tabular text-right text-ink-900">{s.totalStudents}</Td>
+              <Td className="tabular text-right text-status-completed">{s.regularStudents}</Td>
+              <Td className={`tabular text-right ${s.irregularStudents ? "text-status-pending" : "text-ink-500"}`}>{s.irregularStudents}</Td>
+              <Td className={`tabular text-right ${s.atRiskStudents ? "text-status-violation" : "text-ink-500"}`}>{s.atRiskStudents}</Td>
+              <Td className="tabular hidden text-right text-ink-500 sm:table-cell">
+                {s.curriculumVersions.map((v) => v.effectiveYear).join(", ") || "—"}
+              </Td>
+              <Td className="w-10 text-right">
+                <Link
+                  href={`/home?program=${encodeURIComponent(s.program)}`}
+                  aria-label={`Open ${s.program}`}
+                  className="inline-flex text-ink-400 group-hover:text-brand-700"
+                >
+                  <ChevronRight className="size-4" aria-hidden />
+                </Link>
+              </Td>
+            </Tr>
+          ))}
+          <tr className="bg-ink-50 font-medium">
+            <Td className="text-ink-700">Total</Td>
+            <Td className="tabular text-right text-ink-900">{total((s) => s.totalStudents)}</Td>
+            <Td className="tabular text-right text-ink-900">{total((s) => s.regularStudents)}</Td>
+            <Td className="tabular text-right text-ink-900">{total((s) => s.irregularStudents)}</Td>
+            <Td className="tabular text-right text-ink-900">{total((s) => s.atRiskStudents)}</Td>
+            <Td className="hidden sm:table-cell" />
+            <Td />
+          </tr>
+        </tbody>
+      </Table>
+    </Card>
+  );
+}
+
+/** Tabs to show all programs or one of them. */
+function ProgramPicker({ programs, selected }: { programs: string[]; selected: string | null }) {
+  const tab = (label: string, href: string, active: boolean) => (
+    <Link
+      key={label}
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+        active ? "bg-brand-600 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+  return (
+    <nav aria-label="Programs" className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-white p-1 shadow-card">
+      {tab("All programs", "/home", selected === null)}
+      {programs.map((p) => tab(p, `/home?program=${encodeURIComponent(p)}`, selected === p))}
+    </nav>
+  );
+}
+
+export default async function HomePage({ searchParams }: { searchParams: Promise<{ program?: string }> }) {
+  const { program: requested } = await searchParams;
   const staff = await getCurrentStaff();
   const [summaries, transitions, currentTerm] = await Promise.all([
     getAnalytics(),
@@ -139,6 +224,12 @@ export default async function HomePage() {
   const isChair = staff?.role === "chairperson";
   const isDean = staff?.role === "dean";
   const firstName = staff?.name.split(/[ ,]/)[0] ?? "";
+  // With more than one program, the dean picks one to look at, or sees them all in a table.
+  const multiple = summaries.length > 1;
+  const selected = multiple ? (summaries.find((s) => s.program === requested)?.program ?? null) : null;
+  const shownTransitions = selected
+    ? transitions.filter((t) => t.fromProgram === selected || t.toProgram === selected)
+    : transitions;
 
   return (
     <>
@@ -184,13 +275,25 @@ export default async function HomePage() {
               action={isChair && <LinkButton href="/students/new">Register a student</LinkButton>}
             />
           </Card>
+        ) : multiple ? (
+          <div className="space-y-6">
+            <ProgramPicker programs={summaries.map((s) => s.program)} selected={selected} />
+            {selected ? (
+              <ProgramSection s={summaries.find((s) => s.program === selected)!} />
+            ) : (
+              <ProgramsTable summaries={summaries} />
+            )}
+          </div>
         ) : (
           summaries.map((s) => <ProgramSection key={s.program} s={s} />)
         )}
 
         <Card>
-          <CardHeader title="Recent transfers, shifts and drops" description="The latest student movements in your scope." />
-          {transitions.length === 0 ? (
+          <CardHeader
+            title="Recent transfers, shifts and drops"
+            description={selected ? `The latest student movements in ${selected}.` : "The latest student movements in your scope."}
+          />
+          {shownTransitions.length === 0 ? (
             <EmptyState icon={History} title="Nothing recorded yet" description="Shifts, transfers and drops will be listed here." />
           ) : (
             <Table>
@@ -203,7 +306,7 @@ export default async function HomePage() {
                 </tr>
               </thead>
               <tbody>
-                {transitions.map((t) => (
+                {shownTransitions.map((t) => (
                   <Tr key={t.id}>
                     <Td>
                       <Link href={`/students/${t.studentId}`} className="font-medium text-ink-900 hover:text-brand-700">

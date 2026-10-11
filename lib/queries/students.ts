@@ -1,4 +1,5 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
+import { fetchAll } from "../domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
 import type { AuditResult } from "../domain/AuditResult";
@@ -18,8 +19,11 @@ type StudentListRow = {
   id: string;
   name: string;
   nominal_year_level: number;
+  record_status?: string;
   curricula: { program: string; effective_year: number } | { program: string; effective_year: number }[] | null;
 };
+
+export type StudentListStatus = "REGULAR" | "IRREGULAR" | "NOT_DETERMINED" | "DROPPED" | "TRANSFERRED_OUT";
 
 export interface StudentListItem {
   id: string;
@@ -28,25 +32,90 @@ export interface StudentListItem {
   curriculumYear: number | null;
   /** Worked out from what the student has finished (see AuditEngine.yearLevel). */
   yearLevel: number;
+  /** Regular or irregular this semester, or why the record is closed. */
+  status: StudentListStatus;
+  violations: number;
+}
+
+export interface StudentListFilters {
+  q?: string;
+  year?: number;
+  curriculumYear?: number;
+  /** A status, or "VIOLATIONS" for students with subjects taken out of order. */
+  status?: StudentListStatus | "VIOLATIONS" | "CLOSED";
 }
 
 /**
- * Students the current user can see (row-level security scopes this),
- * optionally filtered: every word must match the ID or the name, so
- * "Doe, John" and "john doe" both find "Doe, John James".
+ * Students the current user can see (row-level security scopes this) that
+ * match the filters: every word of `q` must match the ID or the name, so
+ * "Doe, John" and "john doe" both find "Doe, John James". Also returns the
+ * curriculum versions in use, for the filter.
  */
-export async function listStudents(query = "", limit = 100): Promise<StudentListItem[]> {
-  const rows = await findStudents(query, limit);
+export async function listStudents(
+  filters: StudentListFilters = {},
+  limit = 100
+): Promise<{ students: StudentListItem[]; total: number; curriculumYears: number[] }> {
   const client = await createServerClientForUser();
+  const rows = (
+    await fetchAll((from, to) =>
+      client
+        .from("students")
+        .select("id, name, nominal_year_level, record_status, curricula(program, effective_year)")
+        .order("name")
+        .order("id")
+        .range(from, to)
+    )
+  ).map(toListRow);
+  const curriculumYears = [...new Set(rows.map((r) => r.curriculumYear).filter((y): y is number => y !== null))].sort();
+
+  const terms = searchTerms(filters.q ?? "").map((t) => t.toLowerCase());
+  const matching = rows.filter(
+    (r) =>
+      terms.every((t) => r.id.toLowerCase().includes(t) || r.name.toLowerCase().includes(t)) &&
+      (!filters.curriculumYear || r.curriculumYear === filters.curriculumYear)
+  );
+
   const [records, currentTerm] = await Promise.all([
-    new SupabaseAcademicRecordRepository(client).getRecords(rows.map((r) => r.id)),
+    new SupabaseAcademicRecordRepository(client).getRecords(matching.map((r) => r.id)),
     getCurrentTerm(),
   ]);
   const engine = new AuditEngine();
-  return rows.map(({ registeredYearLevel, ...row }) => {
+  const students: StudentListItem[] = matching.map(({ registeredYearLevel, recordStatus, ...row }) => {
     const record = records.get(row.id);
-    return { ...row, yearLevel: record ? engine.yearLevel(record, currentTerm?.term ?? null).level : registeredYearLevel };
+    if (!record) return { ...row, yearLevel: registeredYearLevel, status: "NOT_DETERMINED", violations: 0 };
+    const { results, yearLevel } = engine.auditStudent(record, currentTerm?.term ?? null);
+    const closed = recordStatus === "DROPPED" || recordStatus === "TRANSFERRED_OUT";
+    return {
+      ...row,
+      yearLevel: yearLevel.level,
+      status: closed ? recordStatus : enrollmentStatus(record, currentTerm?.term ?? null, yearLevel.level).kind,
+      violations: results.filter((r) => r.status === "VIOLATION").length,
+    };
   });
+
+  const filtered = students.filter(
+    (s) =>
+      (!filters.year || s.yearLevel === filters.year) &&
+      (!filters.status ||
+        (filters.status === "VIOLATIONS"
+          ? s.violations > 0
+          : filters.status === "CLOSED"
+            ? s.status === "DROPPED" || s.status === "TRANSFERRED_OUT"
+            : s.status === filters.status))
+  );
+  return { students: filtered.slice(0, limit), total: filtered.length, curriculumYears };
+}
+
+function toListRow(row: StudentListRow) {
+  const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
+  return {
+    id: row.id,
+    name: row.name,
+    program: curricula?.program ?? "Unknown",
+    curriculumYear: curricula?.effective_year ?? null,
+    registeredYearLevel: row.nominal_year_level,
+    recordStatus: (row.record_status ?? "ACTIVE") as StudentListStatus | "ACTIVE",
+  };
 }
 
 async function findStudents(query: string, limit: number) {
@@ -61,17 +130,7 @@ async function findStudents(query: string, limit: number) {
   }
   const { data, error } = await request;
   if (error) throw error;
-
-  return ((data ?? []) as StudentListRow[]).map((row) => {
-    const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
-    return {
-      id: row.id,
-      name: row.name,
-      program: curricula?.program ?? "Unknown",
-      curriculumYear: curricula?.effective_year ?? null,
-      registeredYearLevel: row.nominal_year_level,
-    };
-  });
+  return ((data ?? []) as StudentListRow[]).map(toListRow);
 }
 
 export async function searchStudents(query: string): Promise<StudentSearchResult[]> {

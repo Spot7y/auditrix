@@ -92,11 +92,18 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - **Shifting:** the releasing chairperson files a shift request; the receiving program's chairperson accepts the
   student into one of their curriculum versions.
 - Transfers in/out and drops are recorded; every movement is kept in the student's history.
+- **Locked records:** marking a student dropped or transferred out locks their record. Grades, details and year level
+  can't be changed (enforced by the database, not only hidden in the screens); the audit and logbook stay viewable.
+  A chairperson can **reopen** the record (e.g. the student came back), which is recorded in the history.
+- The student list can be searched and **filtered** by year level, curriculum version and status (regular, irregular,
+  not determined, with violations, dropped or transferred out).
 
 ### 2.5 Dashboard
 Per program: total students, **regular / irregular** counts (and how many are not determined), students with
 violations, students by year level (Freshman–Senior), curriculum versions, shifts/transfers/drops, and recent
-movements. The dean sees every program in the college and sets the current semester here.
+movements. Dropped and transferred-out students aren't counted as current students. The dean sets the current semester
+here and sees every program in the college: a table with one row per program (students, regular, irregular, with
+violations) and tabs to open one program's details, instead of scrolling through every program.
 
 ### 2.6 Accounts and safety
 - First-login password change for new chairpersons, with a **live checklist** that ticks each rule green (at least
@@ -222,6 +229,8 @@ the order grades are entered, and all five cases above are covered by automated 
   to keep data through a database reset; "In progress" in the grade form, with ticking several subjects at once.
 - 2026-10-08 — midyear terms written as on KSU records (26-S, between 25-2 and 26-1); ticking all skips subjects the
   student can't take yet; student pages follow the curriculum's subject order.
+- 2026-10-11 — dropped/transferred-out records locked (with reopening); student list filters; dean's program table and
+  tabs; grade logbook times taken from the app's clock; large tables read a page at a time; demo data script.
 
 ---
 
@@ -230,14 +239,17 @@ the order grades are entered, and all five cases above are covered by automated 
 Main tables: `colleges`, `curricula` (program + effective year), `subjects`, `requirements` (prerequisite,
 co-requisite, year standing, completion), `staff` (dean/chairperson), `students`, `subject_records` (latest attempt
 per subject: status, grade, term, resolved term), `grade_audit_log` (every grade change), `student_transitions`
-(shifts, transfers, drops), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
-`student_year_levels` (registered year level and chairperson overrides).
+(shifts, transfers, drops, reopened records), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
+`student_year_levels` (registered year level and chairperson overrides). `students.record_status` marks a record
+locked (dropped or transferred out); database triggers refuse changes to a locked student's grades, details and year
+level.
 
 Security: row-level security on every table, scoped by role (chairperson → own program; dean → own college).
 Operations that must all succeed together (creating a program with its chairperson, replacing a chairperson,
 accepting a shift) run as single database transactions.
 
-27 migrations in `supabase/migrations/` build the schema step by step.
+29 migrations in `supabase/migrations/` build the schema step by step. The app reads large tables a page at a time,
+since the Supabase API returns at most 1,000 rows per request.
 
 ---
 

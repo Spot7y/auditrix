@@ -1,4 +1,5 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
+import { fetchAll } from "../domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
 import { getCurrentStaff } from "./staff";
@@ -31,6 +32,7 @@ export interface ProgramSummary {
 interface StudentRow {
   id: string;
   nominal_year_level: number;
+  record_status: string;
   curricula: { program: string } | { program: string }[] | null;
 }
 
@@ -82,19 +84,25 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     return summary;
   }
 
-  // Students — RLS already scopes this correctly per role
-  const { data: studentRows, error: studentsError } = await supabase
-    .from("students")
-    .select("id, nominal_year_level, curricula(program)");
-  if (studentsError) throw studentsError;
+  // Students — RLS already scopes this correctly per role. Dropped and
+  // transferred-out students are no longer counted as the program's students
+  // (they show under Student movements instead).
+  const allStudentRows = (await fetchAll((from, to) =>
+    supabase.from("students").select("id, nominal_year_level, record_status, curricula(program)").order("id").range(from, to)
+  )) as StudentRow[];
+  for (const row of allStudentRows) {
+    const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
+    getOrCreate(curricula?.program ?? "Unknown");
+  }
+  const studentRows = allStudentRows.filter((row) => row.record_status === "ACTIVE");
 
   const engine = new AuditEngine();
   const currentTerm = (await getCurrentTerm())?.term ?? null;
   const records = await new SupabaseAcademicRecordRepository(supabase).getRecords(
-    ((studentRows ?? []) as StudentRow[]).map((row) => row.id)
+    studentRows.map((row) => row.id)
   );
 
-  for (const row of (studentRows ?? []) as StudentRow[]) {
+  for (const row of studentRows) {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
     const program = curricula?.program ?? "Unknown";
     const summary = getOrCreate(program);
@@ -160,12 +168,11 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   // but that broader visibility must never spin up a dashboard section for
   // a program that isn't actually yours. Only add to a section that already
   // exists from the students/curriculum steps above; never create one here.
-  const { data: transitionRows, error: transitionError } = await supabase
-    .from("student_transitions")
-    .select("type, from_program, to_program");
-  if (transitionError) throw transitionError;
+  const transitionRows = await fetchAll((from, to) =>
+    supabase.from("student_transitions").select("type, from_program, to_program").order("id").range(from, to)
+  );
 
-  for (const t of (transitionRows ?? []) as TransitionForCount[]) {
+  for (const t of transitionRows as TransitionForCount[]) {
     if (t.type === "DROPPED" && t.from_program) {
       const summary = byProgram.get(t.from_program);
       if (summary) summary.droppedCount += 1;
