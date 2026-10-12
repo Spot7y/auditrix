@@ -1,12 +1,12 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { createAdminClient } from "../domain/supabase/adminClient";
-import { getCurrentStaff } from "./staff";
+import { fetchAll } from "../domain/supabase/fetchAll";
 
 export interface TransitionRow {
   id: string;
   studentId: string;
   studentName: string;
-  type: "TRANSFERRED_IN" | "TRANSFERRED_OUT" | "SHIFTED_IN" | "SHIFTED_OUT" | "DROPPED";
+  type: "TRANSFERRED_IN" | "TRANSFERRED_OUT" | "SHIFTED_IN" | "SHIFTED_OUT" | "DROPPED" | "REOPENED";
   fromProgram: string | null;
   toProgram: string | null;
   notes: string | null;
@@ -38,21 +38,6 @@ function mapRow(row: TransitionQueryRow): TransitionRow {
     recordedBy: row.recorded_by,
     recordedAt: row.recorded_at,
   };
-}
-
-export async function getRecentTransitions(): Promise<TransitionRow[]> {
-  const staff = await getCurrentStaff();
-  if (!staff) return [];
-
-  const supabase = await createServerClientForUser();
-  const { data, error } = await supabase
-    .from("student_transitions")
-    .select("id, student_id, student_name, type, from_program, to_program, notes, recorded_by, recorded_at")
-    .order("recorded_at", { ascending: false })
-    .limit(50);
-  if (error) throw error;
-
-  return (data ?? []).map(mapRow);
 }
 
 export async function getTransitionsForStudent(studentId: string): Promise<TransitionRow[]> {
@@ -120,4 +105,18 @@ export async function getRecordLock(studentId: string): Promise<RecordLock | nul
     .limit(1)
     .maybeSingle();
   return { status: student.record_status, since: entry?.recorded_at ?? null, by: entry?.recorded_by ?? null };
+}
+
+/** Every student movement the signed-in staff member can see, newest first. */
+export async function getAllTransitions(): Promise<TransitionRow[]> {
+  const supabase = await createServerClientForUser();
+  const rows = await fetchAll((from, to) =>
+    supabase
+      .from("student_transitions")
+      .select("id, student_id, student_name, type, from_program, to_program, notes, recorded_by, recorded_at")
+      .order("recorded_at", { ascending: false })
+      .order("id")
+      .range(from, to)
+  );
+  return (rows as TransitionQueryRow[]).map(mapRow);
 }

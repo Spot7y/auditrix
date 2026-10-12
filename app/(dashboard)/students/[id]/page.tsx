@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { ClipboardPen, History, Lock, Pencil, Repeat, TriangleAlert } from "lucide-react";
 import type { Requirement } from "../../../../lib/domain/requirements/Requirement";
 import { isCorequisite } from "../../../../lib/domain/requirements/CoursePrerequisite";
-import StudentSearchBar from "../StudentSearchBar";
 import { getStudentAudit } from "../../../../lib/queries/students";
 import { getPendingShiftRequest, getRecordLock } from "../../../../lib/queries/transitions";
 import { reopenRecord } from "./transitions/actions";
@@ -112,15 +111,10 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6">
         <LinkButton href={isChair ? "/students" : "/home"} variant="ghost" size="sm" className="-ml-3 text-ink-500">
           {isChair ? "← All students" : "← Dashboard"}
         </LinkButton>
-        {isChair && (
-          <div className="w-full sm:w-80">
-            <StudentSearchBar placeholder="Find another student…" />
-          </div>
-        )}
       </div>
 
       <PageHeader

@@ -23,6 +23,8 @@ export const metadata: Metadata = { title: "Curriculum" };
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second semester", 3: "Midyear" };
+const YEAR_SHORT: Record<number, string> = { 1: "1st yr", 2: "2nd yr", 3: "3rd yr", 4: "4th yr" };
+const SEMESTER_SHORT: Record<number, string> = { 1: "1st sem", 2: "2nd sem", 3: "Midyear" };
 
 function MoveButton({ action, subjectId, direction }: { action: (f: FormData) => Promise<void>; subjectId: string; direction: "up" | "down" }) {
   const Icon = direction === "up" ? ArrowUp : ArrowDown;
@@ -41,9 +43,13 @@ function MoveButton({ action, subjectId, direction }: { action: (f: FormData) =>
   );
 }
 
-export default async function CurriculumPage({ searchParams }: { searchParams: Promise<{ version?: string }> }) {
+export default async function CurriculumPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ version?: string; term?: string }>;
+}) {
   await requireRole("chairperson");
-  const { version } = await searchParams;
+  const { version, term: requestedTerm } = await searchParams;
   const [versions, data] = await Promise.all([getCurriculumVersionsForStaff(), getCurriculumForStaff(version)]);
 
   if (!versions) {
@@ -79,6 +85,14 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
     byTerm.set(key, entry);
   }
   const terms = [...byTerm.values()].sort((a, b) => a.year - b.year || a.semester - b.semester);
+  // One semester at a time (?term=2-1 is 2nd year, first semester), or all of them.
+  const selectedTerm = byTerm.has(requestedTerm ?? "") ? requestedTerm! : null;
+  const shownTerms = selectedTerm ? [byTerm.get(selectedTerm)!] : terms;
+  const termHref = (key: string | null) => {
+    const params = new URLSearchParams({ version: data.curriculumId });
+    if (key) params.set("term", key);
+    return `/curriculum?${params}`;
+  };
   const totalUnits = data.subjects.reduce((sum, s) => sum + Number(s.units), 0);
 
   return (
@@ -115,7 +129,7 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
                 href={`/curriculum?version=${v.id}`}
                 aria-current={active ? "page" : undefined}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  active ? "bg-brand-600 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100"
+                  active ? "bg-brand-800 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100"
                 }`}
               >
                 {v.effectiveYear}
@@ -137,7 +151,35 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
         </Card>
       ) : (
         <div className="space-y-5">
-          {terms.map(({ year, semester, subjects }) => (
+          <nav
+            aria-label="Semesters"
+            className="flex gap-1 overflow-x-auto rounded-lg border border-line bg-white p-1 shadow-sm"
+          >
+            {[
+              { key: null, label: "All", count: data.subjects.length },
+              ...terms.map((t) => ({
+                key: `${t.year}-${t.semester}`,
+                label: `${YEAR_SHORT[t.year] ?? `Year ${t.year}`} · ${SEMESTER_SHORT[t.semester] ?? `Sem ${t.semester}`}`,
+                count: t.subjects.length,
+              })),
+            ].map(({ key, label, count }) => {
+              const active = key === selectedTerm;
+              return (
+                <Link
+                  key={key ?? "all"}
+                  href={termHref(key)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active ? "bg-brand-800 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+                  }`}
+                >
+                  {label}
+                  <span className={`tabular text-xs ${active ? "text-brand-100" : "text-ink-400"}`}>{count}</span>
+                </Link>
+              );
+            })}
+          </nav>
+          {shownTerms.map(({ year, semester, subjects }) => (
             <Card key={`${year}-${semester}`}>
               <CardHeader
                 title={`${YEAR_LABEL[year] ?? `Year ${year}`} · ${SEMESTER_LABEL[semester] ?? `Semester ${semester}`}`}

@@ -285,7 +285,7 @@ export default function GradeEntryForm({
           Cancel
         </Link>
         {edits.length === 0 || !term ? (
-          <button type="button" disabled className="h-10 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white opacity-50">
+          <button type="button" disabled className="h-10 rounded-lg bg-brand-800 px-4 text-sm font-medium text-white opacity-50">
             Save grades
           </button>
         ) : (

@@ -8,7 +8,7 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:bg-brand-800",
+  primary: "bg-brand-800 text-white shadow-sm hover:bg-brand-900 active:bg-brand-950",
   secondary: "border border-line bg-white text-ink-800 shadow-sm hover:bg-ink-50 active:bg-ink-100",
   danger: "bg-status-violation text-white shadow-sm hover:bg-red-800",
   ghost: "text-ink-700 hover:bg-ink-100",

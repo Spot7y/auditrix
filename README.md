@@ -30,7 +30,8 @@ what each student has completed, can take next, or took out of order.
 - **Students.** Register one at a time or import an Excel (.xlsx or .xls) or CSV file (the template, or KSU-MIS's
   "Export to Excel"). Files in the old Excel 97–2003 format need to be saved again as .xlsx or CSV first. The student
   list can be searched and filtered by year level, curriculum version and status (regular, irregular, not determined,
-  with violations, dropped or transferred out).
+  with violations, dropped or transferred out), and shows the reason under each name: the subjects taken out of
+  order, the prescribed subjects an irregular student isn't enrolled in, or that nothing is recorded this semester.
 - **Current semester and year levels.** The dean sets the college's current semester; grade entry starts on it.
   A student's year level follows what they've finished in their curriculum, per the KSU Operations Manual: 25% of the
   units for 2nd year, more than 50% for 3rd year, 75% for 4th year, or every subject of the earlier years. Only
@@ -39,16 +40,23 @@ what each student has completed, can take next, or took out of order.
   student's year level by hand for a special case (and set it back to automatic) from their Edit page.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
-  recorded too, and every move is kept in the student's logbook. A dropped or transferred-out student's record is
+  recorded too, and every move is kept in the student's logbook. The Student Movements page lists every shift,
+  transfer, drop and reopening in your scope, with a search and filters by type, program and year. A dropped or transferred-out student's record is
   locked: their grades, details and year level can't be changed (the database refuses it too) until a chairperson
   reopens the record, which is also kept in the history.
 - **Regular and irregular students.** Per the KSU Operations Manual, a student is regular when enrolled this semester
   in the full prescribed load (the curriculum's subjects for their year level and the current semester, not counting
   ones already passed) and irregular when enrolled in less. Back subjects on top of a full load don't change that.
   With nothing recorded for the current semester, the status is "not determined" and the student isn't counted.
-- **Overview dashboard.** Per program: regular and irregular students, students with violations, curriculum versions,
-  students by year level and recent moves. Dropped and transferred-out students aren't counted as current students.
-  A dean with several programs sees them all in one table and picks a program to see its details.
+- **Overview dashboard.** A "Needs attention" banner lists what to look at first (students with violations, students
+  with nothing recorded this semester, a semester that isn't set), with links to those students. Per program:
+  totals with percentages, and charts of regular/irregular/not determined, students by year level, bottleneck
+  subjects (the most 5.0s and INCs) and the subjects most often taken out of order. Every chart shows its numbers on
+  hover and can be opened as a table. Dropped and transferred-out students aren't counted as current students. A dean
+  with several programs sees them compared side by side (regular/irregular share and violations per program) and in
+  a table, and picks a program to see its charts.
+- **Everywhere.** The top bar shows the college's current semester and a student search (Ctrl+K from any page); the
+  sidebar shows how many students the program has. Curriculum versions can be viewed one semester at a time.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
   field ticks each password rule green as it's met.

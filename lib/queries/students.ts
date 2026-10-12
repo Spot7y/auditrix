@@ -35,6 +35,14 @@ export interface StudentListItem {
   /** Regular or irregular this semester, or why the record is closed. */
   status: StudentListStatus;
   violations: number;
+  /** A short reason for the status, e.g. which subjects were taken out of order. */
+  note: string | null;
+}
+
+/** "CPE 211, MATH 112 and 2 more". */
+function codeList(codes: string[], shown = 3): string {
+  if (codes.length <= shown) return codes.join(", ");
+  return `${codes.slice(0, shown).join(", ")} and ${codes.length - shown} more`;
 }
 
 export interface StudentListFilters {
@@ -82,14 +90,25 @@ export async function listStudents(
   const engine = new AuditEngine();
   const students: StudentListItem[] = matching.map(({ registeredYearLevel, recordStatus, ...row }) => {
     const record = records.get(row.id);
-    if (!record) return { ...row, yearLevel: registeredYearLevel, status: "NOT_DETERMINED", violations: 0 };
-    const { results, yearLevel } = engine.auditStudent(record, currentTerm?.term ?? null);
+    if (!record) return { ...row, yearLevel: registeredYearLevel, status: "NOT_DETERMINED", violations: 0, note: null };
+    const term = currentTerm?.term ?? null;
+    const { results, yearLevel } = engine.auditStudent(record, term);
     const closed = recordStatus === "DROPPED" || recordStatus === "TRANSFERRED_OUT";
+    const enrollment = enrollmentStatus(record, term, yearLevel.level);
+    const outOfOrder = results.filter((r) => r.status === "VIOLATION").map((r) => r.subjectCode);
+
+    const notes: string[] = [];
+    if (outOfOrder.length > 0) notes.push(`Out of order: ${codeList(outOfOrder)}`);
+    if (!closed && enrollment.kind === "IRREGULAR") notes.push(`Not enrolled in ${codeList(enrollment.missing)}`);
+    // Without a current semester every student has the same reason, so it isn't repeated on each row.
+    if (!closed && enrollment.kind === "NOT_DETERMINED" && term) notes.push(enrollment.reason.replace(/\.$/, ""));
+
     return {
       ...row,
       yearLevel: yearLevel.level,
-      status: closed ? recordStatus : enrollmentStatus(record, currentTerm?.term ?? null, yearLevel.level).kind,
-      violations: results.filter((r) => r.status === "VIOLATION").length,
+      status: closed ? recordStatus : enrollment.kind,
+      violations: outOfOrder.length,
+      note: notes.length ? notes.join(" · ") : null,
     };
   });
 
@@ -131,6 +150,17 @@ async function findStudents(query: string, limit: number) {
   const { data, error } = await request;
   if (error) throw error;
   return ((data ?? []) as StudentListRow[]).map(toListRow);
+}
+
+/** How many students in the signed-in staff member's scope have an open record. */
+export async function countActiveStudents(): Promise<number> {
+  const supabase = await createServerClientForUser();
+  const { count, error } = await supabase
+    .from("students")
+    .select("id", { count: "exact", head: true })
+    .eq("record_status", "ACTIVE");
+  if (error) return 0;
+  return count ?? 0;
 }
 
 export async function searchStudents(query: string): Promise<StudentSearchResult[]> {

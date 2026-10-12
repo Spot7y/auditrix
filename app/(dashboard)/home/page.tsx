@@ -1,18 +1,19 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, BookOpen, ChevronRight, History, Search, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, BookOpen, ChevronRight, UserPlus, Users } from "lucide-react";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { getAnalytics, type ProgramSummary } from "../../../lib/queries/analytics";
-import { getRecentTransitions } from "../../../lib/queries/transitions";
-import { formatDate, plural, TRANSITION_LABEL } from "../../../lib/format";
+import { plural } from "../../../lib/format";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { LinkButton } from "../../../components/ui/Button";
-import { Badge, type BadgeTone } from "../../../components/ui/Badge";
+import { Badge } from "../../../components/ui/Badge";
 import { Table, Td, Th, Tr } from "../../../components/ui/Table";
 import EmptyState from "../../../components/ui/EmptyState";
 import { getCurrentTerm } from "../../../lib/queries/yearLevels";
-import { describeTerm } from "../../../lib/domain/Term";
+import BarList from "../../../components/charts/BarList";
+import StackedBars, { type Series } from "../../../components/charts/StackedBars";
+import TableView from "../../../components/charts/TableView";
 import CurrentTermCard from "./CurrentTermCard";
 import { requireRole } from "../../../lib/queries/access";
 
@@ -20,33 +21,98 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 const YEAR_NAMES = ["Freshman", "Sophomore", "Junior", "Senior"];
 
-const TRANSITION_TONE: Record<string, BadgeTone> = {
-  TRANSFERRED_IN: "blue",
-  TRANSFERRED_OUT: "gray",
-  SHIFTED_IN: "brand",
-  SHIFTED_OUT: "gray",
-  DROPPED: "red",
-  REOPENED: "green",
-};
+const ENROLLMENT_SERIES: Series[] = [
+  { key: "regular", label: "Regular", fill: "bg-status-completed" },
+  { key: "irregular", label: "Irregular", fill: "bg-status-pending" },
+  { key: "undetermined", label: "Not determined", fill: "bg-status-unavailable" },
+];
+
+const enrollmentValues = (s: ProgramSummary) => ({
+  regular: s.regularStudents,
+  irregular: s.irregularStudents,
+  undetermined: s.undeterminedStudents,
+});
+
+const percent = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0);
 
 function greeting() {
   const hour = Number(new Intl.DateTimeFormat("en-PH", { hour: "numeric", hour12: false, timeZone: "Asia/Manila" }).format(new Date()));
   return hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 }
 
-function Stat({ label, value, hint, tone = "default" }: { label: string; value: number; hint?: string; tone?: "default" | "good" | "warn" | "bad" }) {
+function Stat({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  tone?: "default" | "good" | "warn" | "bad";
+}) {
   const color = { default: "text-ink-900", good: "text-status-completed", warn: "text-status-pending", bad: "text-status-violation" }[tone];
   return (
     <div className="rounded-xl border border-line bg-white p-4 shadow-card">
       <p className="text-sm text-ink-500">{label}</p>
       <p className={`tabular mt-1 text-2xl font-semibold ${color}`}>{value}</p>
-      {hint && <p className="mt-0.5 text-xs text-ink-400">{hint}</p>}
+      {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
     </div>
   );
 }
 
-function ProgramSection({ s }: { s: ProgramSummary }) {
-  const maxInYear = Math.max(1, ...[1, 2, 3, 4].map((y) => s.byYearLevel[y] ?? 0));
+interface AttentionItem {
+  text: string;
+  href?: string;
+  action?: string;
+}
+
+/** What needs looking at first; nothing shows when all is well. */
+function AttentionBanner({ items }: { items: AttentionItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <section aria-label="Needs attention" className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900">
+        <AlertTriangle className="size-4" aria-hidden />
+        Needs attention
+      </h2>
+      <ul className="mt-2 space-y-1.5 text-sm text-amber-900">
+        {items.map((item) => (
+          <li key={item.text} className="flex flex-wrap items-baseline gap-x-2">
+            <span>{item.text}</span>
+            {item.href && (
+              <Link href={item.href} className="inline-flex items-center gap-0.5 font-medium underline underline-offset-2 hover:text-amber-950">
+                {item.action ?? "View"}
+                <ChevronRight className="size-3.5" aria-hidden />
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function programAttention(s: ProgramSummary, term: string | null, isChair: boolean): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  if (s.atRiskStudents > 0) {
+    items.push({
+      text: `${plural(s.atRiskStudents, "student")} took subjects before finishing their prerequisites.`,
+      ...(isChair && { href: "/students?status=VIOLATIONS", action: "See who" }),
+    });
+  }
+  if (term && s.undeterminedStudents > 0) {
+    items.push({
+      text: `${plural(s.undeterminedStudents, "student has", "students have")} no subjects recorded for ${term}, so they aren’t counted as regular or irregular.`,
+      ...(isChair && { href: "/students?status=NOT_DETERMINED", action: "See who" }),
+    });
+  }
+  return items;
+}
+
+function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string | null; isChair: boolean }) {
+  const yearTotal = [1, 2, 3, 4].reduce((n, y) => n + (s.byYearLevel[y] ?? 0), 0);
+  const movementsHref = isChair ? "/movements" : `/movements?program=${encodeURIComponent(s.program)}`;
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
@@ -55,41 +121,112 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Total students" value={s.totalStudents} />
+        <Stat label="Students" value={s.totalStudents} hint="With an open record" />
         <Stat
           label="Regular"
           value={s.regularStudents}
           tone="good"
-          hint={`Full prescribed load${s.undeterminedStudents ? ` · ${s.undeterminedStudents} not determined` : ""}`}
+          hint={`${percent(s.regularStudents, s.totalStudents)}% · full prescribed load`}
         />
         <Stat
           label="Irregular"
           value={s.irregularStudents}
           tone={s.irregularStudents ? "warn" : "default"}
-          hint="Less than the prescribed load"
+          hint={`${percent(s.irregularStudents, s.totalStudents)}% · less than the load`}
         />
-        <Stat label="With violations" value={s.atRiskStudents} tone={s.atRiskStudents ? "bad" : "default"} hint="Subjects taken out of order" />
+        <Stat
+          label="With violations"
+          value={s.atRiskStudents}
+          tone={s.atRiskStudents ? "bad" : "default"}
+          hint={`${percent(s.atRiskStudents, s.totalStudents)}% · subjects out of order`}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title="Students by year level" />
-          <ul className="space-y-3 px-5 py-4">
-            {YEAR_NAMES.map((name, i) => {
-              const count = s.byYearLevel[i + 1] ?? 0;
-              return (
-                <li key={name}>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-ink-600">{name}</span>
-                    <span className="tabular font-medium text-ink-900">{count}</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-ink-100">
-                    <div className="h-full rounded-full bg-brand-500" style={{ width: `${(count / maxInYear) * 100}%` }} />
-                  </div>
-                </li>
-              );
+          <CardHeader
+            title="Regular and irregular"
+            description={
+              term
+                ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). Not determined: nothing recorded for ${term}.`
+                : "The dean hasn’t set the current semester, so no student can be counted as regular or irregular yet."
+            }
+          />
+          <StackedBars series={ENROLLMENT_SERIES} rows={[{ label: s.program, values: enrollmentValues(s) }]} unit="students" hideRowLabels />
+          <TableView
+            headers={["Status", "Students", "Share"]}
+            rows={ENROLLMENT_SERIES.map((series) => {
+              const value = enrollmentValues(s)[series.key as keyof ReturnType<typeof enrollmentValues>];
+              return [series.label, value, `${percent(value, s.totalStudents)}%`];
             })}
-          </ul>
+          />
+        </Card>
+
+        <Card>
+          <CardHeader title="Students by year level" description="Worked out from the subjects each student has finished." />
+          <BarList
+            emptyText="No students yet."
+            items={YEAR_NAMES.map((name, i) => {
+              const count = s.byYearLevel[i + 1] ?? 0;
+              return { label: name, value: count, tip: [`${plural(count, "student")} (${percent(count, yearTotal)}%)`] };
+            })}
+          />
+          <TableView
+            headers={["Year level", "Students"]}
+            rows={YEAR_NAMES.map((name, i) => [name, s.byYearLevel[i + 1] ?? 0])}
+          />
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Bottleneck subjects"
+            description="Subjects where the most students’ latest grade is 5.0 or INC."
+          />
+          <BarList
+            emptyText="No 5.0 or INC grades recorded."
+            items={s.bottlenecks.map((t) => ({
+              label: t.code,
+              sub: t.title,
+              value: t.failed + t.incomplete,
+              tip: [
+                `${t.failed} with 5.0 · ${t.incomplete} INC`,
+                `${percent(t.failed + t.incomplete, t.takers)}% of the ${plural(t.takers, "student")} who took it`,
+              ],
+            }))}
+          />
+          {s.bottlenecks.length > 0 && (
+            <TableView
+              headers={["Subject", "5.0", "INC", "Took it"]}
+              rows={s.bottlenecks.map((t) => [t.code, t.failed, t.incomplete, t.takers])}
+            />
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Taken out of order"
+            description="Subjects most often taken before their prerequisites were finished."
+            actions={
+              isChair &&
+              s.outOfOrder.length > 0 && (
+                <LinkButton href="/students?status=VIOLATIONS" variant="ghost" size="sm">
+                  See students
+                </LinkButton>
+              )
+            }
+          />
+          <BarList
+            emptyText="No subjects taken out of order."
+            items={s.outOfOrder.map((v) => ({
+              label: v.code,
+              sub: v.title,
+              value: v.students,
+              tip: [`${plural(v.students, "student")} took it before finishing its prerequisites`],
+            }))}
+          />
+          {s.outOfOrder.length > 0 && (
+            <TableView headers={["Subject", "Students"]} rows={s.outOfOrder.map((v) => [v.code, v.students])} />
+          )}
         </Card>
 
         <Card>
@@ -112,7 +249,14 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
         </Card>
 
         <Card>
-          <CardHeader title="Student movements" />
+          <CardHeader
+            title="Student movements"
+            actions={
+              <LinkButton href={movementsHref} variant="ghost" size="sm">
+                View all
+              </LinkButton>
+            }
+          />
           <dl className="divide-y divide-line text-sm">
             {[
               ["Shifted in / out", `${s.shiftedInCount} / ${s.shiftedOutCount}`],
@@ -131,12 +275,58 @@ function ProgramSection({ s }: { s: ProgramSummary }) {
   );
 }
 
+/** The dean's side-by-side look at the college's programs. */
+function ProgramComparison({ summaries, term }: { summaries: ProgramSummary[]; term: string | null }) {
+  const href = (program: string) => `/home?program=${encodeURIComponent(program)}`;
+  return (
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader
+          title="Regular and irregular by program"
+          description={
+            term
+              ? `Share of each program’s students who are regular, irregular, or have nothing recorded for ${term}.`
+              : "The current semester isn’t set, so every student is still “not determined”."
+          }
+        />
+        <StackedBars
+          series={ENROLLMENT_SERIES}
+          rows={summaries.map((s) => ({ label: s.program, href: href(s.program), values: enrollmentValues(s) }))}
+          unit="students"
+        />
+        <TableView
+          headers={["Program", "Regular", "Irregular", "Not determined", "Students"]}
+          rows={summaries.map((s) => [s.program, s.regularStudents, s.irregularStudents, s.undeterminedStudents, s.totalStudents])}
+        />
+      </Card>
+      <Card>
+        <CardHeader title="Students with violations by program" description="Students who took at least one subject before finishing its prerequisites." />
+        <BarList
+          emptyText="No students with violations."
+          items={[...summaries]
+            .sort((a, b) => b.atRiskStudents - a.atRiskStudents || a.program.localeCompare(b.program))
+            .map((s) => ({
+              label: s.program,
+              href: href(s.program),
+              value: s.atRiskStudents,
+              tip: [`${plural(s.atRiskStudents, "student")}`, `${percent(s.atRiskStudents, s.totalStudents)}% of ${plural(s.totalStudents, "student")}`],
+            }))}
+        />
+        <TableView
+          headers={["Program", "With violations", "Students"]}
+          rows={summaries.map((s) => [s.program, s.atRiskStudents, s.totalStudents])}
+        />
+      </Card>
+    </div>
+  );
+}
+
 /** The dean's view of every program at once: one row each, opening that program's section. */
 function ProgramsTable({ summaries }: { summaries: ProgramSummary[] }) {
   const total = (pick: (s: ProgramSummary) => number) => summaries.reduce((n, s) => n + pick(s), 0);
   return (
     <Card>
-      <CardHeader title="All programs" description="Open a program to see its year levels, curriculum versions and student movements." />
+      <CardHeader title="All programs" description="Open a program to see its charts, curriculum versions and student movements." />
       <Table>
         <thead>
           <tr>
@@ -200,7 +390,7 @@ function ProgramPicker({ programs, selected }: { programs: string[]; selected: s
       href={href}
       aria-current={active ? "page" : undefined}
       className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-        active ? "bg-brand-600 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+        active ? "bg-brand-800 text-white shadow-sm" : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
       }`}
     >
       {label}
@@ -218,54 +408,62 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   await requireRole("chairperson", "dean");
   const { program: requested } = await searchParams;
   const staff = await getCurrentStaff();
-  const [summaries, transitions, currentTerm] = await Promise.all([
-    getAnalytics(),
-    getRecentTransitions(),
-    getCurrentTerm(),
-  ]);
+  const [summaries, currentTerm] = await Promise.all([getAnalytics(), getCurrentTerm()]);
+  const term = currentTerm?.term ?? null;
   const isChair = staff?.role === "chairperson";
   const isDean = staff?.role === "dean";
   const firstName = staff?.name.split(/[ ,]/)[0] ?? "";
-  // With more than one program, the dean picks one to look at, or sees them all in a table.
+  // With more than one program, the dean picks one to look at, or sees them all compared.
   const multiple = summaries.length > 1;
   const selected = multiple ? (summaries.find((s) => s.program === requested)?.program ?? null) : null;
-  const shownTransitions = selected
-    ? transitions.filter((t) => t.fromProgram === selected || t.toProgram === selected)
-    : transitions;
+  const shown = selected ? summaries.filter((s) => s.program === selected) : summaries;
+
+  const attention: AttentionItem[] = [];
+  if (!term) {
+    attention.push(
+      isDean
+        ? { text: "The current semester isn’t set. Set it below so students can be counted as regular or irregular." }
+        : { text: "The dean hasn’t set the current semester yet, so students can’t be counted as regular or irregular." }
+    );
+  }
+  if (multiple && !selected) {
+    const flagged = summaries.filter((s) => s.atRiskStudents > 0);
+    const students = flagged.reduce((n, s) => n + s.atRiskStudents, 0);
+    if (students > 0) {
+      attention.push({
+        text: `${plural(students, "student")} in ${plural(flagged.length, "program")} took subjects before finishing their prerequisites.`,
+        ...(flagged.length === 1 && {
+          href: `/home?program=${encodeURIComponent(flagged[0].program)}`,
+          action: `Open ${flagged[0].program}`,
+        }),
+      });
+    }
+  } else {
+    for (const s of shown) attention.push(...programAttention(s, term, isChair));
+  }
 
   return (
     <>
       <PageHeader
         title={`${greeting()}, ${firstName}`}
         description={
-          <span className="flex flex-wrap items-center gap-2">
-            {isChair
-              ? `Here’s how ${staff?.program} is doing today.`
-              : `Overview of the programs in ${staff?.collegeName ?? "your college"}.`}
-            {isChair && (
-              <Badge tone={currentTerm ? "brand" : "amber"}>
-                {currentTerm ? `${describeTerm(currentTerm.term)} (${currentTerm.term})` : "Current semester not set by the dean"}
-              </Badge>
-            )}
-          </span>
+          isChair
+            ? `Here’s how ${staff?.program} is doing today.`
+            : `Overview of the programs in ${staff?.collegeName ?? "your college"}.`
         }
         actions={
           isChair && (
-            <>
-              <LinkButton href="/students" variant="secondary">
-                <Search aria-hidden />
-                Find a student
-              </LinkButton>
-              <LinkButton href="/students/new">
-                <UserPlus aria-hidden />
-                Register student
-              </LinkButton>
-            </>
+            <LinkButton href="/students/new">
+              <UserPlus aria-hidden />
+              Register student
+            </LinkButton>
           )
         }
       />
 
-      <div className="space-y-10">
+      <div className="space-y-8">
+        <AttentionBanner items={attention} />
+
         {isDean && <CurrentTermCard current={currentTerm} collegeName={staff?.collegeName ?? "your college"} />}
 
         {summaries.length === 0 ? (
@@ -281,62 +479,17 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="space-y-6">
             <ProgramPicker programs={summaries.map((s) => s.program)} selected={selected} />
             {selected ? (
-              <ProgramSection s={summaries.find((s) => s.program === selected)!} />
+              <ProgramSection s={shown[0]} term={term} isChair={isChair} />
             ) : (
-              <ProgramsTable summaries={summaries} />
+              <>
+                <ProgramComparison summaries={summaries} term={term} />
+                <ProgramsTable summaries={summaries} />
+              </>
             )}
           </div>
         ) : (
-          summaries.map((s) => <ProgramSection key={s.program} s={s} />)
+          summaries.map((s) => <ProgramSection key={s.program} s={s} term={term} isChair={isChair} />)
         )}
-
-        <Card>
-          <CardHeader
-            title="Recent transfers, shifts and drops"
-            description={selected ? `The latest student movements in ${selected}.` : "The latest student movements in your scope."}
-          />
-          {shownTransitions.length === 0 ? (
-            <EmptyState icon={History} title="Nothing recorded yet" description="Shifts, transfers and drops will be listed here." />
-          ) : (
-            <Table>
-              <thead>
-                <tr>
-                  <Th>Student</Th>
-                  <Th>Movement</Th>
-                  <Th>Program</Th>
-                  <Th className="text-right">Date</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {shownTransitions.map((t) => (
-                  <Tr key={t.id}>
-                    <Td>
-                      <Link href={`/students/${t.studentId}`} className="font-medium text-ink-900 hover:text-brand-700">
-                        {t.studentName}
-                      </Link>
-                      <p className="font-mono text-xs text-ink-500">{t.studentId}</p>
-                    </Td>
-                    <Td>
-                      <Badge tone={TRANSITION_TONE[t.type] ?? "gray"}>{TRANSITION_LABEL[t.type] ?? t.type}</Badge>
-                    </Td>
-                    <Td className="text-ink-600">
-                      {t.fromProgram && t.toProgram ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          {t.fromProgram}
-                          <ArrowRight className="size-3.5 text-ink-400" aria-label="to" />
-                          {t.toProgram}
-                        </span>
-                      ) : (
-                        (t.fromProgram ?? t.toProgram ?? "—")
-                      )}
-                    </Td>
-                    <Td className="whitespace-nowrap text-right text-ink-500">{formatDate(t.recordedAt)}</Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          )}
-        </Card>
       </div>
     </>
   );

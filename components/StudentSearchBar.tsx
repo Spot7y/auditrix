@@ -3,8 +3,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Search } from "lucide-react";
-import { inputClasses } from "../../../components/ui/Field";
-import { liveSearchStudents } from "./searchAction";
+import { inputClasses } from "./ui/Field";
+import { liveSearchStudents } from "../app/(dashboard)/students/searchAction";
 
 interface Result {
   id: string;
@@ -12,9 +12,19 @@ interface Result {
   program: string;
 }
 
-/** Search-as-you-type with a dropdown of matches; arrow keys and Enter work. */
-export default function StudentSearchBar({ placeholder = "Search by ID or nameâ€¦" }: { placeholder?: string }) {
+/**
+ * Search-as-you-type with a dropdown of matches; arrow keys and Enter work.
+ * With `shortcut`, Ctrl+K (âŒ˜K on a Mac) jumps to it from anywhere.
+ */
+export default function StudentSearchBar({
+  placeholder = "Search by ID or nameâ€¦",
+  shortcut = false,
+}: {
+  placeholder?: string;
+  shortcut?: boolean;
+}) {
   const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
@@ -43,6 +53,19 @@ export default function StudentSearchBar({ placeholder = "Search by ID or nameâ€
     return () => clearTimeout(timeout);
   }, [query]);
 
+  useEffect(() => {
+    if (!shortcut) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        input.current?.focus();
+        input.current?.select();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [shortcut]);
+
   function go(result: Result | undefined) {
     if (!result) return;
     setOpen(false);
@@ -53,6 +76,7 @@ export default function StudentSearchBar({ placeholder = "Search by ID or nameâ€
     <div className="relative">
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-400" aria-hidden />
       <input
+        ref={input}
         type="search"
         role="combobox"
         aria-expanded={open}
@@ -85,9 +109,19 @@ export default function StudentSearchBar({ placeholder = "Search by ID or nameâ€
           }
         }}
         placeholder={placeholder}
-        className={`${inputClasses} pl-9 pr-9`}
+        aria-keyshortcuts={shortcut ? "Control+K" : undefined}
+        className={`${inputClasses} pl-9 ${shortcut ? "pr-16" : "pr-9"}`}
       />
-      {loading && <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-ink-400" aria-hidden />}
+      {loading ? (
+        <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-ink-400" aria-hidden />
+      ) : (
+        shortcut &&
+        !query && (
+          <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-line bg-ink-50 px-1.5 py-0.5 font-sans text-[11px] font-medium text-ink-500 sm:block">
+            Ctrl K
+          </kbd>
+        )
+      )}
 
       {open && (
         <ul

@@ -96,14 +96,28 @@ applies, the student's **year level** and **Regular / Irregular** status.
   can't be changed (enforced by the database, not only hidden in the screens); the audit and logbook stay viewable.
   A chairperson can **reopen** the record (e.g. the student came back), which is recorded in the history.
 - The student list can be searched and **filtered** by year level, curriculum version and status (regular, irregular,
-  not determined, with violations, dropped or transferred out).
+  not determined, with violations, dropped or transferred out). Under each name is the **reason** for its status
+  (e.g. "Out of order: PHYS 201", "Not enrolled in GE 101, MATH 101").
+- **Student Movements** page (sidebar): every shift, transfer, drop and reopening, searchable and filterable by type,
+  program and year.
+- **Global search** in the top bar on every page (Ctrl+K), next to the current semester.
 
 ### 2.5 Dashboard
-Per program: total students, **regular / irregular** counts (and how many are not determined), students with
-violations, students by year level (Freshman–Senior), curriculum versions, shifts/transfers/drops, and recent
-movements. Dropped and transferred-out students aren't counted as current students. The dean sets the current semester
-here and sees every program in the college: a table with one row per program (students, regular, irregular, with
-violations) and tabs to open one program's details, instead of scrolling through every program.
+A **Needs attention** banner at the top lists what to act on (students with violations, students with nothing
+recorded for the current semester, an unset semester), each with a link to the matching filtered student list.
+Per program: total students, **regular / irregular** counts with percentages (and how many are not determined),
+students with violations, curriculum versions and shift/transfer/drop counts (with "View all" to the Student
+Movements page), plus four charts built only from recorded data:
+- regular / irregular / not determined (one stacked bar);
+- students by year level (Freshman–Senior);
+- **bottleneck subjects**: where the most students' latest grade is 5.0 or INC;
+- subjects most often **taken out of order**.
+
+Each chart has a one-line explanation, shows the exact numbers on hover (or keyboard focus), and has a "View as table"
+option, so the colors are never the only way to read it. Dropped and transferred-out students aren't counted as
+current students. The dean sets the current semester here and sees every program in the college **compared side by
+side** (regular/irregular share per program, students with violations per program), a table with one row per program,
+and tabs to open one program's charts.
 
 ### 2.6 Accounts and safety
 - First-login password change for new chairpersons, with a **live checklist** that ticks each rule green (at least
@@ -233,6 +247,9 @@ the order grades are entered, and all five cases above are covered by automated 
   tabs; grade logbook times taken from the app's clock; large tables read a page at a time; demo data script.
 - 2026-10-12 — security: role check on every page, database-written audit trail, grade validation in the database,
   Next.js 16.4.0, security headers, idle sign-out, login blocking, plain error messages.
+- 2026-10-12 — dashboard charts and program comparison, "Needs attention" banner, Student Movements page, top bar
+  with the current semester and Ctrl+K search, student count in the sidebar, reasons in the student list, curriculum
+  semester tabs, deeper KSU green for buttons and the current page.
 
 ---
 
@@ -308,7 +325,10 @@ Full list of screens worth showing:
 1. Login page.
 2. First-login password change with the green checklist.
 3. Dean dashboard with the **Current semester** card.
-4. Chairperson dashboard (regular/irregular, violations, students by year level).
+4. Chairperson dashboard: the Needs attention banner and the charts (regular/irregular, year levels, bottleneck
+   subjects, out-of-order subjects), including a hover tooltip and "View as table".
+4b. Dean dashboard with the program comparison charts.
+4c. Student Movements page.
 5. Curriculum page (versions, subjects, prerequisites), and the **import preview**.
 6. Register student and the **Import students** dialog (with the template).
 7. Student audit page: statuses, term column, a **Violation** with its reason, a co-requisite retake,

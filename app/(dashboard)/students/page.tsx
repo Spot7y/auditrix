@@ -104,6 +104,9 @@ export default async function StudentsPage({
                     <Link href={`/students/${s.id}`} className="font-medium text-ink-900 group-hover:text-brand-700">
                       {s.name}
                     </Link>
+                    {s.note && (
+                      <p className={`mt-0.5 text-xs ${s.violations > 0 ? "text-status-violation" : "text-ink-500"}`}>{s.note}</p>
+                    )}
                   </Td>
                   <Td className="font-mono text-ink-600">{s.id}</Td>
                   <Td className="hidden text-ink-600 sm:table-cell">
