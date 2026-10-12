@@ -1,7 +1,17 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readTable } from "../import/tableFile";
-import { parseSubjectsCsv } from "../import/curriculumImport";
+import ExcelJS from "exceljs";
+import { readTable, readTableFile } from "../import/tableFile";
+import { parseSubjectRows, parseSubjectsCsv } from "../import/curriculumImport";
+
+async function xlsx(sheets: Record<string, (string | number | null | { formula: string; result: number })[][]>): Promise<Uint8Array> {
+  const workbook = new ExcelJS.Workbook();
+  for (const [name, rows] of Object.entries(sheets)) {
+    const sheet = workbook.addWorksheet(name);
+    rows.forEach((row, i) => row.forEach((value, j) => value !== null && (sheet.getCell(i + 1, j + 1).value = value)));
+  }
+  return new Uint8Array(await workbook.xlsx.writeBuffer());
+}
 
 describe("reading an uploaded table", () => {
   it("reads a CSV, dropping a byte-order mark and empty rows", () => {
@@ -55,5 +65,57 @@ describe("curriculum import from an .xls", () => {
         ["CC 103", 2, [{ kind: "code", code: "CC 101" }]],
       ]
     );
+  });
+});
+
+describe("reading an uploaded file", () => {
+  it("reads an Excel workbook (.xlsx) as the cells show, skipping empty sheets and rows", async () => {
+    const bytes = await xlsx({
+      Empty: [],
+      Subjects: [
+        ["code", "title", "units", "year_level", "semester", "prerequisite"],
+        ["CC 101", "  Intro to\nComputing ", 3, 1, 1, null],
+        [null, null, null, null, null, null],
+        ["CC 102", "Programming 1", { formula: "1+2", result: 3 }, 1, 2, "CC 101"],
+      ],
+    });
+    const table = await readTableFile(bytes);
+    assert.ok("rows" in table);
+    assert.equal(table.kind, "xlsx");
+    assert.deepEqual(table.rows, [
+      ["code", "title", "units", "year_level", "semester", "prerequisite"],
+      ["CC 101", "Intro to Computing", "3", "1", "1"],
+      ["CC 102", "Programming 1", "3", "1", "2", "CC 101"],
+    ]);
+
+    const parsed = parseSubjectRows(table.rows);
+    assert.ok("subjects" in parsed);
+    assert.deepEqual(
+      parsed.subjects.map((s) => [s.code, s.units, s.semester, s.requirements]),
+      [
+        ["CC 101", 3, 1, []],
+        ["CC 102", 3, 2, [{ kind: "code", code: "CC 101" }]],
+      ]
+    );
+  });
+
+  it("reads a CSV and a web-page .xls from their bytes", async () => {
+    const csv = await readTableFile(new TextEncoder().encode("\uFEFFcode,title\nCC 101,Intro\n"));
+    assert.deepEqual(csv, { rows: [["code", "title"], ["CC 101", "Intro"]], kind: "csv" });
+
+    const html = await readTableFile(new TextEncoder().encode("<html><body><table><tr><td>a</td></tr></table></body></html>"));
+    assert.deepEqual(html, { rows: [["a"]], kind: "html" });
+  });
+
+  it("asks for an older Excel 97–2003 file to be saved as .xlsx or CSV", async () => {
+    const result = await readTableFile(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0]));
+    assert.ok("error" in result);
+    assert.match(result.error, /Excel 97–2003.*\.xlsx/);
+  });
+
+  it("reports a damaged .xlsx instead of failing", async () => {
+    const result = await readTableFile(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3]));
+    assert.ok("error" in result);
+    assert.match(result.error, /could not be read/);
   });
 });

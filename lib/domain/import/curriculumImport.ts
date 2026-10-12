@@ -1,7 +1,7 @@
 import { normalizeCode, findMatchingCode } from "./codeMatching";
 import { readTable } from "./tableFile";
 
-// Parsing and planning for the curriculum import (CSV or .xls). Kept free of database
+// Parsing and planning for the curriculum import (CSV, .xlsx or .xls). Kept free of database
 // calls so the preview and the real import work from exactly the same plan.
 
 export type ParsedRequirement = { kind: "code"; code: string } | { kind: "year_standing"; level: number };
@@ -57,6 +57,16 @@ export interface CurriculumImportSummary {
   keptWithGrades: string[];
 }
 
+/** 1, 2, or S for the midyear (3 is still read, from older files). */
+function parseSemester(raw: string | undefined): number {
+  const value = (raw ?? "").trim().toUpperCase();
+  if (value === "S" || value === "3" || value === "MIDYEAR") return 3;
+  if (value === "1" || value === "2") return Number(value);
+  return NaN;
+}
+
+const semesterLabel = (semester: number) => (semester === 3 ? "S" : String(semester));
+
 export function parseRequirementToken(raw: string): ParsedRequirement | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
@@ -69,14 +79,21 @@ export function parseRequirementToken(raw: string): ParsedRequirement | null {
   return { kind: "code", code: normalizeCode(trimmed) };
 }
 
+export type ParsedSubjects = { subjects: ParsedSubject[]; warnings: string[] } | { error: string };
+
+/** Reads the subjects from a curriculum CSV or .xls template's text; see `parseSubjectRows`. */
+export function parseSubjectsCsv(text: string): ParsedSubjects {
+  return parseSubjectRows(readTable(text));
+}
+
 /**
- * Reads the subjects from a curriculum file's text (CSV, or the .xls
- * template). Columns: code, title, units, year level, semester,
- * prerequisites. Rows that can't be read become warnings; rows with neither
- * a code nor a title (e.g. the template's notes) are skipped quietly.
+ * Reads the subjects from a curriculum file's rows, header first.
+ * Columns: code, title, units, year level, semester (1, 2 or S for the
+ * midyear), prerequisites. Rows that
+ * can't be read become warnings; rows with neither a code nor a title (e.g.
+ * the template's notes) are skipped quietly.
  */
-export function parseSubjectsCsv(text: string): { subjects: ParsedSubject[]; warnings: string[] } | { error: string } {
-  const rows = readTable(text);
+export function parseSubjectRows(rows: string[][]): ParsedSubjects {
   if (rows.length < 2) return { error: "File appears to be empty." };
 
   const subjects: ParsedSubject[] = [];
@@ -90,7 +107,7 @@ export function parseSubjectsCsv(text: string): { subjects: ParsedSubject[]; war
     const title = (rawTitle ?? "").trim();
     const units = Number(rawUnits);
     const yearLevel = Number(rawYear);
-    const semester = Number(rawSemester);
+    const semester = parseSemester(rawSemester);
 
     if (!code && !title) continue;
     if (!code || !title || Number.isNaN(units) || Number.isNaN(yearLevel) || Number.isNaN(semester)) {
@@ -181,7 +198,9 @@ export function planCurriculumImport(
     if (current.title !== s.title) changes.push(`title "${current.title}" → "${s.title}"`);
     if (Number(current.units) !== s.units) changes.push(`units ${current.units} → ${s.units}`);
     if (current.year_level !== s.yearLevel) changes.push(`year ${current.year_level} → ${s.yearLevel}`);
-    if (current.semester !== s.semester) changes.push(`semester ${current.semester} → ${s.semester}`);
+    if (current.semester !== s.semester) {
+      changes.push(`semester ${semesterLabel(current.semester)} → ${semesterLabel(s.semester)}`);
+    }
     const before = [...currentRequirements].sort().join(", ");
     const after = [...newRequirements].sort().join(", ");
     if (before !== after) changes.push(`prerequisites ${before || "none"} → ${after || "none"}`);

@@ -40,7 +40,7 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
             <Label htmlFor="termYear">School year and semester</Label>
             <TermFields
               defaultYear={parsed ? String(parsed.year).padStart(2, "0") : ""}
-              defaultSemester={parsed ? String(parsed.semester) : ""}
+              defaultSemester={current?.term.split("-")[1] ?? ""}
             >
               <ConfirmButton
                 tone="primary"
@@ -51,7 +51,10 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
                 Set semester
               </ConfirmButton>
             </TermFields>
-            <Hint>Two-digit school year, e.g. 25 – 1 is the first semester of SY 2025–2026.</Hint>
+            <Hint>
+              Two-digit school year, e.g. 25 – 1 is the first semester of SY 2025–2026. Midyear is S, as on KSU records:
+              26 – S is the midyear between 25 – 2 and 26 – 1.
+            </Hint>
           </div>
         </CardBody>
       </form>

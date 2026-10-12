@@ -7,10 +7,12 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import { Field, Select } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Reassign chairperson" };
 
 export default async function ReassignChairpersonPage() {
+  await requireRole("dean");
   const programs = await getProgramsWithChairpersonForDean();
 
   return (

@@ -8,6 +8,7 @@ import { Card, CardHeader } from "../../../../../components/ui/Card";
 import { Badge, type BadgeTone } from "../../../../../components/ui/Badge";
 import { Table, Td, Th, Tr } from "../../../../../components/ui/Table";
 import EmptyState from "../../../../../components/ui/EmptyState";
+import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Grade logbook" };
 
@@ -19,6 +20,7 @@ const RESULT: Record<string, { label: string; tone: BadgeTone }> = {
 };
 
 export default async function StudentLogbookPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentLogbook(id);
   if (!data) notFound();

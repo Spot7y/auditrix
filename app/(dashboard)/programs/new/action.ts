@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
+import { userMessage } from "../../../../lib/userMessage";
 
 export async function createProgram(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -33,7 +34,7 @@ export async function createProgram(formData: FormData) {
     .eq("program", program)
     .limit(1);
   if (existingError) {
-    redirect(`/programs/new?error=${encodeURIComponent(existingError.message)}`);
+    redirect(`/programs/new?error=${encodeURIComponent(userMessage(existingError))}`);
   }
   if (existingCurricula && existingCurricula.length > 0) {
     redirect(`/programs/new?error=${encodeURIComponent(`A program named ${program} already exists.`)}`);
@@ -59,7 +60,7 @@ export async function createProgram(formData: FormData) {
   });
   if (createError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(`/programs/new?error=${encodeURIComponent(createError.message)}`);
+    redirect(`/programs/new?error=${encodeURIComponent(userMessage(createError))}`);
   }
 
   redirect(`/home?success=${encodeURIComponent(`Created ${program} and the chairperson account for ${chairName}.`)}`);

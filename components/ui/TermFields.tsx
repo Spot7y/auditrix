@@ -56,7 +56,8 @@ export default function TermFields({
           <option value="">Semester…</option>
           <option value="1">1 · First</option>
           <option value="2">2 · Second</option>
-          <option value="3">3 · Midyear</option>
+          {/* As on KSU records: 26-S is the midyear before 26-1. */}
+          <option value="S">S · Midyear</option>
         </Select>
       </div>
       {children}

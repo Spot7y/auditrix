@@ -7,10 +7,12 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Add subject" };
 
 export default async function NewSubjectPage({ searchParams }: { searchParams: Promise<{ curriculumId?: string }> }) {
+  await requireRole("chairperson");
   const { curriculumId } = await searchParams;
   const data = await getCurriculumForStaff(curriculumId);
 
@@ -47,7 +49,7 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
       <Card className="mt-6">
         <CardHeader
           title="Import the whole curriculum"
-          description="Replace this version’s subjects with the ones in a CSV or .xls file. You’ll see a preview before anything is saved."
+          description="Replace this version’s subjects with the ones in an Excel or CSV file. You’ll see a preview before anything is saved."
         />
         <CardBody>
           <ImportCurriculumModal curriculumId={data.curriculumId} />

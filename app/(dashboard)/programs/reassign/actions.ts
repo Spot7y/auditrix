@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
+import { userMessage } from "../../../../lib/userMessage";
 
 export async function reassignChairperson(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -60,7 +61,7 @@ export async function reassignChairperson(formData: FormData) {
   });
   if (replaceError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(`/programs/reassign?error=${encodeURIComponent(replaceError.message)}`);
+    redirect(`/programs/reassign?error=${encodeURIComponent(userMessage(replaceError))}`);
   }
 
   // Their staff rows are already gone, which removes their access; banning

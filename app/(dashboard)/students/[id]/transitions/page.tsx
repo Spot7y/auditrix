@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowRight, DoorOpen, LogIn, LogOut, Repeat, UserX, type LucideIcon } from "lucide-react";
+import { ArrowRight, DoorOpen, LockOpen, LogIn, LogOut, Repeat, UserX, type LucideIcon } from "lucide-react";
 import { getStudentAudit } from "../../../../../lib/queries/students";
-import { getTransitionsForStudent, getPendingShiftRequest } from "../../../../../lib/queries/transitions";
-import { formatDate, TRANSITION_LABEL } from "../../../../../lib/format";
-import { recordTransferIn, recordTransferOut, recordDropped, requestShiftOut, cancelShiftRequest } from "./actions";
+import { getTransitionsForStudent, getPendingShiftRequest, getRecordLock } from "../../../../../lib/queries/transitions";
+import { formatDate, LOCK_LABEL, TRANSITION_LABEL } from "../../../../../lib/format";
+import { recordTransferIn, recordTransferOut, recordDropped, requestShiftOut, cancelShiftRequest, reopenRecord } from "./actions";
 import PageHeader from "../../../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../../../components/ui/Card";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
+import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Transfer or shift" };
 
@@ -66,11 +67,16 @@ function ActionCard({
 }
 
 export default async function StudentTransitionsPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();
 
-  const [history, isPending] = await Promise.all([getTransitionsForStudent(id), getPendingShiftRequest(id)]);
+  const [history, isPending, lock] = await Promise.all([
+    getTransitionsForStudent(id),
+    getPendingShiftRequest(id),
+    getRecordLock(id),
+  ]);
   const who = `${data.studentName} (${data.studentId})`;
 
   return (
@@ -88,6 +94,20 @@ export default async function StudentTransitionsPage({ params }: { params: Promi
         </Alert>
       )}
 
+      {lock ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <ActionCard
+            icon={LockOpen}
+            title="Reopen record"
+            description={`${LOCK_LABEL[lock.status]}${lock.since ? ` on ${formatDate(lock.since)}` : ""}, so the record is locked. Reopen it if the student comes back or it was recorded by mistake.`}
+            action={reopenRecord}
+            studentId={id}
+            button="Reopen record"
+            confirmTitle="Reopen this record?"
+            confirmDescription={`${who}’s record will be unlocked so grades and details can be changed again. The reopening is added to the student’s history.`}
+          />
+        </div>
+      ) : (
       <div className="grid gap-4 md:grid-cols-2">
         {isPending ? (
           <ActionCard
@@ -145,6 +165,7 @@ export default async function StudentTransitionsPage({ params }: { params: Promi
           tone="danger"
         />
       </div>
+      )}
 
       <Card className="mt-6">
         <CardHeader title="History" description="Every transfer, shift and drop recorded for this student." />

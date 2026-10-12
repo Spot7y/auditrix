@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { compareTerms } from "../domain/Term";
 
@@ -9,14 +10,15 @@ export interface CollegeTerm {
 
 /**
  * The current term of the signed-in staff member's college, if its dean has
- * set one. (Row-level security returns only that college's row.)
+ * set one. (Row-level security returns only that college's row.) Looked up
+ * once per request.
  */
-export async function getCurrentTerm(): Promise<CollegeTerm | null> {
+export const getCurrentTerm = cache(async function getCurrentTerm(): Promise<CollegeTerm | null> {
   const client = await createServerClientForUser();
   const { data, error } = await client.from("college_terms").select("current_term, set_by, set_at").maybeSingle();
   if (error || !data) return null;
   return { term: data.current_term, setBy: data.set_by, setAt: data.set_at };
-}
+});
 
 export interface YearLevelHistoryEntry {
   term: string;

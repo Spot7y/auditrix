@@ -1,12 +1,12 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { createAdminClient } from "../domain/supabase/adminClient";
-import { getCurrentStaff } from "./staff";
+import { fetchAll } from "../domain/supabase/fetchAll";
 
 export interface TransitionRow {
   id: string;
   studentId: string;
   studentName: string;
-  type: "TRANSFERRED_IN" | "TRANSFERRED_OUT" | "SHIFTED_IN" | "SHIFTED_OUT" | "DROPPED";
+  type: "TRANSFERRED_IN" | "TRANSFERRED_OUT" | "SHIFTED_IN" | "SHIFTED_OUT" | "DROPPED" | "REOPENED";
   fromProgram: string | null;
   toProgram: string | null;
   notes: string | null;
@@ -38,21 +38,6 @@ function mapRow(row: TransitionQueryRow): TransitionRow {
     recordedBy: row.recorded_by,
     recordedAt: row.recorded_at,
   };
-}
-
-export async function getRecentTransitions(): Promise<TransitionRow[]> {
-  const staff = await getCurrentStaff();
-  if (!staff) return [];
-
-  const supabase = await createServerClientForUser();
-  const { data, error } = await supabase
-    .from("student_transitions")
-    .select("id, student_id, student_name, type, from_program, to_program, notes, recorded_by, recorded_at")
-    .order("recorded_at", { ascending: false })
-    .limit(50);
-  if (error) throw error;
-
-  return (data ?? []).map(mapRow);
 }
 
 export async function getTransitionsForStudent(studentId: string): Promise<TransitionRow[]> {
@@ -92,4 +77,46 @@ export async function lookupPendingShiftStudent(studentId: string): Promise<Pend
   if (!student) return null;
 
   return { studentId: request.student_id, studentName: student.name, fromProgram: request.from_program };
+}
+export interface RecordLock {
+  status: "DROPPED" | "TRANSFERRED_OUT";
+  /** When and by whom the drop or transfer out was recorded. */
+  since: string | null;
+  by: string | null;
+}
+
+/**
+ * Null while the student's record is open; otherwise why it's locked. A
+ * dropped or transferred-out student's grades, details and year level can't
+ * be changed until a chairperson reopens the record.
+ */
+export async function getRecordLock(studentId: string): Promise<RecordLock | null> {
+  const supabase = await createServerClientForUser();
+  const { data: student, error } = await supabase.from("students").select("record_status").eq("id", studentId).maybeSingle();
+  if (error) throw error;
+  if (!student || student.record_status === "ACTIVE") return null;
+
+  const { data: entry } = await supabase
+    .from("student_transitions")
+    .select("recorded_at, recorded_by")
+    .eq("student_id", studentId)
+    .eq("type", student.record_status)
+    .order("recorded_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return { status: student.record_status, since: entry?.recorded_at ?? null, by: entry?.recorded_by ?? null };
+}
+
+/** Every student movement the signed-in staff member can see, newest first. */
+export async function getAllTransitions(): Promise<TransitionRow[]> {
+  const supabase = await createServerClientForUser();
+  const rows = await fetchAll((from, to) =>
+    supabase
+      .from("student_transitions")
+      .select("id, student_id, student_name, type, from_program, to_program, notes, recorded_by, recorded_at")
+      .order("recorded_at", { ascending: false })
+      .order("id")
+      .range(from, to)
+  );
+  return (rows as TransitionQueryRow[]).map(mapRow);
 }

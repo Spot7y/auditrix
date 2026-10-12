@@ -3,6 +3,7 @@ import { beforeEach, describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import { form, importFromRoot, mockCurrentStaff, mockNext, projectFile, redirectOf } from "../helpers/modules.mjs";
 import { readFileSync } from "node:fs";
+import ExcelJS from "exceljs";
 import type { ImportResult } from "../../components/ImportDialog";
 
 let inserted: Record<string, unknown>[];
@@ -94,6 +95,28 @@ describe("Import students", () => {
       inserted.map((s) => [s.id, s.name, s.nominal_year_level]),
       [["26-100001", "Dela Cruz, Juan Santos", 2]]
     );
+  });
+
+  it("imports an Excel workbook (.xlsx)", async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Students");
+    sheet.addRow(["#", "Student ID", "Name", "Course/Year/Section", "Year"]);
+    sheet.addRow([1, "26-100001", "Dela Cruz, Juan Santos", "BSCpE - 1-A", 1]);
+    sheet.addRow([2, "26-100002", "Santos, Maria Reyes", "BSCpE - 2-A", 2]);
+    const bytes = await workbook.xlsx.writeBuffer();
+    const result = await importStudentsCsv(
+      null,
+      form({ curriculumId: "cpe-2023", file: new File([new Uint8Array(bytes)], "students.xlsx") })
+    );
+
+    assert.deepEqual(
+      inserted.map((s) => [s.id, s.name, s.nominal_year_level]),
+      [
+        ["26-100001", "Dela Cruz, Juan Santos", 1],
+        ["26-100002", "Santos, Maria Reyes", 2],
+      ]
+    );
+    assert.equal(result.success, "Imported 2 student(s).");
   });
 });
 

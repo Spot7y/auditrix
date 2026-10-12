@@ -24,7 +24,7 @@ It was built for the whole university (any college and program), and tested with
 
 | Role | Can |
 | --- | --- |
-| **Dean** | See every program and student in their college; set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons. |
+| **Dean** | See every program in their college (totals, charts, comparison, student movements); set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons. Deans don't open individual students' records or search for students; that's the chairperson's work. |
 | **Chairperson** | Manage their program's curriculum (versions, subjects, prerequisites, import/export); register and import students; enter grades; change a student's year level by hand for special cases; record shifts, transfers and drops; accept shifting students. |
 
 A new chairperson gets a temporary password from the dean and must choose their own at first login.
@@ -62,8 +62,12 @@ applies, the student's **year level** and **Regular / Irregular** status.
 ### 2.2 Grade entry
 - Grades are entered per term (`YY-S`, e.g. 25-1), for the subjects of a chosen curriculum year and semester.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
-  and INC. (There is no 4.0.) The system also understands "in progress", but the grade form doesn't offer it yet;
-  see section 10.
+  and INC. (There is no 4.0.) **In progress** is also a choice, for subjects the student is taking this semester.
+- **Bulk "in progress":** each subject has a tick box; ticking several (or all, from the header) and clicking
+  **Mark as in progress** sets them all at once. Subjects already passed can't be ticked. Ticking all leaves out
+  subjects the student can't take yet (e.g. "Can't take yet. Needs: MATH 111"); those can still be ticked one by one
+  if the student is enrolled anyway, and the audit then flags them as violations. A subject still in progress from an
+  earlier term that's marked again moves to the chosen term.
 - Only changed grades are saved; changing an existing grade is a correction and asks for confirmation.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
@@ -76,22 +80,44 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Versions per program by effective year (e.g. BSCpE 2019, 2023); a new version can copy an existing one.
 - Subjects (code, title, units, year level, semester including **midyear**) and requirements: prerequisite,
   co-requisite, year standing, "all subjects completed".
-- **Import** from CSV or .xls, with a **preview** of what will be added, changed or removed before saving.
+- **Import** from Excel (.xlsx or .xls) or CSV, with a **preview** of what will be added, changed or removed before saving.
 - **Export** to CSV or PDF.
 - A **change history** per version (who changed what, when).
 
 ### 2.4 Students
-- Register one at a time, or **import** a CSV or .xls file (the template, or the KSU-MIS "Export to Excel" file).
+- Register one at a time, or **import** an Excel (.xlsx or .xls) or CSV file (the template, or the KSU-MIS "Export to
+  Excel" file).
   The student template uses the KSU-MIS layout.
 - Edit ID number and name; ID numbers are validated (e.g. 24-113792).
 - **Shifting:** the releasing chairperson files a shift request; the receiving program's chairperson accepts the
   student into one of their curriculum versions.
 - Transfers in/out and drops are recorded; every movement is kept in the student's history.
+- **Locked records:** marking a student dropped or transferred out locks their record. Grades, details and year level
+  can't be changed (enforced by the database, not only hidden in the screens); the audit and logbook stay viewable.
+  A chairperson can **reopen** the record (e.g. the student came back), which is recorded in the history.
+- The student list can be searched and **filtered** by year level, curriculum version and status (regular, irregular,
+  not determined, with violations, dropped or transferred out). Under each name is the **reason** for its status
+  (e.g. "Out of order: PHYS 201", "Not enrolled in GE 101, MATH 101").
+- **Student Movements** page (sidebar): every shift, transfer, drop and reopening, searchable and filterable by type,
+  program and year.
+- **Student search** in the top bar on every page (Ctrl+K), next to the current semester (chairpersons only).
 
 ### 2.5 Dashboard
-Per program: total students, **regular / irregular** counts (and how many are not determined), students with
-violations, students by year level (Freshman–Senior), curriculum versions, shifts/transfers/drops, and recent
-movements. The dean sees every program in the college and sets the current semester here.
+A **Needs attention** banner at the top lists what to act on (students with violations, students with nothing
+recorded for the current semester, an unset semester), each with a link to the matching filtered student list.
+Per program: total students, **regular / irregular** counts with percentages (and how many are not determined),
+students with violations, curriculum versions and shift/transfer/drop counts (with "View all" to the Student
+Movements page), plus four charts built only from recorded data:
+- regular / irregular / not determined (one stacked bar);
+- students by year level (Freshman–Senior);
+- **bottleneck subjects**: where the most students' latest grade is 5.0 or INC;
+- subjects most often **taken out of order**.
+
+Each chart has a one-line explanation, shows the exact numbers on hover (or keyboard focus), and has a "View as table"
+option, so the colors are never the only way to read it. Dropped and transferred-out students aren't counted as
+current students. The dean sets the current semester here and sees every program in the college **compared side by
+side** (regular/irregular share per program, students with violations per program), a table with one row per program,
+and tabs to open one program's charts.
 
 ### 2.6 Accounts and safety
 - First-login password change for new chairpersons, with a **live checklist** that ticks each rule green (at least
@@ -109,8 +135,10 @@ Sources used:
   (Freshman to Senior) and regular/irregular student.
 
 ### 3.1 Terms
-Written `YY-S`: the school year's first two digits and the semester (1 = first, 2 = second, 3 = midyear).
-Order: 25-1 → 25-2 → 25-3 (midyear) → 26-1.
+Written as on KSU records: the school year's first two digits and the semester (1 = first, 2 = second, S = midyear).
+The midyear carries the year of the semester after it, so the order is 25-1 → 25-2 → 26-S (midyear) → 26-1, exactly as
+the terms are listed on a student's KSU record. (Earlier versions wrote the midyear as 25-3 after 25-2; that was
+changed so chairpersons can type the term exactly as it appears on the record.)
 
 ### 3.2 Prerequisites (Handbook: a prerequisite must be passed *prior to* taking the subject; credit for a subject
 taken without it is nullified)
@@ -159,8 +187,8 @@ instead of a violation.
   already passed in an earlier term aren't expected again. Back subjects on top of a full load don't make a student
   irregular.
 - **Enrollment** means grades or "in progress" recorded for the current semester. With nothing recorded, the status is
-  **"Not determined"** and the student isn't counted either way. (Because the grade form can't record "in progress"
-  yet, a student's status for the current semester is known only once their grades for it are entered.)
+  **"Not determined"** and the student isn't counted either way. At the start of a semester the chairperson marks
+  the subjects each student is taking as **in progress**, so the status is known before any grades come in.
 
 ---
 
@@ -211,6 +239,45 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-09-29/30 — automatic year levels (adviser's decision), KSU-MIS-style student template, .xls support for both
   imports.
 - 2026-10-06 — protection against an earlier-term grade replacing a later one; password checklist.
+- 2026-10-08 — both imports read Excel workbooks (.xlsx); the development "N" indicator hidden; `npm run db:save`
+  to keep data through a database reset; "In progress" in the grade form, with ticking several subjects at once.
+- 2026-10-08 — midyear terms written as on KSU records (26-S, between 25-2 and 26-1); ticking all skips subjects the
+  student can't take yet; student pages follow the curriculum's subject order.
+- 2026-10-11 — dropped/transferred-out records locked (with reopening); student list filters; dean's program table and
+  tabs; grade logbook times taken from the app's clock; large tables read a page at a time; demo data script.
+- 2026-10-12 — security: role check on every page, database-written audit trail, grade validation in the database,
+  Next.js 16.4.0, security headers, idle sign-out, login blocking, plain error messages.
+- 2026-10-12 — dashboard charts and program comparison, "Needs attention" banner, Student Movements page, top bar
+  with the current semester and Ctrl+K search, student count in the sidebar, reasons in the student list, curriculum
+  semester tabs, deeper KSU green for buttons and the current page. Deans no longer open individual student records
+  (the search, student pages and movement links are for chairpersons); dashboard charts laid out in equal-height rows
+  with a shared scale. The Kalinga State University seal is the logo (sidebar, login page corner and browser tab).
+
+---
+
+## 6b. Security (what protects the data)
+
+| Threat | Protection in Auditrix |
+| --- | --- |
+| Opening another role's page by address (broken access control) | Every page checks the role; server actions check it again; row-level security in the database. Tested: a chairperson opening a dean's page (and the reverse) is sent back to their dashboard. |
+| Seeing another program's students (IDOR) | Row-level security: a chairperson opening another program's student gets "Page not found". |
+| Changing grades without a trace, or faking the logbook | A database trigger writes every grade change to the logbook with the signed-in user's name and the server's time; direct writes, edits and deletes of the logbook are refused. Tested by connecting to the database directly as a chairperson. |
+| Invalid grades (e.g. 4.0, "Passed" with 5.0) | Database check constraints accept only KSU grades that match their status, and valid terms. |
+| Privilege escalation (a chairperson making themselves dean) | Staff can only change their own name; role, program and college can't be changed by users. |
+| SQL injection | No SQL is built from user input; all access goes through Supabase's parameterized API; search input is stripped of filter syntax. |
+| Cross-site scripting (XSS) | React escapes all output; no raw HTML is rendered; Content Security Policy. |
+| Cross-site request forgery (CSRF) | Next.js server actions only accept requests from Auditrix's own pages. |
+| Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY`. |
+| Password guessing | 8+ characters with a letter and a number (also enforced by Supabase); an account is blocked for 15 minutes after 5 wrong passwords; Supabase's own rate limit. |
+| Unattended computer | Signed out after 30 minutes without activity, with a warning. |
+| Stolen database / backups | Passwords stored only as bcrypt hashes; the backup file is kept out of Git. |
+| Man-in-the-middle | HTTPS when hosted (with HSTS); `npm run dev:https` for demos over a network. |
+| Known vulnerabilities in libraries | Next.js upgraded to 16.4.0 (16.2.12 had critical advisories); `npm audit` shows 2 moderate, unexploitable in Auditrix. |
+| Revealing system details in errors | Technical errors are logged on the server; users see plain messages. |
+
+**Limitation (for Chapter 5):** in the local setup, Supabase listens on the network with default keys and a
+password-less Studio; the README gives a firewall rule to block it. A real deployment needs hosting with its own
+keys, HTTPS and backups. Login blocking is kept in the server's memory (reset on restart; one server only).
 
 ---
 
@@ -219,23 +286,51 @@ the order grades are entered, and all five cases above are covered by automated 
 Main tables: `colleges`, `curricula` (program + effective year), `subjects`, `requirements` (prerequisite,
 co-requisite, year standing, completion), `staff` (dean/chairperson), `students`, `subject_records` (latest attempt
 per subject: status, grade, term, resolved term), `grade_audit_log` (every grade change), `student_transitions`
-(shifts, transfers, drops), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
-`student_year_levels` (registered year level and chairperson overrides).
+(shifts, transfers, drops, reopened records), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
+`student_year_levels` (registered year level and chairperson overrides). `students.record_status` marks a record
+locked (dropped or transferred out); database triggers refuse changes to a locked student's grades, details and year
+level.
 
 Security: row-level security on every table, scoped by role (chairperson → own program; dean → own college).
 Operations that must all succeed together (creating a program with its chairperson, replacing a chairperson,
 accepting a shift) run as single database transactions.
 
-27 migrations in `supabase/migrations/` build the schema step by step.
+30 migrations in `supabase/migrations/` build the schema step by step. The app reads large tables a page at a time,
+since the Supabase API returns at most 1,000 rows per request.
 
 ---
 
 ## 8. Screens to capture for Chapter 4
 
+Screenshots of most of these are in `docs/screenshots/` (1440×900 window at 2× resolution, PNG; the `-full` files
+are the whole page). They were taken from a local copy of the system with **sample data and placeholder names**
+(e.g. "Dela Cruz, Juan Santos", chairperson "Juana Reyes", dean "Maria Santos"), not real students.
+
+| File | Shows |
+| --- | --- |
+| `13-dean-creates-chairperson` | The dean creating a program and its chairperson account (temporary password) |
+| `01-first-login-password` | That new chairperson's first login: the change-password page opens by itself; with the short password `abc1` the checklist is only partly green |
+| `02-dean-dashboard` | Dean's dashboard with the Current semester card |
+| `03-chairperson-dashboard` | Regular/irregular, violations, students by year level |
+| `04-curriculum-import-preview` (`04a` = the dialog) | Curriculum import: what will be added/changed/removed, before saving |
+| `05-grade-logbook` | Every grade recorded for a student, including a correction |
+| `06-edit-student-year-level` | Year level: automatic or set by hand, with its history |
+| `07-grade-save-confirmation` | Confirmation before saving a corrected grade |
+| `08-earlier-term-warning` (`08a` = the row note) | Warning before an earlier-term grade replaces a later one |
+| `09-import-students-dialog` | Importing students from Excel, CSV or the KSU-MIS .xls |
+| `10-student-audit` | A regular student's audit (statuses, terms, year level) |
+| `11-student-audit-violation` | A student with a subject taken out of order |
+| `12-shift-in` | Accepting a shifting student |
+
+Full list of screens worth showing:
+
 1. Login page.
 2. First-login password change with the green checklist.
 3. Dean dashboard with the **Current semester** card.
-4. Chairperson dashboard (regular/irregular, violations, students by year level).
+4. Chairperson dashboard: the Needs attention banner and the charts (regular/irregular, year levels, bottleneck
+   subjects, out-of-order subjects), including a hover tooltip and "View as table".
+4b. Dean dashboard with the program comparison charts.
+4c. Student Movements page.
 5. Curriculum page (versions, subjects, prerequisites), and the **import preview**.
 6. Register student and the **Import students** dialog (with the template).
 7. Student audit page: statuses, term column, a **Violation** with its reason, a co-requisite retake,
@@ -250,7 +345,7 @@ accepting a shift) run as single database transactions.
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 149, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 163, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |
@@ -258,7 +353,7 @@ accepting a shift) run as single database transactions.
 | Year level & standing | Operations Manual thresholds (25 / >50 / 75%); finishing earlier years; only grades before the current semester; failed and out-of-order subjects excluded; registered level and chairperson override; year standing as of the term taken; "please verify" |
 | Regular/irregular | full load, back subjects on top, already passed, missing subjects, failed earlier, graded in the current term, not determined (no enrollment, no semester set, nothing prescribed) |
 | Grade entry | KSU grade values; rejected rows with reasons; same-term violations in any row order; entry order doesn't matter; violations survive re-saving; INC completion and its term; earlier-term protection and confirmed correction; malformed terms |
-| Imports | curriculum CSV/.xls parsing and the import preview plan; reading CSV, KSU-MIS .xls and Excel re-saved .xls; student template import |
+| Imports | curriculum CSV/.xls parsing and the import preview plan; reading CSV, Excel workbooks (.xlsx), KSU-MIS .xls and Excel re-saved .xls; old Excel 97-2003 and damaged files; student template and .xlsx import |
 | Other rules | subject-code matching, student ID format, search terms, password policy (and checklist agreement) |
 | Server actions & permissions | registering/importing/editing students (ID validation); dean/chairperson permission checks for reassigning chairpersons, creating programs and accepting shift-ins |
 
@@ -266,7 +361,7 @@ accepting a shift) run as single database transactions.
 system (PostgreSQL + the app) with sample CEIT data, logging in as dean and chairpersons and clicking through each
 feature: violations and their reasons, INC completion, the out-of-order warning after saving, setting the current
 semester, automatic year levels moving up with grades and semesters, chairperson overrides, regular/irregular
-counts, .xls imports, the earlier-term warning and the password checklist. All scenarios passed after fixes.
+counts, .xls and .xlsx imports, the earlier-term warning and the password checklist. All scenarios passed after fixes.
 
 **Not done yet** (don't report results for these): user acceptance testing with actual chairpersons/deans, an
 evaluation questionnaire (e.g. ISO 25010), and testing on a hosted (online) deployment. The system currently runs
@@ -276,13 +371,14 @@ locally.
 
 ## 10. Limitations and recommendations (for Chapter 5)
 
-- The grade form can't record **"in progress"** yet, so current enrollment (regular/irregular) is known only once
-  grades are entered.
+- Current enrollment (regular/irregular) depends on the chairperson marking each student's subjects **in
+  progress** every semester; it isn't read from the KSU-MIS enrollment records.
 - Only the **latest attempt** of each subject is kept as the student's record (all attempts remain in the logbook).
 - Year levels and year standing are only as accurate as the grades entered; older grades of existing students
   should be encoded.
 - No **bulk grade import** yet; grades are entered student by student.
-- Real Excel files (.xlsx, Excel 97-2003 .xls) aren't read; CSV and the web-page .xls (KSU-MIS export / templates) are.
+- Files in the old Excel 97-2003 format aren't read (the system asks for them to be saved as .xlsx or CSV); Excel
+  workbooks (.xlsx), CSV and the web-page .xls (KSU-MIS export / templates) are.
 - No student-facing access and no printable student evaluation yet.
 - Not yet connected to KSU-MIS or the Registrar (the system has no access to them); data is entered or imported.
 - Possible future features: suggested load for next semester (preventing violations before enrollment), printable
@@ -301,7 +397,7 @@ locally.
 | `lib/domain/enrollmentStatus.ts` | Regular / irregular |
 | `lib/domain/import/GradeEntryService.ts` | Saving grades, INC completion, earlier-term protection |
 | `lib/domain/import/GradeValidator.ts` | KSU grade values |
-| `lib/domain/import/tableFile.ts`, `curriculumImport.ts` | Reading CSV/.xls, curriculum import plan |
+| `lib/domain/import/tableFile.ts`, `curriculumImport.ts` | Reading Excel/CSV/.xls, curriculum import plan |
 | `lib/domain/passwordPolicy.ts` | Password rules |
 | `app/(dashboard)/…` | Pages and server actions |
 | `supabase/migrations/` | Database schema, security policies, functions |

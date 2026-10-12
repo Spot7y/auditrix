@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClientForUser } from "../domain/supabase/serverClient";
 
 export interface CurrentStaff {
@@ -10,7 +11,8 @@ export interface CurrentStaff {
   mustChangePassword: boolean;
 }
 
-export async function getCurrentStaff(): Promise<CurrentStaff | null> {
+/** The signed-in staff member, looked up once per request. */
+export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<CurrentStaff | null> {
   const supabase = await createServerClientForUser();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
@@ -35,4 +37,4 @@ export async function getCurrentStaff(): Promise<CurrentStaff | null> {
     collegeName: college?.name ?? null,
     mustChangePassword: data.must_change_password === true,
   };
-}
+});

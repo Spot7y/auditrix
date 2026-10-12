@@ -5,10 +5,12 @@ import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import { Field, Input } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Create program" };
 
-export default function NewProgramPage() {
+export default async function NewProgramPage() {
+  await requireRole("dean");
   const thisYear = new Date().getFullYear();
 
   return (

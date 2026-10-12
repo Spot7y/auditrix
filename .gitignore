@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# data saved with `npm run db:save` (real accounts and student records)
+/supabase/seed.sql
+
+# local HTTPS certificate made by `npm run dev:https`
+/certificates

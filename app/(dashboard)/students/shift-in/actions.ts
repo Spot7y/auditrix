@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
+import { userMessage } from "../../../../lib/userMessage";
 
 export async function acceptShiftIn(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -61,7 +62,7 @@ export async function acceptShiftIn(formData: FormData) {
     p_recorded_by: staff!.name,
   });
   if (acceptError) {
-    redirect(`/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent(acceptError.message)}`);
+    redirect(`/students/shift-in?id=${encodeURIComponent(studentId)}&error=${encodeURIComponent(userMessage(acceptError))}`);
   }
 
   revalidatePath(`/students/${studentId}`);

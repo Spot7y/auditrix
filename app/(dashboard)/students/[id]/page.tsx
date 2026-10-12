@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ClipboardPen, History, Pencil, Repeat, TriangleAlert } from "lucide-react";
+import { ClipboardPen, History, Lock, Pencil, Repeat, TriangleAlert } from "lucide-react";
 import type { Requirement } from "../../../../lib/domain/requirements/Requirement";
 import { isCorequisite } from "../../../../lib/domain/requirements/CoursePrerequisite";
-import StudentSearchBar from "../StudentSearchBar";
 import { getStudentAudit } from "../../../../lib/queries/students";
-import { getPendingShiftRequest } from "../../../../lib/queries/transitions";
-import { formatGrade, plural } from "../../../../lib/format";
+import { getPendingShiftRequest, getRecordLock } from "../../../../lib/queries/transitions";
+import { reopenRecord } from "./transitions/actions";
+import ConfirmButton from "../../../../components/ui/ConfirmButton";
+import { formatDate, formatGrade, LOCK_LABEL, plural } from "../../../../lib/format";
 import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../../components/ui/Card";
 import { LinkButton } from "../../../../components/ui/Button";
@@ -15,6 +16,7 @@ import type { EnrollmentStatus } from "../../../../lib/domain/enrollmentStatus";
 import type { YearLevelInfo } from "../../../../lib/domain/yearLevels";
 import { Table, Td, Th, Tr } from "../../../../components/ui/Table";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 const YEAR_LABEL: Record<number, string> = { 1: "1st year", 2: "2nd year", 3: "3rd year", 4: "4th year" };
 const SEMESTER_LABEL: Record<number, string> = { 1: "First semester", 2: "Second semester", 3: "Midyear" };
@@ -79,11 +81,12 @@ function SummaryTile({
 }
 
 export default async function StudentAuditPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();
 
-  const isPending = await getPendingShiftRequest(id);
+  const [isPending, lock] = await Promise.all([getPendingShiftRequest(id), getRecordLock(id)]);
 
   type Row = (typeof data.rows)[number];
   const byTerm = new Map<string, { year: number; semester: number; rows: Row[] }>();
@@ -106,13 +109,10 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-6">
         <LinkButton href="/students" variant="ghost" size="sm" className="-ml-3 text-ink-500">
           ← All students
         </LinkButton>
-        <div className="w-full sm:w-80">
-          <StudentSearchBar placeholder="Find another student…" />
-        </div>
       </div>
 
       <PageHeader
@@ -125,16 +125,18 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               {YEAR_LABEL[data.yearLevel.level] ?? `Year ${data.yearLevel.level}`}
               {data.yearLevel.basis === "CHAIRPERSON" ? " (set by chairperson)" : ""}
             </span>
-            <EnrollmentBadge status={data.enrollment} />
+            {lock ? <Badge tone="red">{LOCK_LABEL[lock.status]}</Badge> : <EnrollmentBadge status={data.enrollment} />}
             {isPending && <Badge tone="amber">Pending shift request</Badge>}
           </span>
         }
         actions={
           <>
-            <LinkButton href={`/students/${id}/edit`} variant="secondary">
-              <Pencil aria-hidden />
-              Edit
-            </LinkButton>
+            {!lock && (
+              <LinkButton href={`/students/${id}/edit`} variant="secondary">
+                <Pencil aria-hidden />
+                Edit
+              </LinkButton>
+            )}
             <LinkButton href={`/students/${id}/logbook`} variant="secondary">
               <History aria-hidden />
               Grade logbook
@@ -143,13 +145,43 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               <Repeat aria-hidden />
               Transfer / shift
             </LinkButton>
-            <LinkButton href={`/students/${id}/grades`}>
-              <ClipboardPen aria-hidden />
-              Enter grades
-            </LinkButton>
+            {!lock && (
+              <LinkButton href={`/students/${id}/grades`}>
+                <ClipboardPen aria-hidden />
+                Enter grades
+              </LinkButton>
+            )}
           </>
         }
       />
+
+      {lock && (
+        <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+          <Lock className="size-5 shrink-0 text-status-violation" aria-hidden />
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-medium text-red-900">
+              {LOCK_LABEL[lock.status]}
+              {lock.since ? ` on ${formatDate(lock.since)}` : ""}
+              {lock.by ? ` by ${lock.by}` : ""}. This record is locked.
+            </p>
+            <p className="mt-0.5 text-red-800">
+              Grades, details and year level can’t be changed. The audit and grade logbook stay available.
+            </p>
+          </div>
+          <form action={reopenRecord}>
+            <input type="hidden" name="studentId" value={id} />
+            <ConfirmButton
+              variant="secondary"
+              size="sm"
+              title="Reopen this record?"
+              description={`${data.studentName}’s record will be unlocked so grades and details can be changed again, e.g. because the student came back. The reopening is added to the student’s history.`}
+              confirmLabel="Reopen record"
+            >
+              Reopen record
+            </ConfirmButton>
+          </form>
+        </div>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <SummaryTile label="Subjects completed" value={String(count("COMPLETED"))} sub={`of ${data.rows.length}`} />

@@ -7,6 +7,8 @@ import { SupabaseAcademicRecordRepository } from "../../../../../lib/domain/impo
 import { GradeEntryService } from "../../../../../lib/domain/import/GradeEntryService";
 import { AuditEngine } from "../../../../../lib/domain/AuditEngine";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
+import { getRecordLock } from "../../../../../lib/queries/transitions";
+import { LOCK_LABEL } from "../../../../../lib/format";
 import type { GradeEntryResult } from "../../../../../lib/domain/import/GradeEntryResult";
 import type { RawGradeInput } from "../../../../../lib/domain/import/GradeValidator";
 
@@ -35,20 +37,26 @@ export async function submitTermGrades(
   }
 
   const studentId = String(formData.get("studentId") ?? "");
+  const lock = await getRecordLock(studentId);
+  if (lock) {
+    return {
+      result: null,
+      error: `This student’s record is locked (${LOCK_LABEL[lock.status].toLowerCase()}). Reopen it from Transfer / shift to change grades.`,
+    };
+  }
 
   const termYearRaw = String(formData.get("termYear") ?? "").trim();
   const termSemesterRaw = String(formData.get("termSemester") ?? "").trim();
   const termYear = Number(termYearRaw);
-  const termSemester = Number(termSemesterRaw);
 
   if (!termYearRaw || Number.isNaN(termYear) || termYear < 0 || termYear > 99) {
     return { result: null, error: "Enter a valid 2-digit year (e.g. 25)." };
   }
-  if (!termSemesterRaw || Number.isNaN(termSemester) || termSemester < 1 || termSemester > 3) {
-    return { result: null, error: "Semester must be 1, 2, or 3 (Midyear)." };
+  if (!["1", "2", "S"].includes(termSemesterRaw)) {
+    return { result: null, error: "Semester must be 1, 2, or S (Midyear)." };
   }
 
-  const term = `${String(termYear).padStart(2, "0")}-${termSemester}`;
+  const term = `${String(termYear).padStart(2, "0")}-${termSemesterRaw}`;
 
   const entries: { subjectCode: string; input: RawGradeInput }[] = [];
   for (const [key, value] of formData.entries()) {
@@ -82,6 +90,7 @@ export async function submitTermGrades(
   const result = await service.submit({ studentId, term, entries, replaceLaterTerm }, record.curriculum, staff.name);
 
   revalidatePath(`/students/${studentId}`);
+  revalidatePath(`/students/${studentId}/logbook`);
   revalidatePath("/home");
 
   const allAccepted = result.rows.length > 0 && result.rows.every((r) => r.accepted);

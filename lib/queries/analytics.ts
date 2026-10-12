@@ -1,4 +1,5 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
+import { fetchAll } from "../domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
 import { getCurrentStaff } from "./staff";
@@ -8,6 +9,25 @@ import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentSta
 export interface CurriculumVersionInfo {
   effectiveYear: number;
   subjectCount: number;
+}
+
+/** A subject where students get stuck: their latest grade is 5.0 or INC. */
+export interface SubjectTrouble {
+  code: string;
+  title: string;
+  /** Students whose latest grade in the subject is 5.0. */
+  failed: number;
+  /** Students whose latest grade in the subject is INC. */
+  incomplete: number;
+  /** Students with a final grade or INC in the subject. */
+  takers: number;
+}
+
+/** A subject students took without its prerequisites. */
+export interface SubjectViolation {
+  code: string;
+  title: string;
+  students: number;
 }
 
 export interface ProgramSummary {
@@ -26,11 +46,16 @@ export interface ProgramSummary {
   shiftedOutCount: number;
   transferredInCount: number;
   transferredOutCount: number;
+  /** Subjects with the most 5.0s and INCs, most first. */
+  bottlenecks: SubjectTrouble[];
+  /** Subjects most often taken out of order, most first. */
+  outOfOrder: SubjectViolation[];
 }
 
 interface StudentRow {
   id: string;
   nominal_year_level: number;
+  record_status: string;
   curricula: { program: string } | { program: string }[] | null;
 }
 
@@ -63,8 +88,12 @@ function emptySummary(program: string): ProgramSummary {
     shiftedOutCount: 0,
     transferredInCount: 0,
     transferredOutCount: 0,
+    bottlenecks: [],
+    outOfOrder: [],
   };
 }
+
+const TOP_SUBJECTS = 5;
 
 export async function getAnalytics(): Promise<ProgramSummary[]> {
   const staff = await getCurrentStaff();
@@ -82,19 +111,29 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     return summary;
   }
 
-  // Students — RLS already scopes this correctly per role
-  const { data: studentRows, error: studentsError } = await supabase
-    .from("students")
-    .select("id, nominal_year_level, curricula(program)");
-  if (studentsError) throw studentsError;
+  // Students — RLS already scopes this correctly per role. Dropped and
+  // transferred-out students are no longer counted as the program's students
+  // (they show under Student movements instead).
+  const allStudentRows = (await fetchAll((from, to) =>
+    supabase.from("students").select("id, nominal_year_level, record_status, curricula(program)").order("id").range(from, to)
+  )) as StudentRow[];
+  for (const row of allStudentRows) {
+    const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
+    getOrCreate(curricula?.program ?? "Unknown");
+  }
+  const studentRows = allStudentRows.filter((row) => row.record_status === "ACTIVE");
 
   const engine = new AuditEngine();
   const currentTerm = (await getCurrentTerm())?.term ?? null;
   const records = await new SupabaseAcademicRecordRepository(supabase).getRecords(
-    ((studentRows ?? []) as StudentRow[]).map((row) => row.id)
+    studentRows.map((row) => row.id)
   );
 
-  for (const row of (studentRows ?? []) as StudentRow[]) {
+  // Per program, per subject code: 5.0s, INCs, takers and out-of-order students.
+  const trouble = new Map<string, Map<string, SubjectTrouble>>();
+  const violations = new Map<string, Map<string, SubjectViolation>>();
+
+  for (const row of studentRows) {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
     const program = curricula?.program ?? "Unknown";
     const summary = getOrCreate(program);
@@ -112,6 +151,38 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     if (record) {
       const audit = engine.auditStudent(record, currentTerm);
       hasViolation = audit.results.some((r) => r.status === "VIOLATION");
+
+      const programTrouble = trouble.get(program) ?? new Map<string, SubjectTrouble>();
+      trouble.set(program, programTrouble);
+      const programViolations = violations.get(program) ?? new Map<string, SubjectViolation>();
+      violations.set(program, programViolations);
+      for (const subject of record.curriculum.allSubjects()) {
+        const status = record.statusOf(subject.code);
+        if (status === "PASSED" || status === "FAILED" || status === "INCOMPLETE") {
+          const entry = programTrouble.get(subject.code) ?? {
+            code: subject.code,
+            title: subject.title,
+            failed: 0,
+            incomplete: 0,
+            takers: 0,
+          };
+          entry.takers += 1;
+          if (status === "FAILED") entry.failed += 1;
+          if (status === "INCOMPLETE") entry.incomplete += 1;
+          programTrouble.set(subject.code, entry);
+        }
+      }
+      for (const result of audit.results) {
+        if (result.status !== "VIOLATION") continue;
+        const subject = record.curriculum.findSubject(result.subjectCode);
+        const entry = programViolations.get(result.subjectCode) ?? {
+          code: result.subjectCode,
+          title: subject?.title ?? "",
+          students: 0,
+        };
+        entry.students += 1;
+        programViolations.set(result.subjectCode, entry);
+      }
       yearLevel = audit.yearLevel.level;
       enrollment = enrollmentStatus(record, currentTerm, yearLevel).kind;
     }
@@ -123,6 +194,18 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     if (enrollment === "REGULAR") summary.regularStudents += 1;
     else if (enrollment === "IRREGULAR") summary.irregularStudents += 1;
     else summary.undeterminedStudents += 1;
+  }
+
+  for (const [program, subjects] of trouble) {
+    byProgram.get(program)!.bottlenecks = [...subjects.values()]
+      .filter((t) => t.failed + t.incomplete > 0)
+      .sort((a, b) => b.failed + b.incomplete - (a.failed + a.incomplete) || a.code.localeCompare(b.code))
+      .slice(0, TOP_SUBJECTS);
+  }
+  for (const [program, subjects] of violations) {
+    byProgram.get(program)!.outOfOrder = [...subjects.values()]
+      .sort((a, b) => b.students - a.students || a.code.localeCompare(b.code))
+      .slice(0, TOP_SUBJECTS);
   }
 
   // Curriculum versions — year + subject count per program.
@@ -160,12 +243,11 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   // but that broader visibility must never spin up a dashboard section for
   // a program that isn't actually yours. Only add to a section that already
   // exists from the students/curriculum steps above; never create one here.
-  const { data: transitionRows, error: transitionError } = await supabase
-    .from("student_transitions")
-    .select("type, from_program, to_program");
-  if (transitionError) throw transitionError;
+  const transitionRows = await fetchAll((from, to) =>
+    supabase.from("student_transitions").select("type, from_program, to_program").order("id").range(from, to)
+  );
 
-  for (const t of (transitionRows ?? []) as TransitionForCount[]) {
+  for (const t of transitionRows as TransitionForCount[]) {
     if (t.type === "DROPPED" && t.from_program) {
       const summary = byProgram.get(t.from_program);
       if (summary) summary.droppedCount += 1;

@@ -6,6 +6,7 @@ import { createServerClientForUser } from "../../../../../lib/domain/supabase/se
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../../lib/domain/studentId";
 import { isValidTerm } from "../../../../../lib/domain/Term";
+import { userMessage } from "../../../../../lib/userMessage";
 
 export async function updateStudentInfo(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -34,7 +35,7 @@ export async function updateStudentInfo(formData: FormData) {
 
   if (error) {
     const message =
-      error.code === "23505" ? `Another student already has the ID ${newId}.` : error.message;
+      error.code === "23505" ? `Another student already has the ID ${newId}.` : userMessage(error);
     redirect(`/students/${currentId}/edit?error=${encodeURIComponent(message)}`);
   }
   // Row-level security turns a disallowed update into "0 rows changed", not an error.
@@ -76,7 +77,7 @@ export async function setYearLevel(formData: FormData) {
     p_year_level: yearLevel,
     p_effective_term: term,
   });
-  if (error) redirect(`${back}?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`${back}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");

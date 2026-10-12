@@ -6,12 +6,14 @@ import PageHeader from "../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Field";
 import SubmitButton from "../../../components/ui/SubmitButton";
+import { requireRole } from "../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Account settings" };
 
 const ROLE_LABEL = { chairperson: "Chairperson", dean: "Dean", admin: "Admin" } as const;
 
 export default async function SettingsPage() {
+  await requireRole("chairperson", "dean");
   const staff = await getCurrentStaff();
 
   return (

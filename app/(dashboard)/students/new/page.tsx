@@ -9,10 +9,12 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import { Field, Input, Select } from "../../../../components/ui/Field";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Register student" };
 
 export default async function NewStudentPage() {
+  await requireRole("chairperson");
   const staff = await getCurrentStaff();
   const versions = await getCurriculumVersionsForStaff();
 
@@ -85,7 +87,7 @@ export default async function NewStudentPage() {
       <Card className="mt-6">
         <CardHeader
           title="Import a class list"
-          description="Upload a CSV, or the “Export to Excel” file from KSU-MIS, to register many students at once."
+          description="Upload an xls, xlsx or CSV file, to register many students at once."
         />
         <CardBody>
           <ImportStudentsModal versions={versions?.versions ?? []} />

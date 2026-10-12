@@ -15,10 +15,12 @@ import { LinkButton } from "../../../../components/ui/Button";
 import { Badge } from "../../../../components/ui/Badge";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import EmptyState from "../../../../components/ui/EmptyState";
+import { requireRole } from "../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Edit subject" };
 
 export default async function EditSubjectPage({ params }: { params: Promise<{ subjectId: string }> }) {
+  await requireRole("chairperson");
   const { subjectId } = await params;
   // Load the subject's own version, not just the newest one, so older versions can be edited too.
   const curriculumId = await getCurriculumIdForSubject(subjectId);

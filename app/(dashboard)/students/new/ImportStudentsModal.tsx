@@ -16,7 +16,7 @@ export default function ImportStudentsModal({ versions }: { versions: VersionOpt
       <ImportDialog
         triggerLabel="Import students"
         title="Import students"
-        description="Register every student in a CSV or KSU-MIS export file."
+        description="Register every student in an Excel, CSV or KSU-MIS export file."
         action={importStudentsCsv}
       >
         <Field
@@ -35,7 +35,7 @@ export default function ImportStudentsModal({ versions }: { versions: VersionOpt
             ))}
           </Select>
         </Field>
-        <FileInput id="import-file" label="File" accept=".csv,.xls" hint="CSV, or the .xls “Export to Excel” file from KSU-MIS. Up to 10 MB." />
+        <FileInput id="import-file" label="File" accept=".xlsx,.xls,.csv" hint="Excel (.xlsx or .xls), CSV, or the “Export to Excel” file from KSU-MIS. Up to 10 MB." />
       </ImportDialog>
       <a href="/student-import-template.xls" download className="text-sm font-medium text-brand-700 hover:underline">
         Download template

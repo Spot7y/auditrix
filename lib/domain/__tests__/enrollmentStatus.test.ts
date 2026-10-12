@@ -73,7 +73,7 @@ describe("regular or irregular (KSU Operations Manual)", () => {
   });
 
   it("is not determined when nothing is prescribed for that semester", () => {
-    assert.deepEqual(status([taken("CC 102", "25-3")], "25-3"), {
+    assert.deepEqual(status([taken("CC 102", "26-S")], "26-S"), {
       kind: "NOT_DETERMINED",
       reason: "The curriculum prescribes no subjects for 2nd year, midyear.",
     });

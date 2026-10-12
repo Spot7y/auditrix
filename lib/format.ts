@@ -20,7 +20,21 @@ export const TRANSITION_LABEL: Record<string, string> = {
   SHIFTED_IN: "Shifted in",
   SHIFTED_OUT: "Shifted out",
   DROPPED: "Dropped",
+  REOPENED: "Record reopened",
 };
+
+/** Badge colour for each kind of student movement. */
+export const TRANSITION_TONE: Record<string, "blue" | "gray" | "brand" | "red" | "green"> = {
+  TRANSFERRED_IN: "blue",
+  TRANSFERRED_OUT: "gray",
+  SHIFTED_IN: "brand",
+  SHIFTED_OUT: "gray",
+  DROPPED: "red",
+  REOPENED: "green",
+};
+
+/** Why a student's record is locked. */
+export const LOCK_LABEL: Record<string, string> = { DROPPED: "Dropped", TRANSFERRED_OUT: "Transferred out" };
 
 /** "1 subject", "3 subjects". */
 export function plural(count: number, word: string, pluralWord = `${word}s`): string {

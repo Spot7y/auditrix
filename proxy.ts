@@ -34,5 +34,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  // The browser fetches the tab icons before anyone signs in.
+  matcher: ["/((?!_next/static|_next/image|icon.png|apple-icon.png).*)"],
 };
