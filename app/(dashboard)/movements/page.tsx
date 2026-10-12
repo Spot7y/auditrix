@@ -28,6 +28,8 @@ export default async function MovementsPage({
   searchParams: Promise<{ q?: string; type?: string; program?: string; year?: string }>;
 }) {
   const staff = await requireRole("chairperson", "dean");
+  // Only the chairperson opens a student; the dean sees the list without links.
+  const isChair = staff.role === "chairperson";
   const { q = "", type = "", program = "", year = "" } = await searchParams;
   const all = await getAllTransitions();
 
@@ -88,9 +90,13 @@ export default async function MovementsPage({
               {shown.slice(0, LIMIT).map((t) => (
                 <Tr key={t.id}>
                   <Td>
-                    <Link href={`/students/${t.studentId}`} className="font-medium text-ink-900 hover:text-brand-700">
-                      {t.studentName}
-                    </Link>
+                    {isChair ? (
+                      <Link href={`/students/${t.studentId}`} className="font-medium text-ink-900 hover:text-brand-700">
+                        {t.studentName}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-ink-900">{t.studentName}</span>
+                    )}
                     <p className="font-mono text-xs text-ink-500">{t.studentId}</p>
                   </Td>
                   <Td>

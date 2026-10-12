@@ -14,6 +14,7 @@ import { getCurrentTerm } from "../../../lib/queries/yearLevels";
 import BarList from "../../../components/charts/BarList";
 import StackedBars, { type Series } from "../../../components/charts/StackedBars";
 import TableView from "../../../components/charts/TableView";
+import ColumnChart from "../../../components/charts/ColumnChart";
 import CurrentTermCard from "./CurrentTermCard";
 import { requireRole } from "../../../lib/queries/access";
 
@@ -113,6 +114,12 @@ function programAttention(s: ProgramSummary, term: string | null, isChair: boole
 function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string | null; isChair: boolean }) {
   const yearTotal = [1, 2, 3, 4].reduce((n, y) => n + (s.byYearLevel[y] ?? 0), 0);
   const movementsHref = isChair ? "/movements" : `/movements?program=${encodeURIComponent(s.program)}`;
+  // Both subject charts count students, so they share a scale: equal numbers, equal bars.
+  const subjectScale = Math.max(
+    1,
+    ...s.bottlenecks.map((t) => t.failed + t.incomplete),
+    ...s.outOfOrder.map((v) => v.students)
+  );
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
@@ -142,94 +149,86 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
         />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            title="Regular and irregular"
-            description={
-              term
-                ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). Not determined: nothing recorded for ${term}.`
-                : "The dean hasn’t set the current semester, so no student can be counted as regular or irregular yet."
-            }
-          />
-          <StackedBars series={ENROLLMENT_SERIES} rows={[{ label: s.program, values: enrollmentValues(s) }]} unit="students" hideRowLabels />
-          <TableView
-            headers={["Status", "Students", "Share"]}
-            rows={ENROLLMENT_SERIES.map((series) => {
-              const value = enrollmentValues(s)[series.key as keyof ReturnType<typeof enrollmentValues>];
-              return [series.label, value, `${percent(value, s.totalStudents)}%`];
-            })}
-          />
-        </Card>
+      <Card className="flex flex-col">
+        <CardHeader
+          title="Regular and irregular"
+          description={
+            term
+              ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). Not determined: nothing recorded for ${term}.`
+              : "The dean hasn’t set the current semester, so no student can be counted as regular or irregular yet."
+          }
+        />
+        <StackedBars series={ENROLLMENT_SERIES} rows={[{ label: s.program, values: enrollmentValues(s) }]} unit="students" hideRowLabels />
+        <TableView
+          headers={["Status", "Students", "Share"]}
+          rows={ENROLLMENT_SERIES.map((series) => {
+            const value = enrollmentValues(s)[series.key as keyof ReturnType<typeof enrollmentValues>];
+            return [series.label, value, `${percent(value, s.totalStudents)}%`];
+          })}
+        />
+      </Card>
 
-        <Card>
-          <CardHeader title="Students by year level" description="Worked out from the subjects each student has finished." />
-          <BarList
-            emptyText="No students yet."
-            items={YEAR_NAMES.map((name, i) => {
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="flex flex-col">
+          <CardHeader title="Students by year level" description="From the subjects each student has finished." />
+          <ColumnChart
+            columns={YEAR_NAMES.map((name, i) => {
               const count = s.byYearLevel[i + 1] ?? 0;
               return { label: name, value: count, tip: [`${plural(count, "student")} (${percent(count, yearTotal)}%)`] };
             })}
           />
-          <TableView
-            headers={["Year level", "Students"]}
-            rows={YEAR_NAMES.map((name, i) => [name, s.byYearLevel[i + 1] ?? 0])}
-          />
+          <TableView headers={["Year level", "Students"]} rows={YEAR_NAMES.map((name, i) => [name, s.byYearLevel[i + 1] ?? 0])} />
         </Card>
 
-        <Card>
-          <CardHeader
-            title="Bottleneck subjects"
-            description="Subjects where the most students’ latest grade is 5.0 or INC."
-          />
+        <Card className="flex flex-col">
+          <CardHeader title="Bottleneck subjects" description="Most students whose latest grade is 5.0 or INC." />
           <BarList
+            max={subjectScale}
             emptyText="No 5.0 or INC grades recorded."
             items={s.bottlenecks.map((t) => ({
               label: t.code,
-              sub: t.title,
               value: t.failed + t.incomplete,
               tip: [
+                t.title,
                 `${t.failed} with 5.0 · ${t.incomplete} INC`,
                 `${percent(t.failed + t.incomplete, t.takers)}% of the ${plural(t.takers, "student")} who took it`,
               ],
             }))}
           />
-          {s.bottlenecks.length > 0 && (
-            <TableView
-              headers={["Subject", "5.0", "INC", "Took it"]}
-              rows={s.bottlenecks.map((t) => [t.code, t.failed, t.incomplete, t.takers])}
-            />
-          )}
+          <TableView
+            headers={["Subject", "5.0", "INC", "Took it"]}
+            rows={s.bottlenecks.map((t) => [`${t.code} – ${t.title}`, t.failed, t.incomplete, t.takers])}
+          />
         </Card>
 
-        <Card>
-          <CardHeader
-            title="Taken out of order"
-            description="Subjects most often taken before their prerequisites were finished."
-            actions={
-              isChair &&
-              s.outOfOrder.length > 0 && (
-                <LinkButton href="/students?status=VIOLATIONS" variant="ghost" size="sm">
-                  See students
-                </LinkButton>
-              )
-            }
-          />
+        <Card className="flex flex-col">
+          <CardHeader title="Taken out of order" description="Taken before its prerequisites were passed." />
           <BarList
+            max={subjectScale}
             emptyText="No subjects taken out of order."
             items={s.outOfOrder.map((v) => ({
               label: v.code,
-              sub: v.title,
               value: v.students,
-              tip: [`${plural(v.students, "student")} took it before finishing its prerequisites`],
+              tip: [v.title, `${plural(v.students, "student")} took it before finishing its prerequisites`],
             }))}
           />
-          {s.outOfOrder.length > 0 && (
-            <TableView headers={["Subject", "Students"]} rows={s.outOfOrder.map((v) => [v.code, v.students])} />
-          )}
+          <TableView
+            headers={["Subject", "Students"]}
+            rows={s.outOfOrder.map((v) => [`${v.code} – ${v.title}`, v.students])}
+            link={
+              isChair &&
+              s.outOfOrder.length > 0 && (
+                <Link href="/students?status=VIOLATIONS" className="text-brand-700 hover:text-brand-900">
+                  See students →
+                </Link>
+              )
+            }
+          />
         </Card>
+      </div>
 
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="flex flex-col">
           <CardHeader title="Curriculum versions" />
           {s.curriculumVersions.length === 0 ? (
             <p className="px-5 py-4 text-sm text-ink-500">None yet.</p>
@@ -246,17 +245,17 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
               ))}
             </ul>
           )}
+          <div className="mt-auto flex h-10 items-center justify-end border-t border-line px-5 text-xs font-medium">
+            {isChair && (
+              <Link href="/curriculum" className="text-brand-700 hover:text-brand-900">
+                Manage curriculum →
+              </Link>
+            )}
+          </div>
         </Card>
 
-        <Card>
-          <CardHeader
-            title="Student movements"
-            actions={
-              <LinkButton href={movementsHref} variant="ghost" size="sm">
-                View all
-              </LinkButton>
-            }
-          />
+        <Card className="flex flex-col">
+          <CardHeader title="Student movements" />
           <dl className="divide-y divide-line text-sm">
             {[
               ["Shifted in / out", `${s.shiftedInCount} / ${s.shiftedOutCount}`],
@@ -269,6 +268,11 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
               </div>
             ))}
           </dl>
+          <div className="mt-auto flex h-10 items-center justify-end border-t border-line px-5 text-xs font-medium">
+            <Link href={movementsHref} className="text-brand-700 hover:text-brand-900">
+              View all movements →
+            </Link>
+          </div>
         </Card>
       </div>
     </section>
@@ -279,14 +283,14 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
 function ProgramComparison({ summaries, term }: { summaries: ProgramSummary[]; term: string | null }) {
   const href = (program: string) => `/home?program=${encodeURIComponent(program)}`;
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader
           title="Regular and irregular by program"
           description={
             term
-              ? `Share of each program’s students who are regular, irregular, or have nothing recorded for ${term}.`
-              : "The current semester isn’t set, so every student is still “not determined”."
+              ? `Each program’s share of regular and irregular students in ${term}.`
+              : "The current semester isn’t set, so every student is “not determined”."
           }
         />
         <StackedBars
@@ -299,8 +303,8 @@ function ProgramComparison({ summaries, term }: { summaries: ProgramSummary[]; t
           rows={summaries.map((s) => [s.program, s.regularStudents, s.irregularStudents, s.undeterminedStudents, s.totalStudents])}
         />
       </Card>
-      <Card>
-        <CardHeader title="Students with violations by program" description="Students who took at least one subject before finishing its prerequisites." />
+      <Card className="flex flex-col">
+        <CardHeader title="Students with violations by program" description="Took a subject before finishing its prerequisites." />
         <BarList
           emptyText="No students with violations."
           items={[...summaries]
@@ -309,7 +313,7 @@ function ProgramComparison({ summaries, term }: { summaries: ProgramSummary[]; t
               label: s.program,
               href: href(s.program),
               value: s.atRiskStudents,
-              tip: [`${plural(s.atRiskStudents, "student")}`, `${percent(s.atRiskStudents, s.totalStudents)}% of ${plural(s.totalStudents, "student")}`],
+              tip: [`${plural(s.atRiskStudents, "student")} with violations`, `${percent(s.atRiskStudents, s.totalStudents)}% of ${plural(s.totalStudents, "student")}`],
             }))}
         />
         <TableView

@@ -55,8 +55,8 @@ what each student has completed, can take next, or took out of order.
   hover and can be opened as a table. Dropped and transferred-out students aren't counted as current students. A dean
   with several programs sees them compared side by side (regular/irregular share and violations per program) and in
   a table, and picks a program to see its charts.
-- **Everywhere.** The top bar shows the college's current semester and a student search (Ctrl+K from any page); the
-  sidebar shows how many students the program has. Curriculum versions can be viewed one semester at a time.
+- **Everywhere.** The top bar shows the college's current semester and, for chairpersons, a student search (Ctrl+K
+  from any page); the sidebar shows how many students the program has. Curriculum versions can be viewed one semester at a time.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
   field ticks each password rule green as it's met.
@@ -100,7 +100,7 @@ private. `.env.local` holds the secret key, which bypasses all of the above; nev
 | Role        | Can                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------ |
 | Chairperson | Manage their program's curriculum and students, enter grades, record shifts, transfers and drops |
-| Dean        | See their college's programs and students, set the current semester, create programs, reassign chairpersons |
+| Dean        | See their college's programs (totals, charts, student movements), set the current semester, create programs, reassign chairpersons. Individual students' records are for chairpersons only. |
 
 Access is enforced by Supabase row-level security. Actions that need the admin key (creating accounts, shift-ins)
 check permissions in the server action and do their database writes in one transaction.

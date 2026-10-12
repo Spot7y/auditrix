@@ -93,7 +93,7 @@ function emptySummary(program: string): ProgramSummary {
   };
 }
 
-const TOP_SUBJECTS = 6;
+const TOP_SUBJECTS = 5;
 
 export async function getAnalytics(): Promise<ProgramSummary[]> {
   const staff = await getCurrentStaff();

@@ -81,9 +81,7 @@ function SummaryTile({
 }
 
 export default async function StudentAuditPage({ params }: { params: Promise<{ id: string }> }) {
-  const staff = await requireRole("chairperson", "dean");
-  // Deans can look at a student's audit, but only the chairperson changes it.
-  const isChair = staff.role === "chairperson";
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentAudit(id);
   if (!data) notFound();
@@ -112,8 +110,8 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
   return (
     <>
       <div className="mb-6">
-        <LinkButton href={isChair ? "/students" : "/home"} variant="ghost" size="sm" className="-ml-3 text-ink-500">
-          {isChair ? "← All students" : "← Dashboard"}
+        <LinkButton href="/students" variant="ghost" size="sm" className="-ml-3 text-ink-500">
+          ← All students
         </LinkButton>
       </div>
 
@@ -133,7 +131,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
         }
         actions={
           <>
-            {isChair && !lock && (
+            {!lock && (
               <LinkButton href={`/students/${id}/edit`} variant="secondary">
                 <Pencil aria-hidden />
                 Edit
@@ -143,13 +141,11 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               <History aria-hidden />
               Grade logbook
             </LinkButton>
-            {isChair && (
-              <LinkButton href={`/students/${id}/transitions`} variant="secondary">
-                <Repeat aria-hidden />
-                Transfer / shift
-              </LinkButton>
-            )}
-            {isChair && !lock && (
+            <LinkButton href={`/students/${id}/transitions`} variant="secondary">
+              <Repeat aria-hidden />
+              Transfer / shift
+            </LinkButton>
+            {!lock && (
               <LinkButton href={`/students/${id}/grades`}>
                 <ClipboardPen aria-hidden />
                 Enter grades
@@ -172,7 +168,6 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               Grades, details and year level can’t be changed. The audit and grade logbook stay available.
             </p>
           </div>
-          {isChair && (
           <form action={reopenRecord}>
             <input type="hidden" name="studentId" value={id} />
             <ConfirmButton
@@ -185,7 +180,6 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               Reopen record
             </ConfirmButton>
           </form>
-          )}
         </div>
       )}
 

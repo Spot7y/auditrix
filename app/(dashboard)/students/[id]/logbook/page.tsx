@@ -20,7 +20,7 @@ const RESULT: Record<string, { label: string; tone: BadgeTone }> = {
 };
 
 export default async function StudentLogbookPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireRole("chairperson", "dean");
+  await requireRole("chairperson");
   const { id } = await params;
   const data = await getStudentLogbook(id);
   if (!data) notFound();

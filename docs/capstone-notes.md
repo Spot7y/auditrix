@@ -24,7 +24,7 @@ It was built for the whole university (any college and program), and tested with
 
 | Role | Can |
 | --- | --- |
-| **Dean** | See every program and student in their college; set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons. |
+| **Dean** | See every program in their college (totals, charts, comparison, student movements); set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons. Deans don't open individual students' records or search for students; that's the chairperson's work. |
 | **Chairperson** | Manage their program's curriculum (versions, subjects, prerequisites, import/export); register and import students; enter grades; change a student's year level by hand for special cases; record shifts, transfers and drops; accept shifting students. |
 
 A new chairperson gets a temporary password from the dean and must choose their own at first login.
@@ -100,7 +100,7 @@ applies, the student's **year level** and **Regular / Irregular** status.
   (e.g. "Out of order: PHYS 201", "Not enrolled in GE 101, MATH 101").
 - **Student Movements** page (sidebar): every shift, transfer, drop and reopening, searchable and filterable by type,
   program and year.
-- **Global search** in the top bar on every page (Ctrl+K), next to the current semester.
+- **Student search** in the top bar on every page (Ctrl+K), next to the current semester (chairpersons only).
 
 ### 2.5 Dashboard
 A **Needs attention** banner at the top lists what to act on (students with violations, students with nothing
@@ -249,7 +249,9 @@ the order grades are entered, and all five cases above are covered by automated 
   Next.js 16.4.0, security headers, idle sign-out, login blocking, plain error messages.
 - 2026-10-12 — dashboard charts and program comparison, "Needs attention" banner, Student Movements page, top bar
   with the current semester and Ctrl+K search, student count in the sidebar, reasons in the student list, curriculum
-  semester tabs, deeper KSU green for buttons and the current page.
+  semester tabs, deeper KSU green for buttons and the current page. Deans no longer open individual student records
+  (the search, student pages and movement links are for chairpersons); dashboard charts laid out in equal-height rows
+  with a shared scale.
 
 ---
 

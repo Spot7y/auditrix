@@ -237,8 +237,9 @@ export default function AppShell({
         >
           <Menu className="size-5" aria-hidden />
         </button>
+        {/* Student search is for chairpersons; the dean works with programs, not individual students. */}
         <div className="min-w-0 flex-1 sm:max-w-md">
-          <StudentSearchBar placeholder="Search students by ID or name…" shortcut />
+          {staff.role === "chairperson" && <StudentSearchBar placeholder="Search students by ID or name…" shortcut />}
         </div>
         <div className="ml-auto hidden shrink-0 sm:block">
           <TermPill term={term} />
