@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -8,7 +9,6 @@ import {
   BookOpen,
   CalendarDays,
   FolderPlus,
-  GraduationCap,
   History,
   LayoutDashboard,
   LogOut,
@@ -25,6 +25,7 @@ import IdleLogout from "./IdleLogout";
 import StudentSearchBar from "./StudentSearchBar";
 import type { CurrentStaff } from "../lib/queries/staff";
 import { describeTerm } from "../lib/domain/Term";
+import seal from "../public/ksu-seal.png";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; roles?: CurrentStaff["role"][] };
 
@@ -67,16 +68,13 @@ function activeHref(pathname: string, items: NavItem[]) {
 export function Brand({ onDark = false }: { onDark?: boolean }) {
   return (
     <Link href="/home" className="flex items-center gap-2.5">
-      <span
-        className={`flex size-9 items-center justify-center rounded-lg ${onDark ? "bg-white/15 text-white" : "bg-brand-800 text-white"}`}
-      >
-        <GraduationCap className="size-5" aria-hidden />
-      </span>
+      {/* The Kalinga State University seal. */}
+      <Image src={seal} alt="" width={40} height={40} priority className="size-10 shrink-0 rounded-full" />
       <span className="leading-tight">
         <span className={`block text-base font-semibold tracking-tight ${onDark ? "text-white" : "text-ink-900"}`}>
           Auditrix
         </span>
-        <span className={`block text-xs ${onDark ? "text-brand-100" : "text-ink-500"}`}>KSU</span>
+        <span className={`block text-xs ${onDark ? "text-brand-100" : "text-ink-500"}`}>Kalinga State University</span>
       </span>
     </Link>
   );

@@ -251,7 +251,7 @@ the order grades are entered, and all five cases above are covered by automated 
   with the current semester and Ctrl+K search, student count in the sidebar, reasons in the student list, curriculum
   semester tabs, deeper KSU green for buttons and the current page. Deans no longer open individual student records
   (the search, student pages and movement links are for chairpersons); dashboard charts laid out in equal-height rows
-  with a shared scale.
+  with a shared scale. The Kalinga State University seal is the logo (sidebar, login page and browser tab).
 
 ---
 

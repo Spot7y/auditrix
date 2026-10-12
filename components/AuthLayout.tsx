@@ -1,6 +1,8 @@
+import Image from "next/image";
 import { BookOpenCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { Brand } from "./AppShell";
+import seal from "../public/ksu-seal.png";
 
 /** Split-screen frame for the signed-out pages: brand panel + form. */
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -16,6 +18,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <Brand onDark />
         </div>
         <div className="relative mt-auto max-w-md">
+          <Image src={seal} alt="Kalinga State University seal" width={96} height={96} className="mb-6 rounded-full ring-4 ring-white/15" />
           <h2 className="text-3xl font-semibold leading-tight tracking-tight">
             Curriculum audits for every KSU college and program.
           </h2>
