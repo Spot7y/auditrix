@@ -19,28 +19,39 @@ function generatePassword(length = 12) {
   return password;
 }
 
-/** Name, email and temporary password for a new chairperson login. */
-export default function ChairAccountFields() {
+/**
+ * Name, email and temporary password for a new chairperson (or dean) login,
+ * posted as chairName/chairEmail/chairPassword (or deanName/deanEmail/deanPassword).
+ */
+export default function ChairAccountFields({ role = "chairperson" }: { role?: "chairperson" | "dean" }) {
   const [password, setPassword] = useState("");
+  const prefix = role === "dean" ? "dean" : "chair";
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Full name" htmlFor="chairName">
-        <Input id="chairName" name="chairName" required autoComplete="off" placeholder="Juan Dela Cruz" />
+      <Field label="Full name" htmlFor={`${prefix}Name`}>
+        <Input id={`${prefix}Name`} name={`${prefix}Name`} required autoComplete="off" placeholder="Juan Dela Cruz" />
       </Field>
-      <Field label="Email" htmlFor="chairEmail">
-        <Input id="chairEmail" name="chairEmail" type="email" required autoComplete="off" placeholder="name@ksu.edu.ph" />
+      <Field label="Email" htmlFor={`${prefix}Email`}>
+        <Input
+          id={`${prefix}Email`}
+          name={`${prefix}Email`}
+          type="email"
+          required
+          autoComplete="off"
+          placeholder="name@ksu.edu.ph"
+        />
       </Field>
       <Field
         label="Temporary password"
-        htmlFor="chairPassword"
+        htmlFor={`${prefix}Password`}
         className="sm:col-span-2"
-        hint="Give it to the chairperson yourself; it isn’t emailed. They’ll choose their own password when they first log in."
+        hint={`Give it to the ${role} yourself; it isn’t emailed. They’ll choose their own password when they first log in.`}
       >
         <div className="flex gap-2">
           <Input
-            id="chairPassword"
-            name="chairPassword"
+            id={`${prefix}Password`}
+            name={`${prefix}Password`}
             required
             minLength={MIN_PASSWORD_LENGTH}
             autoComplete="off"

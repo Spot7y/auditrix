@@ -24,7 +24,7 @@ It was built for the whole university (any college and program), and tested with
 
 | Role | Can |
 | --- | --- |
-| **Dean** | See every program in their college (totals, charts, comparison, student movements); set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons. Deans don't open individual students' records or search for students; that's the chairperson's work. |
+| **Dean** | See every program in their college (totals, charts, comparison, student movements); set the college's **current semester**; create programs (with a chairperson account); reassign chairpersons; **split the college**; **hand over the deanship**. Deans don't open individual students' records or search for students; that's the chairperson's work. |
 | **Chairperson** | Manage their program's curriculum (versions, subjects, prerequisites, import/export); register and import students; enter grades; change a student's year level by hand for special cases; record shifts, transfers and drops; accept shifting students. |
 
 A new chairperson gets a temporary password from the dean and must choose their own at first login.
@@ -130,6 +130,20 @@ and tabs to open one program's charts.
   8 characters, a letter, a number, passwords match).
 - Confirmation dialogs before hard-to-undo actions (dropping a student, deleting a subject, replacing a chairperson,
   saving grades); results shown as notifications.
+
+### 2.7 College changes (no system administrator needed)
+Auditrix has no super administrator, because no office would operate one. Changes to a college are done by its dean:
+- **Split the college** (e.g. CEIT's engineering programs stay, BSIT and BSMATH form a new college). The dean names
+  the new college and its short name, ticks the programs that move, and creates the new dean's account (temporary
+  password, changed at first login). The new college is separate from and equal to the old one. Only the programs'
+  college changes: their curriculum versions, students, grades, chairpersons and history stay as they are, and the
+  new college starts on a copy of the current semester. A dean can only move their own programs, and at least one
+  program has to stay.
+- **Hand over the deanship.** The outgoing dean creates their successor's account; their own account is closed right
+  away (signed out, can't log in again). Everything they recorded keeps their name, and the college's programs,
+  students and history stay as they are.
+- Both happen in one database transaction (all or nothing) and are listed in the college's **history** (what
+  happened, who did it, when).
 
 ---
 
@@ -264,6 +278,8 @@ the order grades are entered, and all five cases above are covered by automated 
   irregular known once grades are in); grade form: the term's semester follows the curriculum semester and the
   school year must be typed; a retake with the same grade can be saved; bottleneck chart removed; first-year students
   count as regular until their first grades are in (new first years only, i.e. no grades recorded yet).
+- 2026-10-15 — deans can split their college (programs move to a new college with its own dean) and hand over the
+  deanship (successor's account created, their own closed), both recorded in the college history.
 
 ---
 

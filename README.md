@@ -67,6 +67,11 @@ what each student has completed, can take next, or took out of order.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
   field ticks each password rule green as it's met.
+- **College changes without a system administrator.** A dean can **split the college**: name the new college, tick
+  the programs that move, and create its dean. Only the programs' college changes (curricula, students, grades,
+  chairpersons and history stay), and the new college starts on a copy of the current semester. A dean can also
+  **hand over the deanship**: they create their successor's account and their own account is closed (they're signed
+  out and can't log in again; their name stays on what they recorded). Both are listed in the college's history.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
   saving grades) ask for confirmation first, and every result is shown as a notification.
 
@@ -107,7 +112,7 @@ private. `.env.local` holds the secret key, which bypasses all of the above; nev
 | Role        | Can                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------ |
 | Chairperson | Manage their program's curriculum and students, enter grades, record shifts, transfers and drops |
-| Dean        | See their college's programs (totals, charts, student movements), set the current semester, create programs, reassign chairpersons. Individual students' records are for chairpersons only. |
+| Dean        | See their college's programs (totals, charts, student movements), set the current semester, create programs, reassign chairpersons, split the college, hand over the deanship. Individual students' records are for chairpersons only. |
 
 Access is enforced by Supabase row-level security. Actions that need the admin key (creating accounts, shift-ins)
 check permissions in the server action and do their database writes in one transaction.
@@ -175,7 +180,8 @@ INC, a retake, a subject taken out of order and an irregular load. Students that
 It only shows what it would do; add `--apply` to do it, and remove it all again later with `--remove --apply`.
 
 Staff accounts are Supabase Auth users with a matching row in the `staff` table. Deans create chairperson accounts
-from the app; the first dean account is created in Supabase Studio.
+from the app; the first dean account is created in Supabase Studio. After that, deans create new deans themselves:
+the dean of a new college when splitting, or their successor when handing over.
 
 ## Scripts
 

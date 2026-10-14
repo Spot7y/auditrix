@@ -19,6 +19,10 @@ function resetDatabase() {
       { id: "nur-2023", program: "BSN", college_id: "nursing" },
     ],
     staff: [{ id: "old-ce-chair", role: "chairperson", program: "BSCE" }],
+    colleges: [
+      { id: "ceit", name: "College of Engineering and Information Technology", short_name: "CEIT" },
+      { id: "nursing", name: "College of Nursing", short_name: "CON" },
+    ],
     shift_requests: [
       { student_id: "23-10001", from_program: "BSCE" },
       { student_id: "23-10002", from_program: "BSCPE" },
@@ -64,6 +68,9 @@ const adminClient = {
       tables.shift_requests = tables.shift_requests.filter((r) => r.student_id !== args.p_student_id);
       return { data: target?.program, error: null };
     }
+    if (fn === "hand_over_deanship" || fn === "split_college") {
+      return { data: null, error: null };
+    }
     if (fn === "create_program_with_chairperson") {
       tables.curricula.push({ id: "new", program: args.p_program, college_id: args.p_college_id });
       return { data: null, error: null };
@@ -85,6 +92,12 @@ mockCurrentStaff(current);
 mock.module(projectFile("lib/domain/supabase/adminClient.ts"), {
   namedExports: { createAdminClient: () => adminClient },
 });
+// The signed-in user's client: only signing out is used by these actions.
+mock.module(projectFile("lib/domain/supabase/serverClient.ts"), {
+  namedExports: {
+    createServerClientForUser: async () => ({ auth: { signOut: async () => (writes.push("signOut"), { error: null }) } }),
+  },
+});
 
 type Action = (formData: FormData) => Promise<void>;
 const { reassignChairperson } = await importFromRoot<{ reassignChairperson: Action }>(
@@ -94,6 +107,10 @@ const { createProgram } = await importFromRoot<{ createProgram: Action }>("app/(
 const { acceptShiftIn } = await importFromRoot<{ acceptShiftIn: Action }>(
   "app/(dashboard)/students/shift-in/actions.ts"
 );
+const { handOverDeanship } = await importFromRoot<{ handOverDeanship: Action }>(
+  "app/(dashboard)/college/handover/actions.ts"
+);
+const { splitCollege } = await importFromRoot<{ splitCollege: Action }>("app/(dashboard)/college/split/actions.ts");
 
 const ceitDean: Staff = { id: "dean", name: "Dean", role: "dean", program: null, collegeId: "ceit" };
 const cpeChair: Staff = { id: "chair", name: "Joan Doe", role: "chairperson", program: "BSCPE", collegeId: null };
@@ -162,5 +179,71 @@ describe("Accept shift-in", () => {
     const url = await redirectOf(acceptShiftIn, form({ studentId: "23-10001", newCurriculumId: "cpe-2023" }));
     assert.match(url ?? "", /23-10001 has been accepted into BSCPE/);
     assert.deepEqual(writes, ["rpc accept_shift_in"]);
+  });
+});
+
+const newDean = { deanName: "Ana Reyes", deanEmail: "ana@ksu.edu.ph", deanPassword: "secret123" };
+
+describe("Hand over the deanship", () => {
+  it("a chairperson cannot hand over a deanship", async () => {
+    current.staff = cpeChair;
+    const url = await redirectOf(handOverDeanship, form(newDean));
+    assert.match(url ?? "", /Only a dean can hand over/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a weak temporary password is refused before any account is made", async () => {
+    current.staff = ceitDean;
+    const url = await redirectOf(handOverDeanship, form({ ...newDean, deanPassword: "short" }));
+    assert.match(url ?? "", /\/college\/handover\?error=/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a dean hands over: the successor is created, then their own login is closed and they're signed out", async () => {
+    current.staff = ceitDean;
+    assert.equal(await redirectOf(handOverDeanship, form(newDean)), "/login?reason=handover");
+    assert.deepEqual(writes, ["createUser", "rpc hand_over_deanship", "ban dean", "signOut"]);
+  });
+});
+
+describe("Split the college", () => {
+  const split = (programs: string[], fields: Record<string, string> = {}) => {
+    const formData = form({ collegeName: "College of Computing", shortName: "coc", ...newDean, ...fields });
+    for (const p of programs) formData.append("program", p);
+    return formData;
+  };
+
+  it("a chairperson cannot split a college", async () => {
+    current.staff = cpeChair;
+    assert.match((await redirectOf(splitCollege, split(["BSCPE"]))) ?? "", /Only a dean can split/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a dean cannot move another college's program", async () => {
+    current.staff = ceitDean;
+    assert.match((await redirectOf(splitCollege, split(["BSN"]))) ?? "", /Only programs of your own college/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("at least one program has to stay", async () => {
+    current.staff = ceitDean;
+    assert.match((await redirectOf(splitCollege, split(["BSCPE", "BSCE"]))) ?? "", /At least one program has to stay/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a college name or short name that's taken is refused", async () => {
+    current.staff = ceitDean;
+    const url = await redirectOf(splitCollege, split(["BSCPE"], { shortName: "con" }));
+    assert.match(url ?? "", /already a college named College of Nursing/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a dean can move some of their programs to a new college with its own dean", async () => {
+    current.staff = ceitDean;
+    assert.equal(
+      await redirectOf(splitCollege, split(["BSCPE"])),
+      "/home?success=BSCPE moved to College of Computing. Ana Reyes is its dean."
+    );
+    assert.deepEqual(writes, ["createUser", "rpc split_college"]);
   });
 });

@@ -15,6 +15,7 @@ const ERRORS: Record<string, string> = {
 };
 const NOTICES: Record<string, string> = {
   idle: "You were signed out after 30 minutes without activity. Log in again to continue.",
+  handover: "You handed over the deanship, so this account is now closed. The new dean logs in with their own account.",
 };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; reason?: string }> }) {
