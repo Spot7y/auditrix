@@ -170,18 +170,20 @@ export default function GradeEntryForm({
           <EmptyState icon={ClipboardList} title="No subjects in that semester" />
         ) : (
           <>
-            <Table className="table-fixed">
+            <Table className="min-w-[44rem] table-fixed">
               <colgroup>
                 <col className="w-28" />
                 <col />
                 <col className="w-40" />
+                <col className="w-32" />
                 <col className="w-44" />
               </colgroup>
               <thead>
                 <tr>
                   <Th>Code</Th>
                   <Th>Subject</Th>
-                  <Th>Recorded</Th>
+                  <Th>Recorded grade</Th>
+                  <Th>Term taken</Th>
                   <Th>New grade</Th>
                 </tr>
               </thead>
@@ -201,9 +203,9 @@ export default function GradeEntryForm({
                           <p className="mt-0.5 text-xs leading-snug text-amber-800">{s.blockedReason}</p>
                         )}
                       </Td>
-                      <Td className="text-ink-500">
-                        {recorded ? recorded : "—"}
-                        {s.currentTerm && <span className="ml-1.5 whitespace-nowrap font-mono text-xs text-ink-400">{s.currentTerm}</span>}
+                      <Td className="tabular text-ink-700">{recorded || <span className="text-ink-400">—</span>}</Td>
+                      <Td className="whitespace-nowrap font-mono text-ink-500">
+                        {s.currentTerm ?? <span className="font-sans text-ink-400">—</span>}
                       </Td>
                       <Td>
                         <Select
@@ -211,10 +213,11 @@ export default function GradeEntryForm({
                           value={value}
                           onChange={(e) => setValues((v) => ({ ...v, [s.code]: e.target.value }))}
                           aria-label={`Grade for ${s.code}`}
-                          className="h-9"
+                          // Pulled up so it lines up with the text in the other cells.
+                          className="-my-1.5 h-9"
                         >
-                          {/* "—" leaves the subject as it is; a recorded grade can't be blanked out. */}
-                          <option value="">—</option>
+                          {/* Leaves the subject as it is; a recorded grade can't be blanked out. */}
+                          <option value="">{recorded ? "No change" : "Not taken"}</option>
                           {GRADE_OPTIONS.map((o) => (
                             <option key={o} value={o}>
                               {o}

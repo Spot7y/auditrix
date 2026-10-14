@@ -69,7 +69,8 @@ applies, the student's **year level** and **Regular / Irregular** status.
   the year, so grades can't land in the wrong term by accident.
 - Subjects the student can't take yet show why (e.g. "Can't take yet. Needs: MATH 111").
 - Only the grades the chairperson picks are saved; changing an existing grade is a correction and asks for
-  confirmation. Each subject's "New grade" starts empty ("—" leaves it as it is). **A retake with the same result**
+  confirmation. Each subject shows its recorded grade and the term it was taken in separate columns,
+  and its "New grade" starts at "No change" (or "Not taken" for a subject with nothing recorded). **A retake with the same result**
   (any grade, e.g. 5.0 in 25-1 and 5.0 again in 26-1) is saved as a new attempt in the later term.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
