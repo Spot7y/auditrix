@@ -101,11 +101,12 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Transfers in/out and drops are recorded; every movement is kept in the student's history.
 - **Locked records:** marking a student dropped or transferred out locks their record. Grades, details and year level
   can't be changed (enforced by the database, not only hidden in the screens); the audit and logbook stay viewable.
-  A chairperson can **reopen** the record (e.g. the student came back), which is recorded in the history.
+  A chairperson can **reopen** the record (e.g. the student came back); it's recorded in the history as a **returnee**,
+  KSU's term for a student who comes back.
 - The student list can be searched and **filtered** by year level, curriculum version and status (regular, irregular,
   not determined, with violations, dropped or transferred out). Under each name is the **reason** for its status
   (e.g. "Out of order: PHYS 201", "Not enrolled in GE 101, MATH 101").
-- **Student Movements** page (sidebar): every shift, transfer, drop and reopening, searchable and filterable by type,
+- **Student Movements** page (sidebar): every shift, transfer, drop and returnee, searchable and filterable by type,
   program and year.
 - **Student search** in the top bar on every page (Ctrl+K), next to the current semester (chairpersons only).
 - **Printable student evaluation** (PDF, from the student's page): KSU letterhead with the college; the student's
@@ -326,7 +327,7 @@ keys, HTTPS and backups. Login blocking is kept in the server's memory (reset on
 Main tables: `colleges`, `curricula` (program + effective year), `subjects`, `requirements` (prerequisite,
 co-requisite, year standing, completion), `staff` (dean/chairperson), `students`, `subject_records` (latest attempt
 per subject: status, grade, term, resolved term), `grade_audit_log` (every grade change), `student_transitions`
-(shifts, transfers, drops, reopened records), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
+(shifts, transfers, drops, returnees), `shift_requests`, `curriculum_change_log`, `college_terms` (current semester per college),
 `student_year_levels` (registered year level and chairperson overrides). `students.record_status` marks a record
 locked (dropped or transferred out); database triggers refuse changes to a locked student's grades, details and year
 level.

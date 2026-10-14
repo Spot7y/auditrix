@@ -191,7 +191,7 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               variant="secondary"
               size="sm"
               title="Reopen this record?"
-              description={`${data.studentName}’s record will be unlocked so grades and details can be changed again, e.g. because the student came back. The reopening is added to the student’s history.`}
+              description={`${data.studentName}’s record will be unlocked so grades and details can be changed again, e.g. because the student came back. It’s added to the student’s history as a returnee.`}
               confirmLabel="Reopen record"
             >
               Reopen record

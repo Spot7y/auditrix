@@ -20,7 +20,8 @@ export const TRANSITION_LABEL: Record<string, string> = {
   SHIFTED_IN: "Shifted in",
   SHIFTED_OUT: "Shifted out",
   DROPPED: "Dropped",
-  REOPENED: "Record reopened",
+  // KSU calls a student who comes back after dropping or leaving a returnee.
+  REOPENED: "Returnee",
 };
 
 /** Badge colour for each kind of student movement. */

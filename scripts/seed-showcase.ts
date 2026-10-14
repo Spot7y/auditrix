@@ -14,7 +14,7 @@
 // co-requisite apart), a year standing to verify, an open and a completed INC,
 // a retake, a retake with the same grade, a corrected grade, and every kind of
 // student movement (pending shift, shifted in, transferred in and out, dropped,
-// reopened). Each student is checked with the audit engine before it's added,
+// returnee). Each student is checked with the audit engine before it's added,
 // and a case the curriculum can't show (e.g. it has no co-requisites) is
 // skipped. The list of who shows what, and where to click, is printed and saved
 // to showcase-guide.md.
@@ -582,8 +582,8 @@ const SHOWCASES: Showcase[] = [
   },
   {
     group: "Student movements",
-    feature: "Dropped, then the record reopened",
-    where: "Student Movements (Dropped, then Record reopened); the student is active again",
+    feature: "Returnee: dropped, then came back",
+    where: "Student Movements (Dropped, then Returnee); the student is active again",
     draft: (ctx) => ({
       year: 2,
       records: ctx.base(2, "reopened"),

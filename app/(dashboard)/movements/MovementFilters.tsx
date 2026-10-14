@@ -12,7 +12,7 @@ const TYPES = [
   ["TRANSFERRED_IN", "Transferred in"],
   ["TRANSFERRED_OUT", "Transferred out"],
   ["DROPPED", "Dropped"],
-  ["REOPENED", "Record reopened"],
+  ["REOPENED", "Returnee"],
 ] as const;
 
 /** Filters for the movements list, kept in the URL like the student list's. */

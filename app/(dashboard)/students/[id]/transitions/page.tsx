@@ -102,12 +102,12 @@ export default async function StudentTransitionsPage({ params }: { params: Promi
           <ActionCard
             icon={LockOpen}
             title="Reopen record"
-            description={`${LOCK_LABEL[lock.status]}${lock.since ? ` on ${formatDate(lock.since)}` : ""}, so the record is locked. Reopen it if the student comes back or it was recorded by mistake.`}
+            description={`${LOCK_LABEL[lock.status]}${lock.since ? ` on ${formatDate(lock.since)}` : ""}, so the record is locked. Reopen it if the student comes back (a returnee) or it was recorded by mistake.`}
             action={reopenRecord}
             studentId={id}
             button="Reopen record"
             confirmTitle="Reopen this record?"
-            confirmDescription={`${who}’s record will be unlocked so grades and details can be changed again. The reopening is added to the student’s history.`}
+            confirmDescription={`${who}’s record will be unlocked so grades and details can be changed again. It’s added to the student’s history as a returnee.`}
           />
         </div>
       ) : (

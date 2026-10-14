@@ -163,5 +163,5 @@ export async function reopenRecord(formData: FormData) {
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Record reopened. It can be changed again.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Record reopened and recorded as a returnee. It can be changed again.")}`);
 }

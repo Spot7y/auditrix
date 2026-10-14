@@ -47,9 +47,9 @@ what each student has completed, can take next, or took out of order.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook. The Student Movements page lists every shift,
-  transfer, drop and reopening in your scope, with a search and filters by type, program and year. A dropped or transferred-out student's record is
+  transfer, drop and returnee in your scope, with a search and filters by type, program and year. A dropped or transferred-out student's record is
   locked: their grades, details and year level can't be changed (the database refuses it too) until a chairperson
-  reopens the record, which is also kept in the history.
+  reopens the record, which is kept in the history as a **returnee** (KSU's term for a student who comes back).
 - **Regular and irregular students.** Per the KSU Operations Manual, a student is regular when enrolled this semester
   in the full prescribed load (the curriculum's subjects for their year level and the current semester, not counting
   ones already passed) and irregular when enrolled in less. Back subjects on top of a full load don't change that.
@@ -193,7 +193,7 @@ It only shows what it would do; add `--apply` to do it, and remove it all again 
 subject taken out of order (failed prerequisite, same term, co-requisites apart), a year standing to verify, an open
 and a completed INC, a retake, a retake with the same grade, a corrected grade, a year level rising with grades or set
 by the chairperson, a new first year counted as regular, irregular and not-determined students, and every student
-movement (pending shift, shifted in, transferred in and out, dropped, reopened). Each is checked with the audit engine
+movement (pending shift, shifted in, transferred in and out, dropped, returnee). Each is checked with the audit engine
 first; a case the curriculum can't show (e.g. no co-requisites) is skipped and listed. It prints who shows what and
 where to click, and with `--apply` saves that list to `showcase-guide.md`. `--program BSCPE` limits it to one program;
 `--remove --apply` deletes the showcase students again. It works alongside `seed-demo.ts`, which fills the numbers.
