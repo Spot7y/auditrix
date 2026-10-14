@@ -24,3 +24,32 @@ export async function getCollegeHistory(): Promise<CollegeHistoryEntry[]> {
     recordedAt: r.recorded_at,
   }));
 }
+
+export interface EmptyCollege {
+  id: string;
+  name: string;
+  shortName: string;
+}
+
+/**
+ * Colleges that exist but have no programs and no dean yet (e.g. added
+ * ahead of time): a split can move programs into one of these.
+ */
+export async function getEmptyColleges(): Promise<EmptyCollege[]> {
+  // Deans can't see other colleges' staff, so this server-only check uses the
+  // admin client and returns only the colleges' names.
+  const { createAdminClient } = await import("../domain/supabase/adminClient");
+  const admin = createAdminClient();
+  const [colleges, curricula, staff] = await Promise.all([
+    admin.from("colleges").select("id, name, short_name").order("name"),
+    admin.from("curricula").select("college_id"),
+    admin.from("staff").select("college_id"),
+  ]);
+  if (colleges.error) throw colleges.error;
+  const used = new Set(
+    [...(curricula.data ?? []), ...(staff.data ?? [])].map((r) => r.college_id as string | null).filter(Boolean)
+  );
+  return (colleges.data ?? [])
+    .filter((c) => !used.has(c.id))
+    .map((c) => ({ id: c.id, name: c.name, shortName: c.short_name }));
+}

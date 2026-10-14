@@ -133,8 +133,9 @@ and tabs to open one program's charts.
 
 ### 2.7 College changes (no system administrator needed)
 Auditrix has no super administrator, because no office would operate one. Changes to a college are done by its dean:
-- **Split the college** (e.g. CEIT's engineering programs stay, BSIT and BSMATH form a new college). The dean names
-  the new college and its short name, ticks the programs that move, and creates the new dean's account (temporary
+- **Split the college** (e.g. CEIT's engineering programs stay, BSIT and BSMATH form a new college). The dean chooses
+  where the programs go (a college already in Auditrix that has no programs or dean yet, or a new college with its
+  name and short name), ticks the programs that move, and creates the new dean's account (temporary
   password, changed at first login). The new college is separate from and equal to the old one. Only the programs'
   college changes: their curriculum versions, students, grades, chairpersons and history stay as they are, and the
   new college starts on a copy of the current semester. A dean can only move their own programs, and at least one

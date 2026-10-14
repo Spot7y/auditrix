@@ -22,6 +22,7 @@ function resetDatabase() {
     colleges: [
       { id: "ceit", name: "College of Engineering and Information Technology", short_name: "CEIT" },
       { id: "nursing", name: "College of Nursing", short_name: "CON" },
+      { id: "citm", name: "College of Information Technology and Mathematics", short_name: "CITM" },
     ],
     shift_requests: [
       { student_id: "23-10001", from_program: "BSCE" },
@@ -42,6 +43,7 @@ function table(name: string) {
     select: () => query,
     eq: (key: string, value: unknown) => (filters.push([key, value]), query),
     limit: () => query,
+    order: () => query,
     maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
     single: async () => {
       const row = rows()[0];
@@ -235,6 +237,22 @@ describe("Split the college", () => {
     current.staff = ceitDean;
     const url = await redirectOf(splitCollege, split(["BSCPE"], { shortName: "con" }));
     assert.match(url ?? "", /already a college named College of Nursing/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("programs can move into an existing college that has no programs or dean yet", async () => {
+    current.staff = ceitDean;
+    assert.equal(
+      await redirectOf(splitCollege, split(["BSCPE"], { existingCollege: "citm", collegeName: "", shortName: "" })),
+      "/home?success=BSCPE moved to College of Information Technology and Mathematics. Ana Reyes is its dean."
+    );
+    assert.deepEqual(writes, ["createUser", "rpc split_college"]);
+  });
+
+  it("programs can't move into a college that already has programs", async () => {
+    current.staff = ceitDean;
+    const url = await redirectOf(splitCollege, split(["BSCPE"], { existingCollege: "nursing" }));
+    assert.match(url ?? "", /already has programs or a dean/);
     assert.deepEqual(writes, []);
   });
 

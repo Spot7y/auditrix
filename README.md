@@ -67,8 +67,9 @@ what each student has completed, can take next, or took out of order.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
   field ticks each password rule green as it's met.
-- **College changes without a system administrator.** A dean can **split the college**: name the new college, tick
-  the programs that move, and create its dean. Only the programs' college changes (curricula, students, grades,
+- **College changes without a system administrator.** A dean can **split the college**: choose where the programs go
+  (a college already in Auditrix that has no programs or dean yet, or a new college), tick the programs that move,
+  and create its dean. Only the programs' college changes (curricula, students, grades,
   chairpersons and history stay), and the new college starts on a copy of the current semester. A dean can also
   **hand over the deanship**: they create their successor's account and their own account is closed (they're signed
   out and can't log in again; their name stays on what they recorded). Both are listed in the college's history.

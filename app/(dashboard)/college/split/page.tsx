@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { splitCollege } from "./actions";
 import ChairAccountFields from "../../programs/ChairAccountFields";
 import CollegeHistory from "../CollegeHistory";
-import { getCollegeHistory } from "../../../../lib/queries/college";
+import { getCollegeHistory, getEmptyColleges } from "../../../../lib/queries/college";
+import DestinationFields from "./DestinationFields";
 import { getProgramsWithChairpersonForDean } from "../../../../lib/queries/programs";
 import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
-import { Field, Input } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
@@ -15,7 +15,11 @@ export const metadata: Metadata = { title: "Split the college" };
 
 export default async function SplitCollegePage() {
   const staff = await requireRole("dean");
-  const [programs, history] = await Promise.all([getProgramsWithChairpersonForDean(), getCollegeHistory()]);
+  const [programs, history, emptyColleges] = await Promise.all([
+    getProgramsWithChairpersonForDean(),
+    getCollegeHistory(),
+    getEmptyColleges(),
+  ]);
   const college = staff.collegeName ?? "your college";
 
   return (
@@ -36,20 +40,9 @@ export default async function SplitCollegePage() {
           </Alert>
 
           <Card>
-            <CardHeader title="New college" />
-            <CardBody className="grid gap-4 sm:grid-cols-[1fr_10rem]">
-              <Field label="Name" htmlFor="collegeName">
-                <Input
-                  id="collegeName"
-                  name="collegeName"
-                  required
-                  autoComplete="off"
-                  placeholder="College of Information Technology and Mathematics"
-                />
-              </Field>
-              <Field label="Short name" htmlFor="shortName">
-                <Input id="shortName" name="shortName" required autoComplete="off" placeholder="CITM" className="uppercase" />
-              </Field>
+            <CardHeader title="Where the programs go" />
+            <CardBody>
+              <DestinationFields emptyColleges={emptyColleges} />
             </CardBody>
           </Card>
 
