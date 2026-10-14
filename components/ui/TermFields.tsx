@@ -16,7 +16,6 @@ export default function TermFields({
   onSemesterChange,
   yearPlaceholder = "25",
   yearInvalid = false,
-  semesterLocked = false,
   children,
 }: {
   id?: string;
@@ -29,8 +28,6 @@ export default function TermFields({
   yearPlaceholder?: string;
   /** Marks the year as missing or wrong. */
   yearInvalid?: boolean;
-  /** Shows the semester without letting it be changed (it's set elsewhere). */
-  semesterLocked?: boolean;
   /** Shown after the fields, e.g. a submit button. */
   children?: React.ReactNode;
 }) {
@@ -57,10 +54,8 @@ export default function TermFields({
       <div className="w-44 shrink-0">
         <Select
           id={`${id}Semester`}
-          name={semesterLocked ? undefined : "termSemester"}
-          required={!semesterLocked}
-          disabled={semesterLocked}
-          title={semesterLocked ? "Follows the curriculum semester" : undefined}
+          name="termSemester"
+          required
           value={semester}
           defaultValue={defaultSemester}
           onChange={onSemesterChange}
@@ -72,8 +67,6 @@ export default function TermFields({
           {/* As on KSU records: 26-S is the midyear before 26-1. */}
           <option value="S">S · Midyear</option>
         </Select>
-        {/* A disabled field isn't submitted, so the locked semester is sent here. */}
-        {semesterLocked && <input type="hidden" name="termSemester" value={semester ?? ""} />}
       </div>
       {children}
     </div>

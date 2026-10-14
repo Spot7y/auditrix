@@ -63,7 +63,8 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Grades are entered per term (`YY-S`, e.g. 25-1), for the subjects of a chosen curriculum year and semester.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
   and INC. (There is no 4.0.) A subject is recorded only once it has a grade.
-- **Choosing the term:** the term's semester is locked to the chosen curriculum semester (1, 2, or S for the midyear).
+- **Choosing the term:** the term's semester follows the chosen curriculum semester (1, 2, or S for the midyear) and
+  can still be changed, e.g. for a back subject retaken in a midyear.
   The two-digit school year starts **empty** and must be typed; pressing Save without it saves nothing and asks for
   the year, so grades can't land in the wrong term by accident.
 - Subjects the student can't take yet show why (e.g. "Can't take yet. Needs: MATH 111").

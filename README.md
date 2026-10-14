@@ -9,8 +9,9 @@ what each student has completed, can take next, or took out of order.
 - **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
   or Violation, with the reason (e.g. the missing prerequisite).
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
-  5.0 failing, INC); a subject is recorded only once it has a grade. The term's semester is locked to the chosen
-  curriculum semester (midyear is S); the school year starts empty and must be typed, so grades can't be saved to a
+  5.0 failing, INC); a subject is recorded only once it has a grade. The term's semester follows the chosen
+  curriculum semester (midyear is S) and can still be changed, e.g. for a subject retaken in a midyear; the school
+  year starts empty and must be typed, so grades can't be saved to a
   term by accident. A retake with the same grade (any grade, e.g. 5.0 or 1.25 again in a later term) is saved as a
   new attempt. A final grade
   for an INC keeps the subject in its original term and records the term the INC was resolved in. Only the latest

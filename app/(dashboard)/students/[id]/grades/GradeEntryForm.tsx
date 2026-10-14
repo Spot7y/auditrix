@@ -55,8 +55,7 @@ export default function GradeEntryForm({
   // The year starts empty on purpose: grades can't be saved until the
   // chairperson types the school year they were earned in.
   const [termYear, setTermYear] = useState("");
-  // The term's semester is the curriculum semester's (midyear is S); it can't be changed separately.
-  const termSemester = TERM_SEMESTER[semester] ?? "";
+  const [termSemester, setTermSemester] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
   const [missingYear, setMissingYear] = useState(false);
 
@@ -115,7 +114,13 @@ export default function GradeEntryForm({
             <Select
               id="semester"
               value={semester}
-              onChange={(e) => setSemester(e.target.value)}
+              onChange={(e) => {
+                setSemester(e.target.value);
+                // Grades for a semester's subjects are usually earned in that
+                // semester, so the term follows; it can still be changed (e.g.
+                // a back subject retaken in a midyear).
+                if (TERM_SEMESTER[e.target.value]) setTermSemester(TERM_SEMESTER[e.target.value]);
+              }}
             >
               <option value="">Select…</option>
               <option value="1">First semester</option>
@@ -134,18 +139,18 @@ export default function GradeEntryForm({
                 setTermYear(e.target.value);
                 setMissingYear(false);
               }}
-              semesterLocked
+              onSemesterChange={(e) => setTermSemester(e.target.value)}
             />
             {missingYear && !term ? (
               <p role="alert" className="mt-1.5 text-sm font-medium text-status-violation">
                 {yearValid
-                  ? "Choose the curriculum semester first. Nothing was saved."
+                  ? "Choose the semester the grades were earned in. Nothing was saved."
                   : "Enter the school year the grades were earned in (two digits, e.g. 26). Nothing was saved."}
               </p>
             ) : (
               <Hint>
-                Type the two-digit school year as on the KSU record, e.g. 25 – 1. The semester is the curriculum
-                semester’s (midyear is S; 26 – S comes before 26 – 1).
+                Type the two-digit school year as on the KSU record, e.g. 25 – 1. The semester follows the curriculum
+                semester and can be changed, e.g. for a subject retaken in a midyear (S; 26 – S comes before 26 – 1).
                 {currentTerm && ` The current semester is ${currentTerm}.`}
               </Hint>
             )}
@@ -245,7 +250,7 @@ export default function GradeEntryForm({
             type="button"
             onClick={() => {
               setMissingYear(true);
-              document.getElementById(yearValid ? "semester" : "termYear")?.focus();
+              document.getElementById(yearValid ? "termYearSemester" : "termYear")?.focus();
             }}
             className="h-10 rounded-lg bg-brand-800 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-900"
           >
