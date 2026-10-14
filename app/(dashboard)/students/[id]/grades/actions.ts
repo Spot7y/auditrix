@@ -21,7 +21,6 @@ function parseGradeInput(raw: string): RawGradeInput | null {
   const trimmed = raw.trim();
   if (!trimmed) return null;
   if (/^inc(omplete)?$/i.test(trimmed)) return { kind: "incomplete" };
-  if (/^ip$|^in.?progress$/i.test(trimmed)) return { kind: "in_progress" };
   const value = Number(trimmed);
   if (Number.isNaN(value)) return null;
   return { kind: "numeric", value };
@@ -50,7 +49,7 @@ export async function submitTermGrades(
   const termYear = Number(termYearRaw);
 
   if (!termYearRaw || Number.isNaN(termYear) || termYear < 0 || termYear > 99) {
-    return { result: null, error: "Enter a valid 2-digit year (e.g. 25)." };
+    return { result: null, error: "Enter the school year the grades were earned in (two digits, e.g. 26). Nothing was saved." };
   }
   if (!["1", "2", "S"].includes(termSemesterRaw)) {
     return { result: null, error: "Semester must be 1, 2, or S (Midyear)." };

@@ -34,9 +34,8 @@ describe("GradeValidator — KSU grade values", () => {
     });
   }
 
-  it("accepts INC and in-progress without a numeric grade", () => {
+  it("accepts INC without a numeric grade", () => {
     assert.deepEqual(validator.validate({ kind: "incomplete" }), { valid: true, status: "INCOMPLETE", grade: null });
-    assert.deepEqual(validator.validate({ kind: "in_progress" }), { valid: true, status: "IN_PROGRESS", grade: null });
   });
 });
 
@@ -114,6 +113,25 @@ describe("GradeEntryService — submitting a term's grades", () => {
       const result = await service.submit({ studentId: "23-110414", term: "23-1", entries }, curriculum, "test-chairperson");
       assert.equal(statusIn(result, "CC 103"), "VIOLATION");
     }
+  });
+
+  it("records a retake with the same grade as a new attempt in the later term", async () => {
+    const { curriculum, record, service } = setup();
+    await service.submit({ studentId: "23-110414", term: "23-1", entries: [grade("CC 101", 5.0)] }, curriculum, "chair");
+    const result = await service.submit(
+      { studentId: "23-110414", term: "23-2", entries: [grade("CC 101", 5.0)] },
+      curriculum,
+      "chair"
+    );
+
+    assert.deepEqual(result.rows, [{ accepted: true, subjectCode: "CC 101" }]);
+    assert.deepEqual(record.recordOf("CC 101"), {
+      subjectCode: "CC 101",
+      status: "FAILED",
+      grade: 5.0,
+      term: "23-2",
+      resolvedTerm: null,
+    });
   });
 
   it("accepts grades entered in any order of terms", async () => {

@@ -11,18 +11,6 @@ export interface CurriculumVersionInfo {
   subjectCount: number;
 }
 
-/** A subject where students get stuck: their latest grade is 5.0 or INC. */
-export interface SubjectTrouble {
-  code: string;
-  title: string;
-  /** Students whose latest grade in the subject is 5.0. */
-  failed: number;
-  /** Students whose latest grade in the subject is INC. */
-  incomplete: number;
-  /** Students with a final grade or INC in the subject. */
-  takers: number;
-}
-
 /** A subject students took without its prerequisites. */
 export interface SubjectViolation {
   code: string;
@@ -39,15 +27,13 @@ export interface ProgramSummary {
   byYearLevel: Record<number, number>;
   regularStudents: number;
   irregularStudents: number;
-  /** No enrollment recorded for the current semester, so neither regular nor irregular. */
+  /** No grades recorded for the current semester yet, so neither regular nor irregular. */
   undeterminedStudents: number;
   droppedCount: number;
   shiftedInCount: number;
   shiftedOutCount: number;
   transferredInCount: number;
   transferredOutCount: number;
-  /** Subjects with the most 5.0s and INCs, most first. */
-  bottlenecks: SubjectTrouble[];
   /** Subjects most often taken out of order, most first. */
   outOfOrder: SubjectViolation[];
 }
@@ -88,7 +74,6 @@ function emptySummary(program: string): ProgramSummary {
     shiftedOutCount: 0,
     transferredInCount: 0,
     transferredOutCount: 0,
-    bottlenecks: [],
     outOfOrder: [],
   };
 }
@@ -129,8 +114,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     studentRows.map((row) => row.id)
   );
 
-  // Per program, per subject code: 5.0s, INCs, takers and out-of-order students.
-  const trouble = new Map<string, Map<string, SubjectTrouble>>();
+  // Per program, per subject code: students who took it out of order.
   const violations = new Map<string, Map<string, SubjectViolation>>();
 
   for (const row of studentRows) {
@@ -152,26 +136,8 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
       const audit = engine.auditStudent(record, currentTerm);
       hasViolation = audit.results.some((r) => r.status === "VIOLATION");
 
-      const programTrouble = trouble.get(program) ?? new Map<string, SubjectTrouble>();
-      trouble.set(program, programTrouble);
       const programViolations = violations.get(program) ?? new Map<string, SubjectViolation>();
       violations.set(program, programViolations);
-      for (const subject of record.curriculum.allSubjects()) {
-        const status = record.statusOf(subject.code);
-        if (status === "PASSED" || status === "FAILED" || status === "INCOMPLETE") {
-          const entry = programTrouble.get(subject.code) ?? {
-            code: subject.code,
-            title: subject.title,
-            failed: 0,
-            incomplete: 0,
-            takers: 0,
-          };
-          entry.takers += 1;
-          if (status === "FAILED") entry.failed += 1;
-          if (status === "INCOMPLETE") entry.incomplete += 1;
-          programTrouble.set(subject.code, entry);
-        }
-      }
       for (const result of audit.results) {
         if (result.status !== "VIOLATION") continue;
         const subject = record.curriculum.findSubject(result.subjectCode);
@@ -196,12 +162,6 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     else summary.undeterminedStudents += 1;
   }
 
-  for (const [program, subjects] of trouble) {
-    byProgram.get(program)!.bottlenecks = [...subjects.values()]
-      .filter((t) => t.failed + t.incomplete > 0)
-      .sort((a, b) => b.failed + b.incomplete - (a.failed + a.incomplete) || a.code.localeCompare(b.code))
-      .slice(0, TOP_SUBJECTS);
-  }
   for (const [program, subjects] of violations) {
     byProgram.get(program)!.outOfOrder = [...subjects.values()]
       .sort((a, b) => b.students - a.students || a.code.localeCompare(b.code))

@@ -51,7 +51,7 @@ it was taken**, and a status:
 | --- | --- |
 | **Completed** | Passed, and the pass counts (taken in order). |
 | **Available** | Can be taken now (requirements met), or must be retaken (failed / taken out of order). |
-| **Pending** | In progress, INC, or waiting for another subject's final grade. |
+| **Pending** | INC, or waiting for another subject's final grade. |
 | **Unavailable** | Requirements not met yet; the missing ones are listed ("Needs: CC 104"). |
 | **Violation** | Taken before a requirement was met; the reason is given, e.g. "CC 101 was taken in the same term (24-1)". |
 
@@ -62,13 +62,14 @@ applies, the student's **year level** and **Regular / Irregular** status.
 ### 2.2 Grade entry
 - Grades are entered per term (`YY-S`, e.g. 25-1), for the subjects of a chosen curriculum year and semester.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
-  and INC. (There is no 4.0.) **In progress** is also a choice, for subjects the student is taking this semester.
-- **Bulk "in progress":** each subject has a tick box; ticking several (or all, from the header) and clicking
-  **Mark as in progress** sets them all at once. Subjects already passed can't be ticked. Ticking all leaves out
-  subjects the student can't take yet (e.g. "Can't take yet. Needs: MATH 111"); those can still be ticked one by one
-  if the student is enrolled anyway, and the audit then flags them as violations. A subject still in progress from an
-  earlier term that's marked again moves to the chosen term.
-- Only changed grades are saved; changing an existing grade is a correction and asks for confirmation.
+  and INC. (There is no 4.0.) A subject is recorded only once it has a grade.
+- **Choosing the term:** picking the curriculum semester also sets the term's semester (1, 2, or S for the midyear).
+  The two-digit school year starts **empty** and must be typed; pressing Save without it saves nothing and asks for
+  the year, so grades can't land in the wrong term by accident.
+- Subjects the student can't take yet show why (e.g. "Can't take yet. Needs: MATH 111").
+- Only the grades the chairperson picks are saved; changing an existing grade is a correction and asks for
+  confirmation. **A retake with the same result** (e.g. 5.0 in 25-1, retaken and 5.0 again in 26-1) is saved as a new
+  attempt in the later term.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
 - **Earlier-term protection:** only the latest attempt of a subject is kept, so a grade from an earlier term than the
@@ -83,6 +84,10 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - **Import** from Excel (.xlsx or .xls) or CSV, with a **preview** of what will be added, changed or removed before saving.
 - **Export** to CSV or PDF.
 - A **change history** per version (who changed what, when).
+- **Locked versions:** once any student is registered on a version, its subjects and requirements can't be added,
+  edited, reordered, deleted or re-imported (the page shows "Locked: N students are registered", and the database
+  refuses the change too). Changing a curriculum students already follow would silently change their audits, so an
+  edited curriculum is a **new version**, which starts as a copy of the latest one.
 
 ### 2.4 Students
 - Register one at a time, or **import** an Excel (.xlsx or .xls) or CSV file (the template, or the KSU-MIS "Export to
@@ -103,14 +108,13 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - **Student search** in the top bar on every page (Ctrl+K), next to the current semester (chairpersons only).
 
 ### 2.5 Dashboard
-A **Needs attention** banner at the top lists what to act on (students with violations, students with nothing
-recorded for the current semester, an unset semester), each with a link to the matching filtered student list.
+A **Needs attention** banner at the top lists what to act on (students with violations, an unset semester), with a
+link to the matching filtered student list.
 Per program: total students, **regular / irregular** counts with percentages (and how many are not determined),
 students with violations, curriculum versions and shift/transfer/drop counts (with "View all" to the Student
-Movements page), plus four charts built only from recorded data:
+Movements page), plus three charts built only from recorded data:
 - regular / irregular / not determined (one stacked bar);
 - students by year level (Freshman–Senior);
-- **bottleneck subjects**: where the most students' latest grade is 5.0 or INC;
 - subjects most often **taken out of order**.
 
 Each chart has a one-line explanation, shows the exact numbers on hover (or keyboard focus), and has a "View as table"
@@ -147,8 +151,6 @@ taken without it is nullified)
   it was resolved.
 - A subject taken out of order gets **no credit**: it doesn't satisfy later prerequisites, doesn't count toward units
   or year level, and has to be retaken.
-- If a prerequisite's grade is still "in progress" from an earlier term, the subject is **Pending** (waiting), not
-  a violation.
 
 ### 3.3 Co-requisites (Handbook: taken simultaneously, in the same semester)
 - They pair both ways, even if only one subject lists the other.
@@ -186,9 +188,9 @@ instead of a violation.
 - **Prescribed load:** the curriculum's subjects for the student's year level and the current semester; subjects
   already passed in an earlier term aren't expected again. Back subjects on top of a full load don't make a student
   irregular.
-- **Enrollment** means grades or "in progress" recorded for the current semester. With nothing recorded, the status is
-  **"Not determined"** and the student isn't counted either way. At the start of a semester the chairperson marks
-  the subjects each student is taking as **in progress**, so the status is known before any grades come in.
+- **Enrollment** means grades recorded for the current semester. Until they're entered, the status is
+  **"Not determined"** and the student isn't counted either way, so regular and irregular students are known once the
+  semester's grades are in.
 
 ---
 
@@ -252,6 +254,9 @@ the order grades are entered, and all five cases above are covered by automated 
   semester tabs, deeper KSU green for buttons and the current page. Deans no longer open individual student records
   (the search, student pages and movement links are for chairpersons); dashboard charts laid out in equal-height rows
   with a shared scale. The Kalinga State University seal is the logo (sidebar, login page corner and browser tab).
+- 2026-10-14 — curriculum versions locked once students are registered on them; "In progress" removed (regular and
+  irregular known once grades are in); grade form: the term's semester follows the curriculum semester and the
+  school year must be typed; a retake with the same grade can be saved; bottleneck chart removed.
 
 ---
 
@@ -327,8 +332,8 @@ Full list of screens worth showing:
 1. Login page.
 2. First-login password change with the green checklist.
 3. Dean dashboard with the **Current semester** card.
-4. Chairperson dashboard: the Needs attention banner and the charts (regular/irregular, year levels, bottleneck
-   subjects, out-of-order subjects), including a hover tooltip and "View as table".
+4. Chairperson dashboard: the Needs attention banner and the charts (regular/irregular, year levels, out-of-order
+   subjects), including a hover tooltip and "View as table".
 4b. Dean dashboard with the program comparison charts.
 4c. Student Movements page.
 5. Curriculum page (versions, subjects, prerequisites), and the **import preview**.

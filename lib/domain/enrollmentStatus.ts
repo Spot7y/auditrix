@@ -9,8 +9,8 @@ import { compareTerms, isValidTerm, parseTerm } from "./Term";
  * The prescribed load is the curriculum's subjects for the student's year
  * level (`yearLevel`, see AuditEngine.yearLevel) and the current semester. Subjects already passed in an earlier term
  * don't need to be taken again, and back subjects taken on top of the full
- * load don't make a student irregular. A student with nothing recorded for
- * the current semester isn't enrolled as far as Auditrix knows, so their
+ * load don't make a student irregular. Subjects are recorded only once they
+ * have a grade, so until the current semester's grades are entered the
  * status is not determined.
  */
 export type EnrollmentStatus =
@@ -30,7 +30,7 @@ export function enrollmentStatus(record: AcademicRecord, currentTerm: string | n
 
   const enrolled = subjects.filter((s) => record.recordOf(s.code)?.term === currentTerm);
   if (enrolled.length === 0) {
-    return { kind: "NOT_DETERMINED", reason: `No enrollment is recorded for ${currentTerm}.` };
+    return { kind: "NOT_DETERMINED", reason: `No grades are recorded for ${currentTerm} yet.` };
   }
 
   const prescribed = subjects.filter((s) => s.yearLevel === yearLevel && s.semester === semester);

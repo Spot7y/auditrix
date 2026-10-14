@@ -49,9 +49,6 @@ export class CoursePrerequisite implements Requirement {
       return MET;
     }
     const takenBefore = takenTerm !== null;
-    if (takenBefore && attempt?.status === "IN_PROGRESS") {
-      return { state: "PENDING", reason: `${code} (${takenTerm}) has no final grade yet` };
-    }
     if (takenBefore && attempt?.status === "INCOMPLETE") {
       return { state: "UNMET", reason: `${code} was still INC in ${asOf}` };
     }

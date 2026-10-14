@@ -2,7 +2,6 @@ export type SubjectRecordStatus =
   | "PASSED"
   | "FAILED"
   | "INCOMPLETE"
-  | "IN_PROGRESS"
   | "NOT_TAKEN";
 
 export interface SubjectRecord {

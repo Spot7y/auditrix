@@ -4,7 +4,7 @@ import type { YearLevelInfo } from "../yearLevels";
 /**
  * Whether a subject's pass counts, and from which term.
  *  - CREDITED: it counts from `term` (null when no term was recorded).
- *  - PENDING: not final yet, e.g. in progress, INC, or waiting on a
+ *  - PENDING: not final yet, e.g. INC, or waiting on a
  *    co-requisite's grade.
  *  - NONE: it doesn't count: never passed, failed, or its credit is void
  *    because it was taken out of order.
@@ -23,7 +23,7 @@ export interface AuditContext {
 
 export type CheckOutcome =
   | { state: "MET" }
-  /** Can't be decided yet, e.g. the prerequisite is still in progress. */
+  /** Can't be decided yet, e.g. the prerequisite's co-requisite has no final grade. */
   | { state: "PENDING"; reason: string }
   /**
    * Couldn't be confirmed from what's recorded, but may well have been met,

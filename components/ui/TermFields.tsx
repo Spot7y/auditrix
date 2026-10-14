@@ -14,6 +14,8 @@ export default function TermFields({
   defaultSemester,
   onYearChange,
   onSemesterChange,
+  yearPlaceholder = "25",
+  yearInvalid = false,
   children,
 }: {
   id?: string;
@@ -23,6 +25,9 @@ export default function TermFields({
   defaultSemester?: string;
   onYearChange?: (e: ChangeEvent<HTMLInputElement>) => void;
   onSemesterChange?: (e: ChangeEvent<HTMLSelectElement>) => void;
+  yearPlaceholder?: string;
+  /** Marks the year as missing or wrong. */
+  yearInvalid?: boolean;
   /** Shown after the fields, e.g. a submit button. */
   children?: React.ReactNode;
 }) {
@@ -36,7 +41,9 @@ export default function TermFields({
           required
           min={0}
           max={99}
-          placeholder="25"
+          placeholder={yearPlaceholder}
+          aria-invalid={yearInvalid || undefined}
+          className={yearInvalid ? "border-status-violation ring-2 ring-status-violation/20" : undefined}
           value={year}
           defaultValue={defaultYear}
           onChange={onYearChange}
@@ -46,6 +53,7 @@ export default function TermFields({
       <span className="text-ink-400">–</span>
       <div className="w-44 shrink-0">
         <Select
+          id={`${id}Semester`}
           name="termSemester"
           required
           value={semester}

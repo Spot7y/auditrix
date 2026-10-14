@@ -16,6 +16,7 @@ const RESULT: Record<string, { label: string; tone: BadgeTone }> = {
   PASSED: { label: "Passed", tone: "green" },
   FAILED: { label: "Failed", tone: "red" },
   INCOMPLETE: { label: "Incomplete", tone: "amber" },
+  // No longer recorded, but older logbook entries can still show it.
   IN_PROGRESS: { label: "In progress", tone: "blue" },
 };
 

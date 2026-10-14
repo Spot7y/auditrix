@@ -10,7 +10,7 @@ function subject(code: string, yearLevel: 1 | 2 | 3 | 4, semester: 1 | 2 | 3): S
   return { code, title: code, units: 3, yearLevel, semester, requirements: [] };
 }
 
-function taken(subjectCode: string, term: string, status: SubjectRecordStatus = "IN_PROGRESS"): SubjectRecord {
+function taken(subjectCode: string, term: string, status: SubjectRecordStatus = "PASSED"): SubjectRecord {
   return { subjectCode, status, grade: status === "PASSED" ? 2.0 : null, term };
 }
 
@@ -64,7 +64,7 @@ describe("regular or irregular (KSU Operations Manual)", () => {
   it("is not determined without enrollment for the current term", () => {
     assert.deepEqual(status([taken("CC 101", "25-1", "PASSED")]), {
       kind: "NOT_DETERMINED",
-      reason: "No enrollment is recorded for 25-2.",
+      reason: "No grades are recorded for 25-2 yet.",
     });
   });
 

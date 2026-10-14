@@ -7,8 +7,9 @@
 // For every program with an uploaded curriculum, each year level is filled up
 // to 10 students. Students that already have grades are left alone; students
 // without any grades get demo grades, and new students are made for the rest.
-// Grades run from the student's first semester up to the college's current
-// semester, which is marked in progress, and a few students per year show the
+// Grades run from the student's first semester through the college's current
+// semester (as if its grades were already in, so students show as regular or
+// irregular), and a few students per year show the
 // system's features: a failed subject, an INC, a completed INC, a retake, a
 // subject taken out of order and an irregular load.
 //
@@ -147,10 +148,9 @@ function planGrades(
   let records: SubjectRecord[] = [];
   for (const s of subjects) {
     const term = slotTerm(entry, s.yearLevel, s.semester);
-    if (isBefore(term, currentTerm)) records.push({ subjectCode: s.code, status: "PASSED", grade: grade(), term });
-    else if (term === currentTerm) records.push({ subjectCode: s.code, status: "IN_PROGRESS", grade: null, term });
+    if (!isBefore(currentTerm, term)) records.push({ subjectCode: s.code, status: "PASSED", grade: grade(), term });
   }
-  const past = () => records.filter((r) => r.status !== "IN_PROGRESS");
+  const past = () => records.filter((r) => isBefore(r.term!, currentTerm));
   const pastTerms = [...new Set(past().map((r) => r.term!))].sort(compareTerms);
   const latestPast = pastTerms[pastTerms.length - 1];
   const nextTerm = (term: string) => pastTerms.find((t) => isBefore(term, t));
@@ -217,7 +217,7 @@ function planGrades(
       applied = true;
     }
   } else if (variant === "irregular") {
-    const current = records.filter((r) => r.status === "IN_PROGRESS");
+    const current = records.filter((r) => r.term === currentTerm);
     const drop = new Set(current.slice(0, Math.min(2, current.length - 1)).map((r) => r.subjectCode));
     records = records.filter((r) => !drop.has(r.subjectCode));
     applied = drop.size > 0;

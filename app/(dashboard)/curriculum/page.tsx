@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowDown, ArrowUp, BookOpen, FileDown, FileText, History, Pencil, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, FileDown, FileText, History, Lock, Pencil, Plus } from "lucide-react";
 import {
   describeRequirement,
   getCurriculumForStaff,
@@ -94,6 +94,8 @@ export default async function CurriculumPage({
     return `/curriculum?${params}`;
   };
   const totalUnits = data.subjects.reduce((sum, s) => sum + Number(s.units), 0);
+  // Students follow this version, so changing it would change their audits: it's read-only.
+  const locked = data.studentCount > 0;
 
   return (
     <>
@@ -110,10 +112,12 @@ export default async function CurriculumPage({
               <FileText aria-hidden />
               PDF
             </a>
-            <LinkButton href={`/curriculum/new?curriculumId=${data.curriculumId}`}>
-              <Plus aria-hidden />
-              Add subject
-            </LinkButton>
+            {!locked && (
+              <LinkButton href={`/curriculum/new?curriculumId=${data.curriculumId}`}>
+                <Plus aria-hidden />
+                Add subject
+              </LinkButton>
+            )}
           </>
         }
       />
@@ -140,13 +144,29 @@ export default async function CurriculumPage({
         <NewVersionForm latestYear={latestYear} />
       </div>
 
+      {locked && (
+        <div className="mb-6 flex gap-3 rounded-xl border border-line bg-ink-50 px-5 py-4">
+          <Lock className="mt-0.5 size-5 shrink-0 text-ink-500" aria-hidden />
+          <div className="text-sm">
+            <p className="font-medium text-ink-900">
+              Locked: {plural(data.studentCount, "student is", "students are")} registered on the {data.effectiveYear}{" "}
+              version.
+            </p>
+            <p className="mt-0.5 text-ink-600">
+              Its subjects and requirements can’t be changed, so those students’ audits stay as they are. To change the
+              curriculum, use New version: it starts as a copy of the latest version.
+            </p>
+          </div>
+        </div>
+      )}
+
       {terms.length === 0 ? (
         <Card>
           <EmptyState
             icon={BookOpen}
             title="No subjects in this version"
             description="Add subjects one by one or import the whole curriculum from an Excel or CSV file."
-            action={<LinkButton href={`/curriculum/new?curriculumId=${data.curriculumId}`}>Add subjects</LinkButton>}
+            action={!locked && <LinkButton href={`/curriculum/new?curriculumId=${data.curriculumId}`}>Add subjects</LinkButton>}
           />
         </Card>
       ) : (
@@ -227,18 +247,20 @@ export default async function CurriculumPage({
                         )}
                       </Td>
                       <Td>
-                        <div className="flex items-center justify-end gap-0.5">
-                          {i > 0 && <MoveButton action={moveSubjectUp} subjectId={s.id} direction="up" />}
-                          {i < subjects.length - 1 && <MoveButton action={moveSubjectDown} subjectId={s.id} direction="down" />}
-                          <Link
-                            href={`/curriculum/${s.id}`}
-                            aria-label={`Edit ${s.code}`}
-                            title="Edit"
-                            className="rounded-md p-1.5 text-ink-400 hover:bg-ink-100 hover:text-brand-700"
-                          >
-                            <Pencil className="size-3.5" aria-hidden />
-                          </Link>
-                        </div>
+                        {!locked && (
+                          <div className="flex items-center justify-end gap-0.5">
+                            {i > 0 && <MoveButton action={moveSubjectUp} subjectId={s.id} direction="up" />}
+                            {i < subjects.length - 1 && <MoveButton action={moveSubjectDown} subjectId={s.id} direction="down" />}
+                            <Link
+                              href={`/curriculum/${s.id}`}
+                              aria-label={`Edit ${s.code}`}
+                              title="Edit"
+                              className="rounded-md p-1.5 text-ink-400 hover:bg-ink-100 hover:text-brand-700"
+                            >
+                              <Pencil className="size-3.5" aria-hidden />
+                            </Link>
+                          </div>
+                        )}
                       </Td>
                     </Tr>
                   ))}

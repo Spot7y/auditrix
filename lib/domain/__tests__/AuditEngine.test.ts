@@ -59,14 +59,14 @@ describe("AuditEngine — prerequisite chains", () => {
 });
 
 describe("AuditEngine — pending prerequisites", () => {
-  it("is PENDING when every unmet prerequisite is in progress or incomplete", () => {
+  it("is PENDING when every unmet prerequisite is incomplete", () => {
     const curriculum = new CurriculumMap("BSIT", [
       subject("CC 111"),
       subject("CC 112"),
       subject("CC 120", { yearLevel: 2, requirements: [prereq("CC 111"), prereq("CC 112")] }),
     ]);
     const record = new AcademicRecord("23-110415", curriculum, 2, [
-      taken("CC 111", "25-1", "IN_PROGRESS"),
+      taken("CC 111", "25-1", "INCOMPLETE"),
       taken("CC 112", "25-1", "INCOMPLETE"),
     ]);
 
@@ -112,13 +112,9 @@ describe("AuditEngine — the student's own grade", () => {
     });
   });
 
-  it("is PENDING while the subject itself is in progress or incomplete", () => {
-    const record = new AcademicRecord("S", curriculum, 1, [
-      taken("CC 101", "25-1", "IN_PROGRESS"),
-      taken("CC 102", "25-1", "INCOMPLETE"),
-    ]);
-    assert.equal(engine.auditEnrollment(record, "CC 101").status, "PENDING");
-    assert.deepEqual(engine.auditEnrollment(record, "CC 101").reasons, ["Currently in progress"]);
+  it("is PENDING while the subject itself is incomplete", () => {
+    const record = new AcademicRecord("S", curriculum, 1, [taken("CC 102", "25-1", "INCOMPLETE")]);
+    assert.equal(engine.auditEnrollment(record, "CC 102").status, "PENDING");
     assert.deepEqual(engine.auditEnrollment(record, "CC 102").reasons, ["Incomplete grade"]);
   });
 
@@ -178,8 +174,8 @@ describe("AuditEngine — prerequisites are checked by term", () => {
     assert.deepEqual(statusOf(results, "CC 103")?.reasons, ["CC 101 was not passed before 24-2"]);
   });
 
-  it("flags a subject that is in progress while its prerequisite isn't passed", () => {
-    const results = audit([taken("CC 103", "25-1", "IN_PROGRESS")]);
+  it("flags a subject with an INC that was taken while its prerequisite wasn't passed", () => {
+    const results = audit([taken("CC 103", "25-1", "INCOMPLETE")]);
     assert.equal(statusOf(results, "CC 103")?.status, "VIOLATION");
   });
 
@@ -214,15 +210,6 @@ describe("AuditEngine — prerequisites are checked by term", () => {
     assert.equal(statusOf(audit([taken("CC 101", "24-2"), taken("CC 103", "24-S")]), "CC 103")?.status, "VIOLATION");
   });
 
-  it("waits while a prerequisite from an earlier term has no final grade", () => {
-    const results = audit([taken("CC 101", "24-1", "IN_PROGRESS"), taken("CC 103", "24-2")]);
-    assert.deepEqual(statusOf(results, "CC 103"), {
-      subjectCode: "CC 103",
-      status: "PENDING",
-      reasons: ["CC 101 (24-1) has no final grade yet"],
-      warnings: [],
-    });
-  });
 });
 
 describe("AuditEngine — INC", () => {
@@ -298,7 +285,7 @@ describe("AuditEngine — co-requisites", () => {
   });
 
   it("waits for the other's grade", () => {
-    const results = audit([taken("CC 104", "25-1", "IN_PROGRESS"), taken("CC 105", "25-1")]);
+    const results = audit([taken("CC 104", "25-1", "INCOMPLETE"), taken("CC 105", "25-1")]);
     assert.deepEqual(statusOf(results, "CC 105")?.reasons, ["Waiting for the grade of CC 104 (co-requisite)"]);
     assert.equal(statusOf(results, "CC 106")?.status, "PENDING");
   });

@@ -201,7 +201,7 @@ class RecordAudit implements AuditContext {
     for (const member of this.group(code)) {
       const attempt = this.record.recordOf(member);
       const status = attempt?.status ?? "NOT_TAKEN";
-      if (status === "IN_PROGRESS" || status === "INCOMPLETE") {
+      if (status === "INCOMPLETE") {
         pending = true;
         continue;
       }
@@ -248,10 +248,7 @@ class RecordAudit implements AuditContext {
           return make("COMPLETED", attempt.resolvedTerm ? [`INC resolved in ${attempt.resolvedTerm}`] : [], warnings);
         }
         if (credit.kind === "PENDING") {
-          const waiting = partners.filter((p) => {
-            const status = this.record.statusOf(p);
-            return status === "IN_PROGRESS" || status === "INCOMPLETE";
-          });
+          const waiting = partners.filter((p) => this.record.statusOf(p) === "INCOMPLETE");
           const reasons = [
             ...(waiting.length > 0 ? [`Waiting for the grade of ${waiting.join(", ")} (co-requisite)`] : []),
             ...check.pending,
@@ -273,7 +270,7 @@ class RecordAudit implements AuditContext {
       default:
         return make(
           "PENDING",
-          [attempt.status === "IN_PROGRESS" ? "Currently in progress" : "Incomplete grade"],
+          ["Incomplete grade"],
           [...warnings, ...check.pending]
         );
     }

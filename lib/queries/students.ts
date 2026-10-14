@@ -100,8 +100,6 @@ export async function listStudents(
     const notes: string[] = [];
     if (outOfOrder.length > 0) notes.push(`Out of order: ${codeList(outOfOrder)}`);
     if (!closed && enrollment.kind === "IRREGULAR") notes.push(`Not enrolled in ${codeList(enrollment.missing)}`);
-    // Without a current semester every student has the same reason, so it isn't repeated on each row.
-    if (!closed && enrollment.kind === "NOT_DETERMINED" && term) notes.push(enrollment.reason.replace(/\.$/, ""));
 
     return {
       ...row,
@@ -235,11 +233,9 @@ export interface GradeEntrySubjectRow {
   yearLevel: number;
   semester: number;
   currentGrade: number | null;
-  currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "IN_PROGRESS" | "NOT_TAKEN";
+  currentStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "NOT_TAKEN";
   currentTerm: string | null;
-  /** Whether the student can take it now (or is already taking it, in order), per the audit. */
-  canTake: boolean;
-  /** Why not, when they can't. */
+  /** Why the student can't take it now, per the audit, if they can't. */
   blockedReason: string | null;
 }
 
@@ -258,7 +254,6 @@ export async function getStudentGradeEntryData(
   const subjects: GradeEntrySubjectRow[] = record.curriculum.allSubjects().map((subject) => {
     const status = record.statusOf(subject.code);
     const result = audit.get(subject.code)!;
-    const canTake = result.status === "AVAILABLE" || (status === "IN_PROGRESS" && result.status === "PENDING");
     return {
       code: subject.code,
       title: subject.title,
@@ -267,9 +262,8 @@ export async function getStudentGradeEntryData(
       currentGrade: record.gradeOf(subject.code),
       currentStatus: status,
       currentTerm: record.recordOf(subject.code)?.term ?? null,
-      canTake,
       blockedReason:
-        canTake || status === "PASSED" || result.reasons.length === 0
+        result.status === "AVAILABLE" || status === "PASSED" || result.reasons.length === 0
           ? null
           : result.status === "VIOLATION"
             ? `Taken out of order: ${result.reasons.join("; ")}`

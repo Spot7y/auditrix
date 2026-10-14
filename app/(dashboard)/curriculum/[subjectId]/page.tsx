@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ListChecks, Trash2, X } from "lucide-react";
 import {
   describeRequirement,
   getCurriculumForStaff,
   getCurriculumIdForSubject,
+  LOCKED_CURRICULUM_MESSAGE,
 } from "../../../../lib/queries/curriculum";
 import { updateSubject, deleteSubject, deleteRequirement } from "../actions";
 import AddRequirementForm from "./AddRequirementForm";
@@ -27,6 +28,10 @@ export default async function EditSubjectPage({ params }: { params: Promise<{ su
   const data = curriculumId ? await getCurriculumForStaff(curriculumId) : null;
   const subject = data?.subjects.find((s) => s.id === subjectId);
   if (!data || !subject) notFound();
+  // A version with students is locked; its subjects are read on the curriculum page.
+  if (data.studentCount > 0) {
+    redirect(`/curriculum?version=${data.curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
+  }
 
   const backHref = `/curriculum?version=${data.curriculumId}`;
   const otherCodes = data.subjects.filter((s) => s.id !== subject.id).map((s) => s.code);

@@ -17,8 +17,20 @@ import {
   type ExistingSubject,
 } from "../../../lib/domain/import/curriculumImport";
 import { userMessage } from "../../../lib/userMessage";
+import { countStudentsOnCurriculum, LOCKED_CURRICULUM_MESSAGE } from "../../../lib/queries/curriculum";
 
 const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
+
+/**
+ * Sends the chairperson back to the version with a message when students are
+ * registered on it: a version with students is locked (the database refuses
+ * the change too).
+ */
+async function refuseIfLocked(curriculumId: string | null | undefined) {
+  if (curriculumId && (await countStudentsOnCurriculum(curriculumId)) > 0) {
+    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
+  }
+}
 
 async function requireChairperson() {
   const staff = await getCurrentStaff();
@@ -124,6 +136,7 @@ export async function createSubject(formData: FormData) {
   const units = Number(formData.get("units"));
   const yearLevel = Number(formData.get("yearLevel"));
   const semester = Number(formData.get("semester"));
+  await refuseIfLocked(curriculumId);
 
   const { error } = await supabase.from("subjects").insert({
     curriculum_id: curriculumId,
@@ -166,6 +179,7 @@ export async function updateSubject(formData: FormData) {
     .select("curriculum_id, code, title, units, year_level, semester")
     .eq("id", subjectId)
     .single();
+  await refuseIfLocked(before?.curriculum_id);
 
   const { error } = await supabase
     .from("subjects")
@@ -210,6 +224,7 @@ export async function deleteSubject(formData: FormData) {
     .select("curriculum_id, code, title")
     .eq("id", subjectId)
     .single();
+  await refuseIfLocked(subjectRow?.curriculum_id);
 
   const { error } = await supabase.from("subjects").delete().eq("id", subjectId);
   if (error) {
@@ -247,6 +262,7 @@ export async function addRequirement(formData: FormData) {
     .select("curriculum_id, code")
     .eq("id", subjectId)
     .single();
+  await refuseIfLocked(subjectRow?.curriculum_id);
   let added = "";
 
   if (type === "YEAR_STANDING") {
@@ -307,6 +323,7 @@ export async function deleteRequirement(formData: FormData) {
     .select("type, required_year_level, subject:subjects!requirements_subject_id_fkey(code, curriculum_id), required:subjects!requirements_required_subject_id_fkey(code)")
     .eq("id", requirementId)
     .maybeSingle();
+  await refuseIfLocked(one(requirement?.subject)?.curriculum_id);
 
   const { error } = await supabase.from("requirements").delete().eq("id", requirementId);
   if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
@@ -348,6 +365,7 @@ export async function moveSubjectUp(formData: FormData) {
     .eq("id", subjectId)
     .single();
   if (subjectError || !subject) redirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
+  await refuseIfLocked(subject!.curriculum_id);
 
   const { data: prevSibling } = await supabase
     .from("subjects")
@@ -380,6 +398,7 @@ export async function moveSubjectDown(formData: FormData) {
     .eq("id", subjectId)
     .single();
   if (subjectError || !subject) redirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
+  await refuseIfLocked(subject!.curriculum_id);
 
   const { data: nextSibling } = await supabase
     .from("subjects")
@@ -415,6 +434,9 @@ async function loadImportPlan(formData: FormData): Promise<LoadedImportPlan> {
   const curriculumId = String(formData.get("curriculumId") ?? "");
   if (!curriculumId) {
     return { error: "No curriculum version selected. Go back to the curriculum page and pick one first." };
+  }
+  if ((await countStudentsOnCurriculum(curriculumId)) > 0) {
+    return { error: LOCKED_CURRICULUM_MESSAGE };
   }
 
   const file = formData.get("file") as File | null;

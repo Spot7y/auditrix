@@ -9,11 +9,12 @@ what each student has completed, can take next, or took out of order.
 - **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
   or Violation, with the reason (e.g. the missing prerequisite).
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
-  5.0 failing, INC, in progress). Subjects a student is taking this semester can be ticked and marked in progress
-  all at once, so their regular/irregular status is known before grades come in; ticking all skips subjects whose
-  prerequisites aren't met yet. A final grade for an INC keeps the subject in its original term and records the
-  term the INC was resolved in. Only the latest attempt of a subject is kept, so a grade from an earlier term than the
-  recorded one is refused unless the chairperson confirms it corrects a wrong term.
+  5.0 failing, INC); a subject is recorded only once it has a grade. Choosing the curriculum semester also sets the
+  term's semester (midyear is S); the school year starts empty and must be typed, so grades can't be saved to a term
+  by accident. A retake with the same grade (e.g. 5.0 again a semester later) is saved as a new attempt. A final grade
+  for an INC keeps the subject in its original term and records the term the INC was resolved in. Only the latest
+  attempt of a subject is kept, so a grade from an earlier term than the recorded one is refused unless the
+  chairperson confirms it corrects a wrong term.
 - **Prerequisite checking by term.** Terms are written as on KSU records: `25-1`, `25-2`, and for the
   midyear `26-S`, which carries the year of the semester after it (25-2 → 26-S → 26-1). A
   prerequisite must be passed in a term *before* the subject was taken; the same term is a violation, and so is taking
@@ -26,7 +27,10 @@ what each student has completed, can take next, or took out of order.
   "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
   requirements. Import from an Excel (.xlsx or .xls) or CSV file with a preview of what will be added, changed or removed before anything is saved.
-  Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when).
+  Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when). A version
+  is locked once any student is registered on it: its subjects and requirements can't be changed (the database
+  refuses it too), so students' audits don't change under them. An edited curriculum is a new version, which starts
+  as a copy of the latest one.
 - **Students.** Register one at a time or import an Excel (.xlsx or .xls) or CSV file (the template, or KSU-MIS's
   "Export to Excel"). Files in the old Excel 97–2003 format need to be saved again as .xlsx or CSV first. The student
   list can be searched and filtered by year level, curriculum version and status (regular, irregular, not determined,
@@ -47,11 +51,10 @@ what each student has completed, can take next, or took out of order.
 - **Regular and irregular students.** Per the KSU Operations Manual, a student is regular when enrolled this semester
   in the full prescribed load (the curriculum's subjects for their year level and the current semester, not counting
   ones already passed) and irregular when enrolled in less. Back subjects on top of a full load don't change that.
-  With nothing recorded for the current semester, the status is "not determined" and the student isn't counted.
-- **Overview dashboard.** A "Needs attention" banner lists what to look at first (students with violations, students
-  with nothing recorded this semester, a semester that isn't set), with links to those students. Per program:
-  totals with percentages, and charts of regular/irregular/not determined, students by year level, bottleneck
-  subjects (the most 5.0s and INCs) and the subjects most often taken out of order. Every chart shows its numbers on
+  Until the current semester's grades are entered, the status is "not determined" and the student isn't counted.
+- **Overview dashboard.** A "Needs attention" banner lists what to look at first (students with violations, a
+  semester that isn't set), with links to those students. Per program: totals with percentages, and charts of
+  regular/irregular/not determined, students by year level and the subjects most often taken out of order. Every chart shows its numbers on
   hover and can be opened as a table. Dropped and transferred-out students aren't counted as current students. A dean
   with several programs sees them compared side by side (regular/irregular share and violations per program) and in
   a table, and picks a program to see its charts.

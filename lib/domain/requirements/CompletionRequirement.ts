@@ -32,10 +32,9 @@ export class CompletionRequirement implements Requirement {
       if (credit.kind === "CREDITED" && (term === null || credit.term === null || compareTerms(credit.term, term) < 0)) {
         continue;
       }
-      const stillOpen =
-        term === null
-          ? credit.kind === "PENDING"
-          : attempt?.status === "IN_PROGRESS" && isValidTerm(attempt.term) && compareTerms(attempt.term, term) < 0;
+      // With no term to check against (the subject isn't taken yet), a grade
+      // that isn't final yet (e.g. an INC) is still waiting.
+      const stillOpen = term === null && credit.kind === "PENDING";
       if (stillOpen) waiting += 1;
       else missing += 1;
     }

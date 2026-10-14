@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { getCurriculumForStaff } from "../../../../lib/queries/curriculum";
+import { redirect } from "next/navigation";
+import { getCurriculumForStaff, LOCKED_CURRICULUM_MESSAGE } from "../../../../lib/queries/curriculum";
 import { createSubject } from "../actions";
 import ImportCurriculumModal from "../ImportCurriculumModal";
 import SubjectFields from "../SubjectFields";
@@ -23,6 +24,10 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
         <Alert tone="error">Choose a curriculum version on the Curriculum page first.</Alert>
       </div>
     );
+  }
+
+  if (data.studentCount > 0) {
+    redirect(`/curriculum?version=${data.curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
   }
 
   return (

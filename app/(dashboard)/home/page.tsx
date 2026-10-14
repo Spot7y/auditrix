@@ -94,18 +94,12 @@ function AttentionBanner({ items }: { items: AttentionItem[] }) {
   );
 }
 
-function programAttention(s: ProgramSummary, term: string | null, isChair: boolean): AttentionItem[] {
+function programAttention(s: ProgramSummary, isChair: boolean): AttentionItem[] {
   const items: AttentionItem[] = [];
   if (s.atRiskStudents > 0) {
     items.push({
       text: `${plural(s.atRiskStudents, "student")} took subjects before finishing their prerequisites.`,
       ...(isChair && { href: "/students?status=VIOLATIONS", action: "See who" }),
-    });
-  }
-  if (term && s.undeterminedStudents > 0) {
-    items.push({
-      text: `${plural(s.undeterminedStudents, "student has", "students have")} no subjects recorded for ${term}, so they aren’t counted as regular or irregular.`,
-      ...(isChair && { href: "/students?status=NOT_DETERMINED", action: "See who" }),
     });
   }
   return items;
@@ -114,12 +108,6 @@ function programAttention(s: ProgramSummary, term: string | null, isChair: boole
 function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string | null; isChair: boolean }) {
   const yearTotal = [1, 2, 3, 4].reduce((n, y) => n + (s.byYearLevel[y] ?? 0), 0);
   const movementsHref = isChair ? "/movements" : `/movements?program=${encodeURIComponent(s.program)}`;
-  // Both subject charts count students, so they share a scale: equal numbers, equal bars.
-  const subjectScale = Math.max(
-    1,
-    ...s.bottlenecks.map((t) => t.failed + t.incomplete),
-    ...s.outOfOrder.map((v) => v.students)
-  );
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2">
@@ -154,7 +142,7 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
           title="Regular and irregular"
           description={
             term
-              ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). Not determined: nothing recorded for ${term}.`
+              ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). Not determined: no grades recorded for ${term} yet.`
               : "The dean hasn’t set the current semester, so no student can be counted as regular or irregular yet."
           }
         />
@@ -168,7 +156,7 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
         />
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card className="flex flex-col">
           <CardHeader title="Students by year level" description="From the subjects each student has finished." />
           <ColumnChart
@@ -180,31 +168,10 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
           <TableView headers={["Year level", "Students"]} rows={YEAR_NAMES.map((name, i) => [name, s.byYearLevel[i + 1] ?? 0])} />
         </Card>
 
-        <Card className="flex flex-col">
-          <CardHeader title="Bottleneck subjects" description="Most students whose latest grade is 5.0 or INC." />
-          <BarList
-            max={subjectScale}
-            emptyText="No 5.0 or INC grades recorded."
-            items={s.bottlenecks.map((t) => ({
-              label: t.code,
-              value: t.failed + t.incomplete,
-              tip: [
-                t.title,
-                `${t.failed} with 5.0 · ${t.incomplete} INC`,
-                `${percent(t.failed + t.incomplete, t.takers)}% of the ${plural(t.takers, "student")} who took it`,
-              ],
-            }))}
-          />
-          <TableView
-            headers={["Subject", "5.0", "INC", "Took it"]}
-            rows={s.bottlenecks.map((t) => [`${t.code} – ${t.title}`, t.failed, t.incomplete, t.takers])}
-          />
-        </Card>
 
         <Card className="flex flex-col">
           <CardHeader title="Taken out of order" description="Taken before its prerequisites were passed." />
           <BarList
-            max={subjectScale}
             emptyText="No subjects taken out of order."
             items={s.outOfOrder.map((v) => ({
               label: v.code,
@@ -443,7 +410,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       });
     }
   } else {
-    for (const s of shown) attention.push(...programAttention(s, term, isChair));
+    for (const s of shown) attention.push(...programAttention(s, isChair));
   }
 
   return (

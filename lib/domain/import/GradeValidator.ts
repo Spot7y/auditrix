@@ -2,8 +2,7 @@ import type { SubjectRecordStatus } from "../SubjectRecord";
 
 export type RawGradeInput =
   | { kind: "numeric"; value: number }
-  | { kind: "incomplete" }
-  | { kind: "in_progress" };
+  | { kind: "incomplete" };
 
 export type GradeValidationResult =
   | { valid: true; status: SubjectRecordStatus; grade: number | null }
@@ -18,9 +17,6 @@ export class GradeValidator {
   validate(input: RawGradeInput): GradeValidationResult {
     if (input.kind === "incomplete") {
       return { valid: true, status: "INCOMPLETE", grade: null };
-    }
-    if (input.kind === "in_progress") {
-      return { valid: true, status: "IN_PROGRESS", grade: null };
     }
 
     const { value } = input;

@@ -41,9 +41,35 @@ export async function getCurriculumVersionsForStaff(): Promise<{ program: string
   };
 }
 
+/** Why a curriculum version with students can't be changed, and what to do instead. */
+export const LOCKED_CURRICULUM_MESSAGE =
+  "This curriculum version is locked because students are registered on it. To change the curriculum, create a new version.";
+
+/**
+ * How many students (any record status) are registered on a curriculum
+ * version. A version with students is locked: its subjects and requirements
+ * can't be changed (the database refuses it too).
+ */
+export async function countStudentsOnCurriculum(curriculumId: string): Promise<number> {
+  const supabase = await createServerClientForUser();
+  const { count, error } = await supabase
+    .from("students")
+    .select("id", { count: "exact", head: true })
+    .eq("curriculum_id", curriculumId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getCurriculumForStaff(
   curriculumId?: string
-): Promise<{ program: string; curriculumId: string; effectiveYear: number; subjects: CurriculumSubjectRow[] } | null> {
+): Promise<{
+  program: string;
+  curriculumId: string;
+  effectiveYear: number;
+  subjects: CurriculumSubjectRow[];
+  /** Students registered on this version; more than 0 means it's locked. */
+  studentCount: number;
+} | null> {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "chairperson" || !staff.program) return null;
 
@@ -110,7 +136,8 @@ export async function getCurriculumForStaff(
     requirements: reqsBySubject.get(s.id) ?? [],
   }));
 
-  return { program: staff.program, curriculumId: curriculum.id, effectiveYear: curriculum.effective_year, subjects };
+  const studentCount = await countStudentsOnCurriculum(curriculum.id);
+  return { program: staff.program, curriculumId: curriculum.id, effectiveYear: curriculum.effective_year, subjects, studentCount };
 }
 /** The curriculum version a subject belongs to, so pages can load the right version. */
 export async function getCurriculumIdForSubject(subjectId: string): Promise<string | null> {
