@@ -215,6 +215,7 @@ the dean of a new college when splitting, or their successor when handing over.
 | `npx tsx scripts/seed-demo.ts`      | Demo students and grades for a presentation (see below)                |
 | `npx tsx scripts/seed-showcase.ts`  | One student per feature, with a guide of where to click (see below)    |
 | `npx tsx scripts/check-supabase.ts` | Manual check of grade entry against the real database (uses seed data) |
+| `scripts/check-data.sql`           | Read-only check for bad data (blank names, prerequisite loops, …); run in Studio's SQL editor |
 
 ## Testing
 
