@@ -63,13 +63,13 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Grades are entered per term (`YY-S`, e.g. 25-1), for the subjects of a chosen curriculum year and semester.
 - Only valid KSU grades are accepted: 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0 (passing), 5.0 (failing)
   and INC. (There is no 4.0.) A subject is recorded only once it has a grade.
-- **Choosing the term:** picking the curriculum semester also sets the term's semester (1, 2, or S for the midyear).
+- **Choosing the term:** the term's semester is locked to the chosen curriculum semester (1, 2, or S for the midyear).
   The two-digit school year starts **empty** and must be typed; pressing Save without it saves nothing and asks for
   the year, so grades can't land in the wrong term by accident.
 - Subjects the student can't take yet show why (e.g. "Can't take yet. Needs: MATH 111").
 - Only the grades the chairperson picks are saved; changing an existing grade is a correction and asks for
-  confirmation. **A retake with the same result** (e.g. 5.0 in 25-1, retaken and 5.0 again in 26-1) is saved as a new
-  attempt in the later term.
+  confirmation. Each subject's "New grade" starts empty ("—" leaves it as it is). **A retake with the same result**
+  (any grade, e.g. 5.0 in 25-1 and 5.0 again in 26-1) is saved as a new attempt in the later term.
 - **INC completion:** a final grade for an INC keeps the subject in the term it was taken and records the term the
   INC was resolved in (shown as "INC → 25-1").
 - **Earlier-term protection:** only the latest attempt of a subject is kept, so a grade from an earlier term than the

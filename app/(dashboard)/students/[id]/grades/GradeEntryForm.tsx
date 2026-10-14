@@ -55,7 +55,8 @@ export default function GradeEntryForm({
   // The year starts empty on purpose: grades can't be saved until the
   // chairperson types the school year they were earned in.
   const [termYear, setTermYear] = useState("");
-  const [termSemester, setTermSemester] = useState("");
+  // The term's semester is the curriculum semester's (midyear is S); it can't be changed separately.
+  const termSemester = TERM_SEMESTER[semester] ?? "";
   const [values, setValues] = useState<Record<string, string>>({});
   const [missingYear, setMissingYear] = useState(false);
 
@@ -75,7 +76,8 @@ export default function GradeEntryForm({
   // which is a new attempt, so it's saved too.
   const isChange = (s: SubjectRow, value: string) =>
     value !== currentValue(s) || (s.currentTerm !== null && s.currentTerm !== term);
-  const edits = shown.filter((s) => values[s.code] !== undefined && isChange(s, values[s.code]));
+  // A subject counts once a grade is picked for it ("—" means leave it as is).
+  const edits = shown.filter((s) => !!values[s.code] && isChange(s, values[s.code]));
   const retakes = edits.filter((s) => values[s.code] === currentValue(s));
   // A final grade for an INC completes it: it keeps its original term.
   const resolutions = edits.filter((s) => s.currentStatus === "INCOMPLETE" && values[s.code] !== "INC");
@@ -113,12 +115,7 @@ export default function GradeEntryForm({
             <Select
               id="semester"
               value={semester}
-              onChange={(e) => {
-                setSemester(e.target.value);
-                // Grades for a semester's subjects are usually earned in that
-                // semester, so the term follows; it can still be changed.
-                if (TERM_SEMESTER[e.target.value]) setTermSemester(TERM_SEMESTER[e.target.value]);
-              }}
+              onChange={(e) => setSemester(e.target.value)}
             >
               <option value="">Select…</option>
               <option value="1">First semester</option>
@@ -137,18 +134,18 @@ export default function GradeEntryForm({
                 setTermYear(e.target.value);
                 setMissingYear(false);
               }}
-              onSemesterChange={(e) => setTermSemester(e.target.value)}
+              semesterLocked
             />
             {missingYear && !term ? (
               <p role="alert" className="mt-1.5 text-sm font-medium text-status-violation">
                 {yearValid
-                  ? "Choose the semester the grades were earned in. Nothing was saved."
+                  ? "Choose the curriculum semester first. Nothing was saved."
                   : "Enter the school year the grades were earned in (two digits, e.g. 26). Nothing was saved."}
               </p>
             ) : (
               <Hint>
-                Type the two-digit school year as on the KSU record, e.g. 25 – 1. The semester follows the curriculum
-                semester; midyear is S (26 – S comes before 26 – 1).
+                Type the two-digit school year as on the KSU record, e.g. 25 – 1. The semester is the curriculum
+                semester’s (midyear is S; 26 – S comes before 26 – 1).
                 {currentTerm && ` The current semester is ${currentTerm}.`}
               </Hint>
             )}
@@ -186,8 +183,10 @@ export default function GradeEntryForm({
               <tbody>
                 {shown.map((s) => {
                   const recorded = currentValue(s);
-                  const value = values[s.code] ?? recorded;
-                  const changed = values[s.code] !== undefined && isChange(s, value);
+                  // The new grade starts empty so that any grade, including the
+                  // recorded one (a retake with the same result), can be picked.
+                  const value = values[s.code] ?? "";
+                  const changed = !!value && isChange(s, value);
                   return (
                     <Tr key={s.code} className={changed ? (recorded ? "bg-amber-50/70" : "bg-brand-50/60") : ""}>
                       <Td className="font-mono text-ink-600">{s.code}</Td>
@@ -209,8 +208,8 @@ export default function GradeEntryForm({
                           aria-label={`Grade for ${s.code}`}
                           className="h-9"
                         >
-                          {/* An existing grade can be corrected but not blanked out. */}
-                          {!recorded && <option value="">—</option>}
+                          {/* "—" leaves the subject as it is; a recorded grade can't be blanked out. */}
+                          <option value="">—</option>
                           {GRADE_OPTIONS.map((o) => (
                             <option key={o} value={o}>
                               {o}
@@ -246,7 +245,7 @@ export default function GradeEntryForm({
             type="button"
             onClick={() => {
               setMissingYear(true);
-              document.getElementById(yearValid ? "termYearSemester" : "termYear")?.focus();
+              document.getElementById(yearValid ? "semester" : "termYear")?.focus();
             }}
             className="h-10 rounded-lg bg-brand-800 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-900"
           >
