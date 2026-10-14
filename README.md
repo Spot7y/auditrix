@@ -52,8 +52,8 @@ what each student has completed, can take next, or took out of order.
   in the full prescribed load (the curriculum's subjects for their year level and the current semester, not counting
   ones already passed) and irregular when enrolled in less. Back subjects on top of a full load don't change that.
   Until the current semester's grades are entered, the status is "not determined" and the student isn't counted,
-  except for first-year students: they take the full first-year load, so they count as regular until their grades
-  for the semester are in; from then on their grades decide.
+  except for new first-year students (no grades recorded yet at all): they're enrolled in the full first-year load,
+  so they count as regular until their first grades are in; from then on their grades decide.
 - **Overview dashboard.** A "Needs attention" banner lists what to look at first (students with violations, a
   semester that isn't set), with links to those students. Per program: totals with percentages, and charts of
   regular/irregular/not determined, students by year level and the subjects most often taken out of order. Every chart shows its numbers on

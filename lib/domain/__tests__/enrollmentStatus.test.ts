@@ -68,9 +68,15 @@ describe("regular or irregular (KSU Operations Manual)", () => {
     });
   });
 
-  it("counts a first-year student as regular until their grades for the semester are in", () => {
-    assert.deepEqual(status([], "25-1", 1), { kind: "REGULAR", term: "25-1", assumed: "FIRST_YEAR" });
-    assert.deepEqual(status([taken("CC 101", "25-1")], "25-2", 1), { kind: "REGULAR", term: "25-2", assumed: "FIRST_YEAR" });
+  it("counts a new first-year student (no grades at all) as regular until their first grades are in", () => {
+    assert.deepEqual(status([], "25-1", 1), { kind: "REGULAR", term: "25-1", assumed: "NEW_FIRST_YEAR" });
+  });
+
+  it("doesn't assume it for a first year who already has grades from an earlier term", () => {
+    assert.deepEqual(status([taken("CC 101", "25-1")], "25-2", 1), {
+      kind: "NOT_DETERMINED",
+      reason: "No grades are recorded for 25-2 yet.",
+    });
   });
 
   it("lets a first year's grades decide once they're in", () => {

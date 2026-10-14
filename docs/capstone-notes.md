@@ -191,8 +191,10 @@ instead of a violation.
 - **Enrollment** means grades recorded for the current semester. Until they're entered, the status is
   **"Not determined"** and the student isn't counted either way, so regular and irregular students are known once the
   semester's grades are in.
-- **First-year students** count as **regular** until their grades for the semester are in, since first years take
-  the full first-year load. Once their grades are entered, the grades decide, like for everyone else.
+- **New first-year students** (no grades recorded at all) count as **regular** until their first grades are in, since
+  newly registered first years are enrolled in the full first-year load. Once grades are entered, the grades decide,
+  like for everyone else. Other students, including second-semester first years and older students still on the
+  1st-year level, wait for their grades.
 
 ---
 
@@ -259,7 +261,7 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-10-14 — curriculum versions locked once students are registered on them; "In progress" removed (regular and
   irregular known once grades are in); grade form: the term's semester follows the curriculum semester and the
   school year must be typed; a retake with the same grade can be saved; bottleneck chart removed; first-year students
-  count as regular until their grades for the semester are in.
+  count as regular until their first grades are in (new first years only, i.e. no grades recorded yet).
 
 ---
 

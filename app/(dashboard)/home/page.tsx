@@ -142,7 +142,7 @@ function ProgramSection({ s, term, isChair }: { s: ProgramSummary; term: string 
           title="Regular and irregular"
           description={
             term
-              ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). First years count as regular until their grades are in. Not determined: no grades recorded for ${term} yet.`
+              ? `Enrolled in ${term} in the full prescribed load (regular) or less (irregular). New first years count as regular until their first grades are in. Not determined: no grades recorded for ${term} yet.`
               : "The dean hasn’t set the current semester, so no student can be counted as regular or irregular yet."
           }
         />

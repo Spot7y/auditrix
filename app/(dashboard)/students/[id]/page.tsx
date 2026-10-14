@@ -43,7 +43,7 @@ function EnrollmentBadge({ status }: { status: EnrollmentStatus }) {
           "green",
           "Regular",
           status.assumed
-            ? `First-year students count as regular until their grades for ${status.term} are in.`
+            ? `New first-year students count as regular until their first grades (${status.term}) are in.`
             : `Enrolled in the full prescribed load for ${status.term}.`,
         ]
       : status.kind === "IRREGULAR"
@@ -58,7 +58,7 @@ function EnrollmentBadge({ status }: { status: EnrollmentStatus }) {
       <Badge tone={tone}>{label}</Badge>
       {status.kind === "IRREGULAR" && <span className="text-xs text-ink-500">missing {status.missing.join(", ")}</span>}
       {status.kind === "REGULAR" && status.assumed && (
-        <span className="text-xs text-ink-500">first year, until {status.term} grades are in</span>
+        <span className="text-xs text-ink-500">new first year, until {status.term} grades are in</span>
       )}
     </span>
   );

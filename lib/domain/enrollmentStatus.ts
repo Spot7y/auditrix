@@ -11,12 +11,13 @@ import { compareTerms, isValidTerm, parseTerm } from "./Term";
  * don't need to be taken again, and back subjects taken on top of the full
  * load don't make a student irregular. Subjects are recorded only once they
  * have a grade, so until the current semester's grades are entered the
- * status is not determined, except for first-year students: they take the
- * full first-year load, so they count as regular until their grades for the
- * semester are in (`assumed`). From then on the grades decide.
+ * status is not determined, except for new first-year students (no grades
+ * recorded at all): they're enrolled in the full first-year load, so they
+ * count as regular until their first grades are in (`assumed`). From then on
+ * the grades decide, as for everyone else.
  */
 export type EnrollmentStatus =
-  | { kind: "REGULAR"; term: string; assumed?: "FIRST_YEAR" }
+  | { kind: "REGULAR"; term: string; assumed?: "NEW_FIRST_YEAR" }
   | { kind: "IRREGULAR"; term: string; missing: string[] }
   | { kind: "NOT_DETERMINED"; reason: string };
 
@@ -32,7 +33,8 @@ export function enrollmentStatus(record: AcademicRecord, currentTerm: string | n
 
   const enrolled = subjects.filter((s) => record.recordOf(s.code)?.term === currentTerm);
   if (enrolled.length === 0) {
-    if (yearLevel === 1) return { kind: "REGULAR", term: currentTerm, assumed: "FIRST_YEAR" };
+    const isNewFirstYear = yearLevel === 1 && subjects.every((s) => !record.recordOf(s.code));
+    if (isNewFirstYear) return { kind: "REGULAR", term: currentTerm, assumed: "NEW_FIRST_YEAR" };
     return { kind: "NOT_DETERMINED", reason: `No grades are recorded for ${currentTerm} yet.` };
   }
 
