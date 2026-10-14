@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ClipboardPen, History, Lock, Pencil, Repeat, TriangleAlert } from "lucide-react";
+import { ClipboardPen, History, Lock, Pencil, Printer, Repeat, TriangleAlert } from "lucide-react";
 import type { Requirement } from "../../../../lib/domain/requirements/Requirement";
 import { isCorequisite } from "../../../../lib/domain/requirements/CoursePrerequisite";
 import { getStudentAudit } from "../../../../lib/queries/students";
@@ -10,7 +10,7 @@ import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import { formatDate, formatGrade, LOCK_LABEL, plural } from "../../../../lib/format";
 import PageHeader from "../../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../../components/ui/Card";
-import { LinkButton } from "../../../../components/ui/Button";
+import { buttonClasses, LinkButton } from "../../../../components/ui/Button";
 import { Badge, StatusBadge, type BadgeTone } from "../../../../components/ui/Badge";
 import type { EnrollmentStatus } from "../../../../lib/domain/enrollmentStatus";
 import type { YearLevelInfo } from "../../../../lib/domain/yearLevels";
@@ -148,6 +148,16 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
               <History aria-hidden />
               Grade logbook
             </LinkButton>
+            {/* A PDF from a route handler, so a plain link; it opens in a new tab to print. */}
+            <a
+              href={`/students/${id}/evaluation-pdf`}
+              target="_blank"
+              rel="noopener"
+              className={buttonClasses({ variant: "secondary" })}
+            >
+              <Printer aria-hidden />
+              Print evaluation
+            </a>
             <LinkButton href={`/students/${id}/transitions`} variant="secondary">
               <Repeat aria-hidden />
               Transfer / shift

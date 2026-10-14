@@ -62,8 +62,13 @@ what each student has completed, can take next, or took out of order.
   hover and can be opened as a table. Dropped and transferred-out students aren't counted as current students. A dean
   with several programs sees them compared side by side (regular/irregular share and violations per program) and in
   a table, and picks a program to see its charts.
+- **Printable student evaluation.** From a student's page, **Print evaluation** opens a PDF with the KSU letterhead:
+  the student's details, year level and regular/irregular standing, subjects and units completed, and every subject by
+  year and semester with its prerequisites, grade, term and remarks (passed, failed, not yet taken, what it still needs,
+  or taken out of order), followed by signature lines for the chairperson, the dean and the student.
 - **Everywhere.** The top bar shows the college's current semester and, for chairpersons, a student search (Ctrl+K
   from any page); the sidebar shows how many students the program has. Curriculum versions can be viewed one semester at a time.
+  Each page shows a placeholder shaped like it while its data loads.
 - **Deans.** The overview for every program in their college, plus creating programs and reassigning chairpersons.
   New chairpersons must replace the temporary password their dean set when they first log in; a checklist under the
   field ticks each password rule green as it's met.
@@ -74,7 +79,8 @@ what each student has completed, can take next, or took out of order.
   **hand over the deanship**: they create their successor's account and their own account is closed (they're signed
   out and can't log in again; their name stays on what they recorded). Both are listed in the college's history.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
-  saving grades) ask for confirmation first, and every result is shown as a notification.
+  saving grades) ask for confirmation first, and every result is shown as a notification. When a form is refused
+  (e.g. a student ID that's already registered), the reason appears above it and everything typed stays filled in.
 
 ## Security
 
@@ -91,6 +97,9 @@ what each student has completed, can take next, or took out of order.
 - **Browser protections.** A Content Security Policy, no framing by other sites (clickjacking), `nosniff`, a strict
   referrer policy and, in production, HSTS. Technical database errors are logged on the server, not shown.
 - **Locked records.** A dropped or transferred-out student's record can't be changed until it's reopened.
+- **Notifications can't be faked.** Results of an action travel in a short-lived cookie set by the server, and the
+  address only carries a random id that must match it, so a link someone sends can't make Auditrix show their own
+  words (e.g. `/home?success=Your account is locked, call…` shows nothing).
 
 **Running it on a laptop:** the local Supabase listens on the whole network with well-known default keys, and its
 Studio has no password. Before using Auditrix on a shared network (e.g. school Wi-Fi), block those ports from other
@@ -122,7 +131,7 @@ check permissions in the server action and do their database writes in one trans
 
 - [Next.js 16](https://nextjs.org) (App Router, server actions) with React 19 and Tailwind CSS 4 (Inter font, KSU green theme)
 - [Supabase](https://supabase.com): Postgres, Auth and row-level security
-- `@react-pdf/renderer` for the curriculum PDF export, ExcelJS for reading .xlsx imports, and Lucide for icons
+- `@react-pdf/renderer` for the curriculum and student evaluation PDFs, ExcelJS for reading .xlsx imports, and Lucide for icons
 
 ## Getting started
 

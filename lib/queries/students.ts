@@ -174,6 +174,8 @@ export interface StudentAuditRow {
   /** The term the subject was taken, and the term its INC was resolved, if any. */
   term: string | null;
   resolvedTerm: string | null;
+  /** The grade's outcome: passed, failed, incomplete, or not taken yet. */
+  recordStatus: "PASSED" | "FAILED" | "INCOMPLETE" | "NOT_TAKEN";
 }
 
 export interface StudentAuditData {
@@ -210,6 +212,7 @@ export async function getStudentAudit(studentId: string): Promise<StudentAuditDa
       grade: record.gradeOf(subject.code),
       term: attempt?.term ?? null,
       resolvedTerm: attempt?.resolvedTerm ?? null,
+      recordStatus: record.statusOf(subject.code),
     };
   });
 
