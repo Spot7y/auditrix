@@ -21,7 +21,11 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getClaims checks the sign-in token's signature without asking the auth
+  // server on every request (it still refreshes an expired session). What
+  // the account may do is decided by its staff row, which every page reads.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims.sub ? data.claims : null;
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
 
   if (!user && !isLoginPage) {

@@ -92,10 +92,8 @@ function SummaryTile({
 export default async function StudentAuditPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole("chairperson");
   const { id } = await params;
-  const data = await getStudentAudit(id);
+  const [data, isPending, lock] = await Promise.all([getStudentAudit(id), getPendingShiftRequest(id), getRecordLock(id)]);
   if (!data) notFound();
-
-  const [isPending, lock] = await Promise.all([getPendingShiftRequest(id), getRecordLock(id)]);
 
   type Row = (typeof data.rows)[number];
   const byTerm = new Map<string, { year: number; semester: number; rows: Row[] }>();

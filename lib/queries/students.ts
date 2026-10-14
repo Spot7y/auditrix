@@ -190,17 +190,16 @@ export interface StudentAuditData {
 export async function getStudentAudit(studentId: string): Promise<StudentAuditData | null> {
   const client = await createServerClientForUser();
   const repository = new SupabaseAcademicRecordRepository(client);
-  const record = await repository.getRecord(studentId);
+  const [record, { data: studentRow, error }, term] = await Promise.all([
+    repository.getRecord(studentId),
+    client.from("students").select("name").eq("id", studentId).maybeSingle(),
+    getCurrentTerm(),
+  ]);
   if (!record) return null;
-
-  const { data: studentRow, error } = await client
-    .from("students")
-    .select("name")
-    .eq("id", studentId)
-    .single();
   if (error) throw error;
+  if (!studentRow) return null;
 
-  const currentTerm = (await getCurrentTerm())?.term ?? null;
+  const currentTerm = term?.term ?? null;
   const audit = new AuditEngine().auditStudent(record, currentTerm);
   const results = new Map(audit.results.map((r) => [r.subjectCode, r]));
   const rows: StudentAuditRow[] = record.curriculum.allSubjects().map((subject) => {
@@ -244,11 +243,13 @@ export async function getStudentGradeEntryData(
 ): Promise<{ studentId: string; studentName: string; program: string; subjects: GradeEntrySubjectRow[] } | null> {
   const supabase = await createServerClientForUser();
   const repository = new SupabaseAcademicRecordRepository(supabase);
-  const record = await repository.getRecord(studentId);
+  const [record, { data: studentRow, error }] = await Promise.all([
+    repository.getRecord(studentId),
+    supabase.from("students").select("name").eq("id", studentId).maybeSingle(),
+  ]);
   if (!record) return null;
-
-  const { data: studentRow, error } = await supabase.from("students").select("name").eq("id", studentId).single();
   if (error) throw error;
+  if (!studentRow) return null;
 
   const audit = new Map(new AuditEngine().auditCurriculum(record).map((r) => [r.subjectCode, r]));
   const subjects: GradeEntrySubjectRow[] = record.curriculum.allSubjects().map((subject) => {

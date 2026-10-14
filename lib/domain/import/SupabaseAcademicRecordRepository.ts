@@ -37,56 +37,67 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
     const records = new Map<string, AcademicRecord>();
     if (ids.length === 0) return records;
 
-    const students: { id: string; nominal_year_level: number; curriculum_id: string }[] = [];
-    for (const part of chunks(ids)) {
-      students.push(
-        ...(await fetchAll((from, to) =>
-          this.client.from("students").select("id, nominal_year_level, curriculum_id").in("id", part).order("id").range(from, to)
-        ))
-      );
-    }
+    const students = (
+      await Promise.all(
+        chunks(ids).map((part) =>
+          fetchAll((from, to) =>
+            this.client.from("students").select("id, nominal_year_level, curriculum_id").in("id", part).order("id").range(from, to)
+          )
+        )
+      )
+    ).flat() as { id: string; nominal_year_level: number; curriculum_id: string }[];
     if (students.length === 0) return records;
 
     const curriculumIds = [...new Set(students.map((s) => s.curriculum_id))];
-    const { maps: curriculumMaps, codeById: idToCode } = await this.loadCurricula(curriculumIds);
+    const studentChunks = chunks(students.map((s) => s.id));
+    // Independent lookups run side by side: each one is a trip to the database.
+    const [{ maps: curriculumMaps, codeById: idToCode }, recordRows, yearLevelRows] = await Promise.all([
+      this.loadCurricula(curriculumIds),
+      // A student can have a record for every subject, so this runs past one page.
+      Promise.all(
+        studentChunks.map((part) =>
+          fetchAll((from, to) =>
+            this.client
+              .from("subject_records")
+              .select("student_id, subject_id, status, grade, term, resolved_term")
+              .in("student_id", part)
+              .order("id")
+              .range(from, to)
+          )
+        )
+      ),
+      Promise.all(
+        studentChunks.map((part) =>
+          fetchAll((from, to) =>
+            this.client
+              .from("student_year_levels")
+              .select("student_id, effective_term, year_level, source")
+              .in("student_id", part)
+              .order("id")
+              .range(from, to)
+          )
+        )
+      ),
+    ]);
 
     const subjectRecords = new Map<string, SubjectRecord[]>();
-    const history = new Map<string, YearLevelEntry[]>();
-    for (const part of chunks(students.map((s) => s.id))) {
-      // A student can have a record for every subject, so this runs past one page.
-      const recordRows = await fetchAll((from, to) =>
-        this.client
-          .from("subject_records")
-          .select("student_id, subject_id, status, grade, term, resolved_term")
-          .in("student_id", part)
-          .order("id")
-          .range(from, to)
-      );
-      for (const row of recordRows) {
-        const list = subjectRecords.get(row.student_id) ?? [];
-        list.push({
-          subjectCode: idToCode.get(row.subject_id) ?? "UNKNOWN",
-          status: row.status as SubjectRecordStatus,
-          grade: row.grade,
-          term: row.term,
-          resolvedTerm: row.resolved_term,
-        });
-        subjectRecords.set(row.student_id, list);
-      }
+    for (const row of recordRows.flat()) {
+      const list = subjectRecords.get(row.student_id) ?? [];
+      list.push({
+        subjectCode: idToCode.get(row.subject_id) ?? "UNKNOWN",
+        status: row.status as SubjectRecordStatus,
+        grade: row.grade,
+        term: row.term,
+        resolvedTerm: row.resolved_term,
+      });
+      subjectRecords.set(row.student_id, list);
+    }
 
-      const yearLevelRows = await fetchAll((from, to) =>
-        this.client
-          .from("student_year_levels")
-          .select("student_id, effective_term, year_level, source")
-          .in("student_id", part)
-          .order("id")
-          .range(from, to)
-      );
-      for (const row of yearLevelRows) {
-        const list = history.get(row.student_id) ?? [];
-        list.push({ term: row.effective_term, yearLevel: row.year_level, source: row.source });
-        history.set(row.student_id, list);
-      }
+    const history = new Map<string, YearLevelEntry[]>();
+    for (const row of yearLevelRows.flat()) {
+      const list = history.get(row.student_id) ?? [];
+      list.push({ term: row.effective_term, yearLevel: row.year_level, source: row.source });
+      history.set(row.student_id, list);
     }
 
     for (const student of students) {
@@ -113,53 +124,54 @@ export class SupabaseAcademicRecordRepository implements AcademicRecordRepositor
   async loadCurricula(
     curriculumIds: string[]
   ): Promise<{ maps: Map<string, CurriculumMap>; codeById: Map<string, string> }> {
-    const { data: curricula, error: curriculaError } = await this.client
-      .from("curricula")
-      .select("id, program")
-      .in("id", curriculumIds);
+    const [{ data: curricula, error: curriculaError }, subjectRows] = await Promise.all([
+      this.client.from("curricula").select("id, program").in("id", curriculumIds),
+      fetchAll((from, to) =>
+        this.client
+          .from("subjects")
+          .select("id, curriculum_id, code, title, units, year_level, semester")
+          .in("curriculum_id", curriculumIds)
+          // The order the curriculum page shows (and the chairperson arranged).
+          .order("year_level")
+          .order("semester")
+          .order("created_at")
+          .order("id")
+          .range(from, to)
+      ),
+    ]);
     if (curriculaError) throw curriculaError;
-
-    const subjectRows = await fetchAll((from, to) =>
-      this.client
-        .from("subjects")
-        .select("id, curriculum_id, code, title, units, year_level, semester")
-        .in("curriculum_id", curriculumIds)
-        // The order the curriculum page shows (and the chairperson arranged).
-        .order("year_level")
-        .order("semester")
-        .order("created_at")
-        .order("id")
-        .range(from, to)
-    );
 
     const idToCode = new Map(subjectRows.map((s) => [s.id, s.code as string]));
 
     const requirementsBySubject = new Map<string, Requirement[]>();
-    for (const part of chunks(subjectRows.map((s) => s.id))) {
-      const requirementRows = await fetchAll((from, to) =>
-        this.client
-          .from("requirements")
-          .select("subject_id, type, required_subject_id, required_year_level")
-          .in("subject_id", part)
-          .order("id")
-          .range(from, to)
-      );
+    const requirementRows = (
+      await Promise.all(
+        chunks(subjectRows.map((s) => s.id)).map((part) =>
+          fetchAll((from, to) =>
+            this.client
+              .from("requirements")
+              .select("subject_id, type, required_subject_id, required_year_level")
+              .in("subject_id", part)
+              .order("id")
+              .range(from, to)
+          )
+        )
+      )
+    ).flat();
+    for (const row of requirementRows) {
+      const requirement: Requirement =
+        row.type === "YEAR_STANDING"
+          ? new YearStandingRequirement(row.required_year_level as 1 | 2 | 3 | 4)
+          : row.type === "COMPLETION"
+          ? new CompletionRequirement()
+          : new CoursePrerequisite(
+              idToCode.get(row.required_subject_id!) ?? "UNKNOWN",
+              row.type as "PREREQUISITE" | "COREQUISITE"
+            );
 
-      for (const row of requirementRows) {
-        const requirement: Requirement =
-          row.type === "YEAR_STANDING"
-            ? new YearStandingRequirement(row.required_year_level as 1 | 2 | 3 | 4)
-            : row.type === "COMPLETION"
-            ? new CompletionRequirement()
-            : new CoursePrerequisite(
-                idToCode.get(row.required_subject_id!) ?? "UNKNOWN",
-                row.type as "PREREQUISITE" | "COREQUISITE"
-              );
-
-        const list = requirementsBySubject.get(row.subject_id) ?? [];
-        list.push(requirement);
-        requirementsBySubject.set(row.subject_id, list);
-      }
+      const list = requirementsBySubject.get(row.subject_id) ?? [];
+      list.push(requirement);
+      requirementsBySubject.set(row.subject_id, list);
     }
 
     const curriculumMaps = new Map<string, CurriculumMap>();

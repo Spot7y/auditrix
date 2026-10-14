@@ -99,9 +99,18 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   // Students — RLS already scopes this correctly per role. Dropped and
   // transferred-out students are no longer counted as the program's students
   // (they show under Student movements instead).
-  const allStudentRows = (await fetchAll((from, to) =>
-    supabase.from("students").select("id, nominal_year_level, record_status, curricula(program)").order("id").range(from, to)
-  )) as StudentRow[];
+  // Lookups that don't depend on each other run side by side.
+  const [studentRowsResult, term, curriculaResult, transitionRows] = await Promise.all([
+    fetchAll((from, to) =>
+      supabase.from("students").select("id, nominal_year_level, record_status, curricula(program)").order("id").range(from, to)
+    ),
+    getCurrentTerm(),
+    supabase.from("curricula").select("id, program, effective_year, college_id"),
+    fetchAll((from, to) =>
+      supabase.from("student_transitions").select("type, from_program, to_program").order("id").range(from, to)
+    ),
+  ]);
+  const allStudentRows = studentRowsResult as StudentRow[];
   for (const row of allStudentRows) {
     const curricula = Array.isArray(row.curricula) ? row.curricula[0] : row.curricula;
     getOrCreate(curricula?.program ?? "Unknown");
@@ -109,7 +118,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   const studentRows = allStudentRows.filter((row) => row.record_status === "ACTIVE");
 
   const engine = new AuditEngine();
-  const currentTerm = (await getCurrentTerm())?.term ?? null;
+  const currentTerm = term?.term ?? null;
   const records = await new SupabaseAcademicRecordRepository(supabase).getRecords(
     studentRows.map((row) => row.id)
   );
@@ -172,9 +181,7 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   // curricula's RLS deliberately allows any staff member to read every
   // program (needed for the shift-destination picker elsewhere), so the
   // dashboard has to filter down to its own scope itself, not rely on RLS.
-  const { data: curriculaRows, error: curriculaError } = await supabase
-    .from("curricula")
-    .select("id, program, effective_year, college_id");
+  const { data: curriculaRows, error: curriculaError } = curriculaResult;
   if (curriculaError) throw curriculaError;
 
   const scopedCurricula = ((curriculaRows ?? []) as CurriculumRow[]).filter((c) => {
@@ -183,15 +190,26 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
     return c.program === staff.program;
   });
 
+  // One query for every version's subjects, counted here, rather than one per version.
+  const subjectCounts = new Map<string, number>();
+  if (scopedCurricula.length > 0) {
+    const subjectRows = await fetchAll((from, to) =>
+      supabase
+        .from("subjects")
+        .select("id, curriculum_id")
+        .in("curriculum_id", scopedCurricula.map((c) => c.id))
+        .order("id")
+        .range(from, to)
+    );
+    for (const row of subjectRows as { curriculum_id: string }[]) {
+      subjectCounts.set(row.curriculum_id, (subjectCounts.get(row.curriculum_id) ?? 0) + 1);
+    }
+  }
   for (const c of scopedCurricula) {
-    const summary = getOrCreate(c.program);
-    const { count, error: countError } = await supabase
-      .from("subjects")
-      .select("id", { count: "exact", head: true })
-      .eq("curriculum_id", c.id);
-    if (countError) throw countError;
-
-    summary.curriculumVersions.push({ effectiveYear: c.effective_year, subjectCount: count ?? 0 });
+    getOrCreate(c.program).curriculumVersions.push({
+      effectiveYear: c.effective_year,
+      subjectCount: subjectCounts.get(c.id) ?? 0,
+    });
   }
   for (const summary of byProgram.values()) {
     summary.curriculumVersions.sort((a, b) => b.effectiveYear - a.effectiveYear);
@@ -203,10 +221,6 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
   // but that broader visibility must never spin up a dashboard section for
   // a program that isn't actually yours. Only add to a section that already
   // exists from the students/curriculum steps above; never create one here.
-  const transitionRows = await fetchAll((from, to) =>
-    supabase.from("student_transitions").select("type, from_program, to_program").order("id").range(from, to)
-  );
-
   for (const t of transitionRows as TransitionForCount[]) {
     if (t.type === "DROPPED" && t.from_program) {
       const summary = byProgram.get(t.from_program);

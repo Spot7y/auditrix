@@ -14,15 +14,18 @@ export interface CurrentStaff {
 /** The signed-in staff member, looked up once per request. */
 export const getCurrentStaff = cache(async function getCurrentStaff(): Promise<CurrentStaff | null> {
   const supabase = await createServerClientForUser();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  // The token's signature is checked locally; whether the account still
+  // counts is decided by its staff row below (removed on handover).
+  const { data: auth } = await supabase.auth.getClaims();
+  const userId = auth?.claims.sub;
+  if (!userId) return null;
 
   // "*" rather than a column list, so this keeps working on a database that
   // doesn't have the must_change_password column yet.
   const { data, error } = await supabase
     .from("staff")
     .select("*, colleges(name)")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
   if (error) return null;
 

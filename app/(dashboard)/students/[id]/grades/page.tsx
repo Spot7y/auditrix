@@ -13,9 +13,13 @@ export const metadata: Metadata = { title: "Enter grades" };
 export default async function GradeEntryPage({ params }: { params: Promise<{ id: string }> }) {
   await requireRole("chairperson");
   const { id } = await params;
-  const [data, currentTerm] = await Promise.all([getStudentGradeEntryData(id), getCurrentTerm()]);
+  const [data, currentTerm, lock] = await Promise.all([
+    getStudentGradeEntryData(id),
+    getCurrentTerm(),
+    getRecordLock(id),
+  ]);
   if (!data) notFound();
-  if (await getRecordLock(id)) {
+  if (lock) {
     redirect(noticeUrl(`/students/${id}`, "record-locked"));
   }
 
