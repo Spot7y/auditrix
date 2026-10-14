@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Field, Input } from "../../../components/ui/Field";
 import SubmitButton from "../../../components/ui/SubmitButton";
 import { requireRole } from "../../../lib/queries/access";
+import ActionForm from "../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Account settings" };
 
@@ -23,7 +24,7 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <Card>
           <CardHeader title="Profile" />
-          <form action={updateName}>
+          <ActionForm action={updateName}>
             <CardBody className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" htmlFor="name">
                 <Input id="name" name="name" required defaultValue={staff?.name} />
@@ -39,7 +40,7 @@ export default async function SettingsPage() {
             <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
               <SubmitButton pendingLabel="Saving…">Save name</SubmitButton>
             </div>
-          </form>
+          </ActionForm>
         </Card>
 
         <Card>

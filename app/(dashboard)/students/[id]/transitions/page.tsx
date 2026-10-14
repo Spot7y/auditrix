@@ -10,6 +10,7 @@ import { Card, CardHeader } from "../../../../../components/ui/Card";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
 import { requireRole } from "../../../../../lib/queries/access";
+import ActionForm, { type FormResult } from "../../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Transfer or shift" };
 
@@ -27,7 +28,7 @@ function ActionCard({
   icon: LucideIcon;
   title: string;
   description: string;
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<FormResult>;
   studentId: string;
   button: string;
   confirmTitle: string;
@@ -49,19 +50,21 @@ function ActionCard({
           <p className="mt-1 text-sm leading-relaxed text-ink-500">{description}</p>
         </div>
       </div>
-      <form action={action} className="flex justify-end border-t border-line px-5 py-3">
-        <input type="hidden" name="studentId" value={studentId} />
-        <ConfirmButton
-          tone={tone}
-          variant="secondary"
-          size="sm"
-          title={confirmTitle}
-          description={confirmDescription}
-          confirmLabel={button}
-        >
-          {button}
-        </ConfirmButton>
-      </form>
+      <ActionForm action={action} errorClassName="border-t border-line px-5 pt-3">
+        <div className="flex justify-end border-t border-line px-5 py-3">
+          <input type="hidden" name="studentId" value={studentId} />
+          <ConfirmButton
+            tone={tone}
+            variant="secondary"
+            size="sm"
+            title={confirmTitle}
+            description={confirmDescription}
+            confirmLabel={button}
+          >
+            {button}
+          </ConfirmButton>
+        </div>
+      </ActionForm>
     </Card>
   );
 }

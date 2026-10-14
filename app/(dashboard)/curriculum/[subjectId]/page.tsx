@@ -5,8 +5,8 @@ import {
   describeRequirement,
   getCurriculumForStaff,
   getCurriculumIdForSubject,
-  LOCKED_CURRICULUM_MESSAGE,
 } from "../../../../lib/queries/curriculum";
+import { noticeUrl } from "../../../../lib/notices";
 import { updateSubject, deleteSubject, deleteRequirement } from "../actions";
 import AddRequirementForm from "./AddRequirementForm";
 import SubjectFields from "../SubjectFields";
@@ -17,6 +17,7 @@ import { Badge } from "../../../../components/ui/Badge";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import EmptyState from "../../../../components/ui/EmptyState";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Edit subject" };
 
@@ -30,7 +31,7 @@ export default async function EditSubjectPage({ params }: { params: Promise<{ su
   if (!data || !subject) notFound();
   // A version with students is locked; its subjects are read on the curriculum page.
   if (data.studentCount > 0) {
-    redirect(`/curriculum?version=${data.curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
+    redirect(noticeUrl(`/curriculum?version=${data.curriculumId}`, "curriculum-locked"));
   }
 
   const backHref = `/curriculum?version=${data.curriculumId}`;
@@ -48,7 +49,7 @@ export default async function EditSubjectPage({ params }: { params: Promise<{ su
       <div className="space-y-6">
         <Card>
           <CardHeader title="Details" />
-          <form action={updateSubject}>
+          <ActionForm action={updateSubject}>
             <input type="hidden" name="subjectId" value={subject.id} />
             <CardBody>
               <SubjectFields subject={subject} />
@@ -66,7 +67,7 @@ export default async function EditSubjectPage({ params }: { params: Promise<{ su
                 Save changes
               </ConfirmButton>
             </div>
-          </form>
+          </ActionForm>
         </Card>
 
         <Card>

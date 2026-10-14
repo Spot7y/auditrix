@@ -8,6 +8,7 @@ import { Label, Hint } from "../../../components/ui/Field";
 import TermFields from "../../../components/ui/TermFields";
 import ConfirmButton from "../../../components/ui/ConfirmButton";
 import Alert from "../../../components/ui/Alert";
+import ActionForm from "../../../components/ui/ActionForm";
 
 /** The dean's control for the college's current semester. */
 export default function CurrentTermCard({ current, collegeName }: { current: CollegeTerm | null; collegeName: string }) {
@@ -28,7 +29,7 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
             : `Not set yet for ${collegeName}.`
         }
       />
-      <form action={setCurrentTerm}>
+      <ActionForm action={setCurrentTerm}>
         <CardBody className="space-y-4">
           {!current && (
             <Alert tone="warning">
@@ -57,7 +58,7 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
             </Hint>
           </div>
         </CardBody>
-      </form>
+      </ActionForm>
     </Card>
   );
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
@@ -10,7 +10,7 @@ import { userMessage } from "../../../../lib/userMessage";
 export async function reassignChairperson(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "dean" || !staff.collegeId) {
-    redirect(`/programs/reassign?error=${encodeURIComponent("Only a dean account can reassign chairpersons.")}`);
+    return { error: "Only a dean account can reassign chairpersons." };
   }
 
   const program = String(formData.get("program") ?? "").trim();
@@ -19,10 +19,10 @@ export async function reassignChairperson(formData: FormData) {
   const chairPassword = String(formData.get("chairPassword") ?? "");
 
   if (!program || !chairName || !chairEmail || !chairPassword) {
-    redirect(`/programs/reassign?error=${encodeURIComponent("All fields are required.")}`);
+    return { error: "All fields are required." };
   }
   const weakPassword = passwordProblem(chairPassword);
-  if (weakPassword) redirect(`/programs/reassign?error=${encodeURIComponent(weakPassword)}`);
+  if (weakPassword) return { error: weakPassword };
 
   const admin = createAdminClient();
 
@@ -36,7 +36,7 @@ export async function reassignChairperson(formData: FormData) {
     .eq("college_id", staff!.collegeId!)
     .limit(1);
   if (ownershipError || !ownedCurricula || ownedCurricula.length === 0) {
-    redirect(`/programs/reassign?error=${encodeURIComponent("That program is not under your college.")}`);
+    return { error: "That program is not under your college." };
   }
 
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({
@@ -45,9 +45,7 @@ export async function reassignChairperson(formData: FormData) {
     email_confirm: true,
   });
   if (userError || !newUser.user) {
-    redirect(
-      `/programs/reassign?error=${encodeURIComponent(userError?.message ?? "Could not create chairperson account.")}`
-    );
+    return { error: userError?.message ?? "Could not create chairperson account." };
   }
 
   // Removes every existing chairperson row for the program (normally one, but
@@ -61,7 +59,7 @@ export async function reassignChairperson(formData: FormData) {
   });
   if (replaceError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(`/programs/reassign?error=${encodeURIComponent(userMessage(replaceError))}`);
+    return { error: userMessage(replaceError) };
   }
 
   // Their staff rows are already gone, which removes their access; banning
@@ -71,5 +69,5 @@ export async function reassignChairperson(formData: FormData) {
   }
 
   revalidatePath("/home");
-  redirect(`/home?success=${encodeURIComponent(`${chairName} is now the chairperson of ${program}.`)}`);
+  return flashRedirect(`/home?success=${encodeURIComponent(`${chairName} is now the chairperson of ${program}.`)}`);
 }

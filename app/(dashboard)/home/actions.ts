@@ -1,25 +1,23 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { describeTerm, isValidTerm } from "../../../lib/domain/Term";
 import { userMessage } from "../../../lib/userMessage";
 
-function fail(message: string): never {
-  redirect(`/home?error=${encodeURIComponent(message)}`);
-}
-
 /** The dean sets the current semester for every program in the college. */
 export async function setCurrentTerm(formData: FormData) {
   const staff = await getCurrentStaff();
-  if (!staff || staff.role !== "dean" || !staff.collegeId) fail("Only the dean can set the current semester.");
+  if (!staff || staff.role !== "dean" || !staff.collegeId) return { error: "Only the dean can set the current semester." };
 
   const year = String(formData.get("termYear") ?? "").trim();
   const semester = String(formData.get("termSemester") ?? "").trim();
   const term = `${year.padStart(2, "0")}-${semester}`;
-  if (!/^\d{1,2}$/.test(year) || !isValidTerm(term)) fail("Enter a 2-digit school year and a semester, e.g. 25 – 1.");
+  if (!/^\d{1,2}$/.test(year) || !isValidTerm(term)) {
+    return { error: "Enter a 2-digit school year and a semester, e.g. 25 – 1." };
+  }
 
   const supabase = await createServerClientForUser();
   const { error } = await supabase
@@ -28,8 +26,8 @@ export async function setCurrentTerm(formData: FormData) {
       { college_id: staff.collegeId, current_term: term, set_by: staff.name, set_at: new Date().toISOString() },
       { onConflict: "college_id" }
     );
-  if (error) fail(userMessage(error));
+  if (error) return { error: userMessage(error) };
 
   revalidatePath("/", "layout");
-  redirect(`/home?success=${encodeURIComponent(`The current semester is now ${describeTerm(term)} (${term}).`)}`);
+  return flashRedirect(`/home?success=${encodeURIComponent(`The current semester is now ${describeTerm(term)} (${term}).`)}`);
 }

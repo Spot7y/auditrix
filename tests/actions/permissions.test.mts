@@ -197,7 +197,7 @@ describe("Hand over the deanship", () => {
   it("a weak temporary password is refused before any account is made", async () => {
     current.staff = ceitDean;
     const url = await redirectOf(handOverDeanship, form({ ...newDean, deanPassword: "short" }));
-    assert.match(url ?? "", /\/college\/handover\?error=/);
+    assert.match(url ?? "", /^error: Password must be at least 8 characters/);
     assert.deepEqual(writes, []);
   });
 

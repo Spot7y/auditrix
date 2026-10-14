@@ -12,6 +12,7 @@ import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import EmptyState from "../../../../components/ui/EmptyState";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Shift in a student" };
 
@@ -74,7 +75,7 @@ export default async function ShiftInPage({ searchParams }: { searchParams: Prom
               </span>
             }
           />
-          <form action={acceptShiftIn}>
+          <ActionForm action={acceptShiftIn}>
             <input type="hidden" name="studentId" value={result.studentId} />
             <CardBody>
               <Field
@@ -104,7 +105,7 @@ export default async function ShiftInPage({ searchParams }: { searchParams: Prom
                 Accept student
               </ConfirmButton>
             </div>
-          </form>
+          </ActionForm>
         </Card>
       )}
     </div>

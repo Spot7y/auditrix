@@ -37,6 +37,15 @@ export function mockNext() {
     },
   });
   mock.module(dependency("next/cache"), { namedExports: { revalidatePath: () => {} } });
+  // The result message normally goes in a cookie (lib/flash); here it stays
+  // in the URL, so tests can check it.
+  mock.module(projectFile("lib/flash.ts"), {
+    namedExports: {
+      flashRedirect: async (url: string) => {
+        throw new Redirect(decodeURIComponent(url));
+      },
+    },
+  });
 }
 
 export type Staff = {
@@ -54,10 +63,14 @@ export function mockCurrentStaff(current: { staff: Staff }) {
   });
 }
 
-/** Runs a server action and returns where it redirected to. */
+/**
+ * Runs a server action and returns where it redirected to, or the error it
+ * returned to its form ("error: …") when it didn't redirect.
+ */
 export async function redirectOf(action: (formData: FormData) => Promise<unknown>, formData: FormData) {
   try {
-    await action(formData);
+    const result = (await action(formData)) as { error?: string } | undefined;
+    if (result?.error) return `error: ${result.error}`;
   } catch (error) {
     if (error instanceof Redirect) return error.url;
     throw error;

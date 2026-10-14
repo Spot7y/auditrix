@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Hand over the deanship" };
 
@@ -28,7 +29,7 @@ export default async function HandOverDeanshipPage() {
         college’s programs, students and history stay as they are.
       </Alert>
 
-      <form action={handOverDeanship}>
+      <ActionForm action={handOverDeanship}>
         <Card>
           <CardHeader title="New dean" description={`They take over ${college} when they first log in.`} />
           <CardBody>
@@ -44,7 +45,7 @@ export default async function HandOverDeanshipPage() {
             </ConfirmButton>
           </div>
         </Card>
-      </form>
+      </ActionForm>
 
       <CollegeHistory entries={history} />
     </div>

@@ -7,6 +7,7 @@ import { Button } from "../../../components/ui/Button";
 import { DialogCloseButton, DialogPanel } from "../../../components/ui/Dialog";
 import { Field, Input } from "../../../components/ui/Field";
 import SubmitButton from "../../../components/ui/SubmitButton";
+import ActionForm from "../../../components/ui/ActionForm";
 
 const thisYear = new Date().getFullYear();
 
@@ -22,7 +23,7 @@ export default function NewVersionForm({ latestYear }: { latestYear: number | nu
       </Button>
 
       <DialogPanel ref={dialogRef} labelledBy={titleId} onBackdropClick={() => dialogRef.current?.close()} className="max-w-md">
-        <form action={createCurriculumVersion}>
+        <ActionForm action={createCurriculumVersion}>
           <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
             <div>
               <h2 id={titleId} className="text-lg font-semibold text-ink-900">
@@ -59,7 +60,7 @@ export default function NewVersionForm({ latestYear }: { latestYear: number | nu
             </Button>
             <SubmitButton pendingLabel="Creating…">Create version</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </DialogPanel>
     </>
   );

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
@@ -28,14 +29,14 @@ const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second 
  */
 async function refuseIfLocked(curriculumId: string | null | undefined) {
   if (curriculumId && (await countStudentsOnCurriculum(curriculumId)) > 0) {
-    redirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
+    return flashRedirect(`/curriculum?version=${curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
   }
 }
 
 async function requireChairperson() {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/curriculum?error=${encodeURIComponent("Only a chairperson account can manage curriculum.")}`);
+    return flashRedirect(`/curriculum?error=${encodeURIComponent("Only a chairperson account can manage curriculum.")}`);
   }
   return staff!;
 }
@@ -45,7 +46,7 @@ export async function createCurriculumVersion(formData: FormData) {
   const supabase = await createServerClientForUser();
 
   const effectiveYear = Number(formData.get("effectiveYear"));
-  if (!effectiveYear) redirect(`/curriculum?error=${encodeURIComponent("A valid year is required.")}`);
+  if (!effectiveYear) return { error: "A valid year is required." };
 
   const { data: sourceCurriculum } = await supabase
     .from("curricula")
@@ -60,14 +61,14 @@ export async function createCurriculumVersion(formData: FormData) {
     .insert({ program: staff.program, effective_year: effectiveYear })
     .select()
     .single();
-  if (newCurriculumError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(newCurriculumError))}`);
+  if (newCurriculumError) return { error: userMessage(newCurriculumError) };
 
   if (sourceCurriculum) {
     const { data: sourceSubjects, error: subjectsError } = await supabase
       .from("subjects")
       .select("id, code, title, units, year_level, semester")
       .eq("curriculum_id", sourceCurriculum.id);
-    if (subjectsError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(subjectsError))}`);
+    if (subjectsError) return { error: userMessage(subjectsError) };
 
     const oldToNewSubjectId = new Map<string, string>();
     for (const s of sourceSubjects ?? []) {
@@ -83,7 +84,7 @@ export async function createCurriculumVersion(formData: FormData) {
         })
         .select()
         .single();
-      if (insertError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(insertError))}`);
+      if (insertError) return { error: userMessage(insertError) };
       oldToNewSubjectId.set(s.id as string, newSubject!.id as string);
     }
 
@@ -93,7 +94,7 @@ export async function createCurriculumVersion(formData: FormData) {
         .from("requirements")
         .select("subject_id, type, required_subject_id, required_year_level")
         .in("subject_id", oldSubjectIds);
-      if (reqFetchError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(reqFetchError))}`);
+      if (reqFetchError) return { error: userMessage(reqFetchError) };
 
       for (const r of sourceRequirements ?? []) {
         const newSubjectId = oldToNewSubjectId.get(r.subject_id as string);
@@ -107,7 +108,7 @@ export async function createCurriculumVersion(formData: FormData) {
           required_subject_id: newRequiredSubjectId ?? null,
           required_year_level: r.required_year_level,
         });
-        if (reqInsertError) redirect(`/curriculum?error=${encodeURIComponent(userMessage(reqInsertError))}`);
+        if (reqInsertError) return { error: userMessage(reqInsertError) };
       }
     }
   }
@@ -121,7 +122,7 @@ export async function createCurriculumVersion(formData: FormData) {
   });
 
   revalidatePath("/curriculum");
-  redirect(
+  return flashRedirect(
     `/curriculum?version=${newCurriculum!.id}&success=${encodeURIComponent(`Created the ${effectiveYear} curriculum version.`)}`
   );
 }
@@ -148,7 +149,7 @@ export async function createSubject(formData: FormData) {
   });
   if (error) {
     const message = error.code === "23505" ? `${code} is already in this curriculum version.` : userMessage(error);
-    redirect(`/curriculum/new?curriculumId=${curriculumId}&error=${encodeURIComponent(message)}`);
+    return { error: message };
   }
 
   await logCurriculumChange(supabase, {
@@ -160,7 +161,7 @@ export async function createSubject(formData: FormData) {
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum?version=${curriculumId}&success=${encodeURIComponent(`Added ${code}.`)}`);
+  return flashRedirect(`/curriculum?version=${curriculumId}&success=${encodeURIComponent(`Added ${code}.`)}`);
 }
 
 export async function updateSubject(formData: FormData) {
@@ -187,7 +188,7 @@ export async function updateSubject(formData: FormData) {
     .eq("id", subjectId);
   if (error) {
     const message = error.code === "23505" ? `${code} is already in this curriculum version.` : userMessage(error);
-    redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(message)}`);
+    return { error: message };
   }
 
   if (before) {
@@ -211,7 +212,7 @@ export async function updateSubject(formData: FormData) {
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum?version=${before?.curriculum_id ?? ""}&success=${encodeURIComponent(`Saved ${code}.`)}`);
+  return flashRedirect(`/curriculum?version=${before?.curriculum_id ?? ""}&success=${encodeURIComponent(`Saved ${code}.`)}`);
 }
 
 export async function deleteSubject(formData: FormData) {
@@ -228,7 +229,7 @@ export async function deleteSubject(formData: FormData) {
 
   const { error } = await supabase.from("subjects").delete().eq("id", subjectId);
   if (error) {
-    redirect(
+    return flashRedirect(
       `/curriculum/${subjectId}?error=${encodeURIComponent(
         "Could not delete — it's still referenced as a prerequisite, or students already have grades recorded for it."
       )}`
@@ -246,7 +247,7 @@ export async function deleteSubject(formData: FormData) {
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(
+  return flashRedirect(
     `/curriculum?version=${subjectRow?.curriculum_id ?? ""}&success=${encodeURIComponent(`Deleted ${subjectRow?.code ?? "the subject"}.`)}`
   );
 }
@@ -270,11 +271,11 @@ export async function addRequirement(formData: FormData) {
     const { error } = await supabase
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_year_level: requiredYearLevel });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
+    if (error) return { error: userMessage(error) };
     added = `year ${requiredYearLevel} standing`;
   } else if (type === "COMPLETION") {
     const { error } = await supabase.from("requirements").insert({ subject_id: subjectId, type });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
+    if (error) return { error: userMessage(error) };
     added = "all subjects completed";
   } else {
     const requiredCodeRaw = String(formData.get("requiredSubjectCode") ?? "");
@@ -286,15 +287,13 @@ export async function addRequirement(formData: FormData) {
     const matched = findMatchingCode(requiredCodeRaw, candidateSubjects ?? []);
 
     if (!matched) {
-      redirect(
-        `/curriculum/${subjectId}?error=${encodeURIComponent(`No subject with code "${requiredCodeRaw}" found in this curriculum version.`)}`
-      );
+      return { error: `No subject with code "${requiredCodeRaw}" found in this curriculum version.` };
     }
 
     const { error } = await supabase
       .from("requirements")
       .insert({ subject_id: subjectId, type, required_subject_id: matched!.id });
-    if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
+    if (error) return { error: userMessage(error) };
     added = type === "COREQUISITE" ? `${matched!.code} (corequisite)` : matched!.code;
   }
 
@@ -309,7 +308,7 @@ export async function addRequirement(formData: FormData) {
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum/${subjectId}?success=${encodeURIComponent(`Requirement added: ${added}.`)}`);
+  return flashRedirect(`/curriculum/${subjectId}?success=${encodeURIComponent(`Requirement added: ${added}.`)}`);
 }
 
 export async function deleteRequirement(formData: FormData) {
@@ -326,7 +325,7 @@ export async function deleteRequirement(formData: FormData) {
   await refuseIfLocked(one(requirement?.subject)?.curriculum_id);
 
   const { error } = await supabase.from("requirements").delete().eq("id", requirementId);
-  if (error) redirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return flashRedirect(`/curriculum/${subjectId}?error=${encodeURIComponent(userMessage(error))}`);
 
   const subject = one(requirement?.subject);
   if (requirement && subject) {
@@ -346,7 +345,7 @@ export async function deleteRequirement(formData: FormData) {
 
   revalidatePath("/curriculum");
   revalidatePath("/students/[id]", "page");
-  redirect(`/curriculum/${subjectId}?success=${encodeURIComponent("Requirement removed.")}`);
+  return flashRedirect(`/curriculum/${subjectId}?success=${encodeURIComponent("Requirement removed.")}`);
 }
 
 /** Supabase returns a to-one relation as an object or a one-item array depending on the schema cache. */
@@ -364,7 +363,7 @@ export async function moveSubjectUp(formData: FormData) {
     .select("id, curriculum_id, year_level, semester, created_at")
     .eq("id", subjectId)
     .single();
-  if (subjectError || !subject) redirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
+  if (subjectError || !subject) return flashRedirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
   await refuseIfLocked(subject!.curriculum_id);
 
   const { data: prevSibling } = await supabase
@@ -397,7 +396,7 @@ export async function moveSubjectDown(formData: FormData) {
     .select("id, curriculum_id, year_level, semester, created_at")
     .eq("id", subjectId)
     .single();
-  if (subjectError || !subject) redirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
+  if (subjectError || !subject) return flashRedirect(`/curriculum?error=${encodeURIComponent("Subject not found.")}`);
   await refuseIfLocked(subject!.curriculum_id);
 
   const { data: nextSibling } = await supabase

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useFormStatus } from "react-dom";
+import { useFormPending } from "./formPending";
 import type { ComponentProps } from "react";
 import { Button, type ButtonSize, type ButtonVariant } from "./Button";
 
@@ -19,7 +19,7 @@ export default function SubmitButton({
   size?: ButtonSize;
   block?: boolean;
 }) {
-  const { pending } = useFormStatus();
+  const pending = useFormPending();
   return (
     <Button type="submit" variant={variant} size={size} block={block} disabled={pending || props.disabled} {...props}>
       {pending ? (

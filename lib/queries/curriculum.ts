@@ -41,9 +41,7 @@ export async function getCurriculumVersionsForStaff(): Promise<{ program: string
   };
 }
 
-/** Why a curriculum version with students can't be changed, and what to do instead. */
-export const LOCKED_CURRICULUM_MESSAGE =
-  "This curriculum version is locked because students are registered on it. To change the curriculum, create a new version.";
+export { LOCKED_CURRICULUM_MESSAGE } from "../notices";
 
 /**
  * How many students (any record status) are registered on a curriculum

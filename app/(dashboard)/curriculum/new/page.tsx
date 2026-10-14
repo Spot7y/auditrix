@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getCurriculumForStaff, LOCKED_CURRICULUM_MESSAGE } from "../../../../lib/queries/curriculum";
+import { getCurriculumForStaff } from "../../../../lib/queries/curriculum";
+import { noticeUrl } from "../../../../lib/notices";
 import { createSubject } from "../actions";
 import ImportCurriculumModal from "../ImportCurriculumModal";
 import SubjectFields from "../SubjectFields";
@@ -9,6 +10,7 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Add subject" };
 
@@ -27,7 +29,7 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
   }
 
   if (data.studentCount > 0) {
-    redirect(`/curriculum?version=${data.curriculumId}&error=${encodeURIComponent(LOCKED_CURRICULUM_MESSAGE)}`);
+    redirect(noticeUrl(`/curriculum?version=${data.curriculumId}`, "curriculum-locked"));
   }
 
   return (
@@ -40,7 +42,7 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
 
       <Card>
         <CardHeader title="New subject" />
-        <form action={createSubject}>
+        <ActionForm action={createSubject}>
           <input type="hidden" name="curriculumId" value={data.curriculumId} />
           <CardBody>
             <SubjectFields />
@@ -48,7 +50,7 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
           <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
             <SubmitButton pendingLabel="Adding…">Add subject</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <Card className="mt-6">

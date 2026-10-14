@@ -10,6 +10,7 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Split the college" };
 
@@ -32,7 +33,7 @@ export default async function SplitCollegePage() {
       {programs.length < 2 ? (
         <Alert tone="info">A college needs at least two programs to be split: one moves, at least one stays.</Alert>
       ) : (
-        <form action={splitCollege} className="space-y-6">
+        <ActionForm action={splitCollege} className="space-y-6">
           <Alert tone="info">
             Only the programs’ college changes. Their curriculum versions, students, grades, chairpersons and history
             stay as they are, and the new college starts on {college}’s current semester. You stop seeing the moved
@@ -78,7 +79,7 @@ export default async function SplitCollegePage() {
               Split the college
             </ConfirmButton>
           </div>
-        </form>
+        </ActionForm>
       )}
 
       <CollegeHistory entries={history} />

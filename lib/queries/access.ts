@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { noticeUrl } from "../notices";
 import { getCurrentStaff, type CurrentStaff } from "./staff";
 
 /**
@@ -13,7 +14,7 @@ export async function requireRole(...roles: CurrentStaff["role"][]): Promise<Cur
   const staff = await getCurrentStaff();
   if (!staff) redirect("/auth/no-access");
   if (!roles.includes(staff.role)) {
-    redirect(`/home?error=${encodeURIComponent("That page isn’t available to your account.")}`);
+    redirect(noticeUrl("/home", "page-unavailable"));
   }
   return staff;
 }

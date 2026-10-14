@@ -5,10 +5,11 @@ import { CardBody } from "../../../components/ui/Card";
 import SubmitButton from "../../../components/ui/SubmitButton";
 import NewPasswordFields from "../../../components/NewPasswordFields";
 import { updatePassword } from "./action";
+import ActionForm from "../../../components/ui/ActionForm";
 
 export default function PasswordChangeForm() {
   return (
-    <form action={updatePassword}>
+    <ActionForm action={updatePassword}>
       <CardBody className="space-y-4">
         <PasswordInput name="currentPassword" label="Current password" autoComplete="current-password" />
         <NewPasswordFields sideBySide />
@@ -16,6 +17,6 @@ export default function PasswordChangeForm() {
       <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
         <SubmitButton pendingLabel="Updating…">Update password</SubmitButton>
       </div>
-    </form>
+    </ActionForm>
   );
 }

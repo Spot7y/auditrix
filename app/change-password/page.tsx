@@ -6,13 +6,12 @@ import { logout } from "../login/actions";
 import { setFirstPassword } from "./actions";
 import AuthLayout from "../../components/AuthLayout";
 import NewPasswordFields from "../../components/NewPasswordFields";
-import Alert from "../../components/ui/Alert";
 import SubmitButton from "../../components/ui/SubmitButton";
+import ActionForm from "../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Choose a new password" };
 
-export default async function ChangePasswordPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const { error } = await searchParams;
+export default async function ChangePasswordPage() {
   const staff = await getCurrentStaff();
   if (!staff) redirect("/auth/no-access");
   if (!staff.mustChangePassword) redirect("/home");
@@ -28,18 +27,12 @@ export default async function ChangePasswordPage({ searchParams }: { searchParam
         continuing.
       </p>
 
-      {error && (
-        <Alert tone="error" className="mt-6">
-          {error}
-        </Alert>
-      )}
-
-      <form action={setFirstPassword} className="mt-6 space-y-4">
+      <ActionForm action={setFirstPassword} className="mt-6 space-y-4">
         <NewPasswordFields />
         <SubmitButton block pendingLabel="Saving…">
           Save password and continue
         </SubmitButton>
-      </form>
+      </ActionForm>
 
       <form action={logout} className="mt-4 text-center">
         <button type="submit" className="text-sm font-medium text-ink-500 hover:text-ink-800">

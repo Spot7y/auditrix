@@ -10,6 +10,7 @@ import { Field, Input, Select } from "../../../../components/ui/Field";
 import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Register student" };
 
@@ -37,7 +38,7 @@ export default async function NewStudentPage() {
 
       <Card>
         <CardHeader title="Student details" />
-        <form action={registerStudent}>
+        <ActionForm action={registerStudent}>
           <CardBody className="grid gap-4 sm:grid-cols-2">
             <Field label="ID number" htmlFor="id" hint={STUDENT_ID_HINT}>
               <Input
@@ -81,7 +82,7 @@ export default async function NewStudentPage() {
           <div className="flex justify-end rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">
             <SubmitButton pendingLabel="Registering…">Register student</SubmitButton>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <Card className="mt-6">

@@ -7,7 +7,6 @@ import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../../lib/userMessage";
 
-const back = (error: string) => `/college/handover?error=${encodeURIComponent(error)}`;
 
 /**
  * The dean hands the deanship over to a successor: the successor's account is
@@ -17,15 +16,15 @@ const back = (error: string) => `/college/handover?error=${encodeURIComponent(er
 export async function handOverDeanship(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "dean" || !staff.collegeId) {
-    redirect(back("Only a dean can hand over the deanship."));
+    return { error: "Only a dean can hand over the deanship." };
   }
 
   const name = String(formData.get("deanName") ?? "").trim();
   const email = String(formData.get("deanEmail") ?? "").trim();
   const password = String(formData.get("deanPassword") ?? "");
-  if (!name || !email || !password) redirect(back("All fields are required."));
+  if (!name || !email || !password) return { error: "All fields are required." };
   const weakPassword = passwordProblem(password);
-  if (weakPassword) redirect(back(weakPassword));
+  if (weakPassword) return { error: weakPassword };
 
   const admin = createAdminClient();
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({
@@ -34,7 +33,7 @@ export async function handOverDeanship(formData: FormData) {
     email_confirm: true,
   });
   if (userError || !newUser.user) {
-    redirect(back(userError?.message ?? "Could not create the new dean's account."));
+    return { error: userError?.message ?? "Could not create the new dean's account." };
   }
 
   // Swaps the dean and records the handover in one transaction. The auth
@@ -46,7 +45,7 @@ export async function handOverDeanship(formData: FormData) {
   });
   if (handoverError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(back(userMessage(handoverError)));
+    return { error: userMessage(handoverError) };
   }
 
   // The staff row is gone, which removes all access; banning the login stops

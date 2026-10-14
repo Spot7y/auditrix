@@ -8,6 +8,7 @@ import { Field, Select } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Reassign chairperson" };
 
@@ -25,7 +26,7 @@ export default async function ReassignChairpersonPage() {
       {programs.length === 0 ? (
         <Alert tone="error">Only a dean account with programs in their college can reassign chairpersons.</Alert>
       ) : (
-        <form action={reassignChairperson} className="space-y-6">
+        <ActionForm action={reassignChairperson} className="space-y-6">
           <Card>
             <CardHeader title="Program" />
             <CardBody>
@@ -60,7 +61,7 @@ export default async function ReassignChairpersonPage() {
               Reassign chairperson
             </ConfirmButton>
           </div>
-        </form>
+        </ActionForm>
       )}
     </div>
   );

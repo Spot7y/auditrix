@@ -5,13 +5,14 @@ import { Plus } from "lucide-react";
 import { addRequirement } from "../actions";
 import { Field, Input, Select } from "../../../../components/ui/Field";
 import SubmitButton from "../../../../components/ui/SubmitButton";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export default function AddRequirementForm({ subjectId, codes }: { subjectId: string; codes: string[] }) {
   const [type, setType] = useState("PREREQUISITE");
   const listId = useId();
 
   return (
-    <form action={addRequirement} className="flex flex-wrap items-end gap-3">
+    <ActionForm action={addRequirement} className="flex flex-wrap items-end gap-3">
       <input type="hidden" name="subjectId" value={subjectId} />
       <Field label="Add requirement" htmlFor="type" className="w-full sm:w-52">
         <Select id="type" name="type" value={type} onChange={(e) => setType(e.target.value)}>
@@ -47,6 +48,6 @@ export default function AddRequirementForm({ subjectId, codes }: { subjectId: st
         <Plus aria-hidden />
         Add
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

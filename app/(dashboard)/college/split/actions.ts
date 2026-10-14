@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
@@ -8,7 +8,6 @@ import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../../lib/userMessage";
 import { getEmptyColleges } from "../../../../lib/queries/college";
 
-const back = (error: string) => `/college/split?error=${encodeURIComponent(error)}`;
 
 /**
  * The dean splits the college: chosen programs move to a new college with
@@ -18,7 +17,7 @@ const back = (error: string) => `/college/split?error=${encodeURIComponent(error
 export async function splitCollege(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "dean" || !staff.collegeId) {
-    redirect(back("Only a dean can split their college."));
+    return { error: "Only a dean can split their college." };
   }
 
   // An existing college without programs or a dean, or "new" (or nothing) for a new one.
@@ -32,11 +31,11 @@ export async function splitCollege(formData: FormData) {
   const deanPassword = String(formData.get("deanPassword") ?? "");
 
   if ((!existingCollege && (!collegeName || !shortName)) || !deanName || !deanEmail || !deanPassword) {
-    redirect(back("All fields are required."));
+    return { error: "All fields are required." };
   }
-  if (programs.length === 0) redirect(back("Choose at least one program to move to the new college."));
+  if (programs.length === 0) return { error: "Choose at least one program to move to the new college." };
   const weakPassword = passwordProblem(deanPassword);
-  if (weakPassword) redirect(back(weakPassword));
+  if (weakPassword) return { error: weakPassword };
 
   const admin = createAdminClient();
 
@@ -45,14 +44,14 @@ export async function splitCollege(formData: FormData) {
   // programs again.)
   const { data: owned } = await admin.from("curricula").select("program").eq("college_id", staff!.collegeId!);
   const ownPrograms = new Set((owned ?? []).map((c) => c.program as string));
-  if (programs.some((p) => !ownPrograms.has(p))) redirect(back("Only programs of your own college can be moved."));
-  if (programs.length >= ownPrograms.size) redirect(back("At least one program has to stay in your college."));
+  if (programs.some((p) => !ownPrograms.has(p))) return { error: "Only programs of your own college can be moved." };
+  if (programs.length >= ownPrograms.size) return { error: "At least one program has to stay in your college." };
 
   let destinationName = collegeName;
   if (existingCollege) {
     const chosen = (await getEmptyColleges()).find((c) => c.id === existingCollege);
     if (!chosen) {
-      redirect(back("That college already has programs or a dean. Choose another one, or a new college."));
+      return { error: "That college already has programs or a dean. Choose another one, or a new college." };
     }
     destinationName = chosen!.name;
   } else {
@@ -61,11 +60,7 @@ export async function splitCollege(formData: FormData) {
       (c) => c.name.toLowerCase() === collegeName.toLowerCase() || c.short_name.toUpperCase() === shortName
     );
     if (taken) {
-      redirect(
-        back(
-          `There is already a college named ${taken.name} (${taken.short_name}). If it has no programs yet, choose it from the list instead.`
-        )
-      );
+      return { error: `There is already a college named ${taken.name} (${taken.short_name}). If it has no programs yet, choose it from the list instead.` };
     }
   }
 
@@ -75,7 +70,7 @@ export async function splitCollege(formData: FormData) {
     email_confirm: true,
   });
   if (userError || !newUser.user) {
-    redirect(back(userError?.message ?? "Could not create the new dean's account."));
+    return { error: userError?.message ?? "Could not create the new dean's account." };
   }
 
   const { error: splitError } = await admin.rpc("split_college", {
@@ -89,11 +84,11 @@ export async function splitCollege(formData: FormData) {
   });
   if (splitError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(back(userMessage(splitError)));
+    return { error: userMessage(splitError) };
   }
 
   revalidatePath("/home");
-  redirect(
+  return flashRedirect(
     `/home?success=${encodeURIComponent(`${programs.join(", ")} moved to ${destinationName}. ${deanName} is its dean.`)}`
   );
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../lib/flash";
 import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
@@ -9,7 +9,7 @@ import { userMessage } from "../../../../lib/userMessage";
 export async function createProgram(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "dean" || !staff.collegeId) {
-    redirect(`/programs/new?error=${encodeURIComponent("Only a dean account can create a new program.")}`);
+    return { error: "Only a dean account can create a new program." };
   }
 
   const program = String(formData.get("program") ?? "").trim().toUpperCase();
@@ -19,10 +19,10 @@ export async function createProgram(formData: FormData) {
   const chairPassword = String(formData.get("chairPassword") ?? "");
 
   if (!program || !effectiveYear || !chairName || !chairEmail || !chairPassword) {
-    redirect(`/programs/new?error=${encodeURIComponent("All fields are required.")}`);
+    return { error: "All fields are required." };
   }
   const weakPassword = passwordProblem(chairPassword);
-  if (weakPassword) redirect(`/programs/new?error=${encodeURIComponent(weakPassword)}`);
+  if (weakPassword) return { error: weakPassword };
 
   const admin = createAdminClient();
 
@@ -34,10 +34,10 @@ export async function createProgram(formData: FormData) {
     .eq("program", program)
     .limit(1);
   if (existingError) {
-    redirect(`/programs/new?error=${encodeURIComponent(userMessage(existingError))}`);
+    return { error: userMessage(existingError) };
   }
   if (existingCurricula && existingCurricula.length > 0) {
-    redirect(`/programs/new?error=${encodeURIComponent(`A program named ${program} already exists.`)}`);
+    return { error: `A program named ${program} already exists.` };
   }
 
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({
@@ -46,7 +46,7 @@ export async function createProgram(formData: FormData) {
     email_confirm: true,
   });
   if (userError || !newUser.user) {
-    redirect(`/programs/new?error=${encodeURIComponent(userError?.message ?? "Could not create chairperson account.")}`);
+    return { error: userError?.message ?? "Could not create chairperson account." };
   }
 
   // Curriculum and staff row are written in one transaction. The auth account
@@ -60,8 +60,8 @@ export async function createProgram(formData: FormData) {
   });
   if (createError) {
     await admin.auth.admin.deleteUser(newUser!.user.id);
-    redirect(`/programs/new?error=${encodeURIComponent(userMessage(createError))}`);
+    return { error: userMessage(createError) };
   }
 
-  redirect(`/home?success=${encodeURIComponent(`Created ${program} and the chairperson account for ${chairName}.`)}`);
+  return flashRedirect(`/home?success=${encodeURIComponent(`Created ${program} and the chairperson account for ${chairName}.`)}`);
 }

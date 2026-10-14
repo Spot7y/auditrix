@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "../../../../components/ui/Card";
 import { Field, Input } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import { requireRole } from "../../../../lib/queries/access";
+import ActionForm from "../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Create program" };
 
@@ -19,7 +20,7 @@ export default async function NewProgramPage() {
         title="Create program"
         description="Adds a new program to your college, with an empty first curriculum and a login for its chairperson."
       />
-      <form action={createProgram} className="space-y-6">
+      <ActionForm action={createProgram} className="space-y-6">
         <Card>
           <CardHeader title="Program" />
           <CardBody className="grid gap-4 sm:grid-cols-2">
@@ -49,7 +50,7 @@ export default async function NewProgramPage() {
             Create program
           </ConfirmButton>
         </div>
-      </form>
+      </ActionForm>
     </div>
   );
 }

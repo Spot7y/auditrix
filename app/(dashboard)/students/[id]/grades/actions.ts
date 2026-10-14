@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../../lib/domain/supabase/serverClient";
 import { SupabaseAcademicRecordRepository } from "../../../../../lib/domain/import/SupabaseAcademicRecordRepository";
@@ -107,7 +107,7 @@ export async function submitTermGrades(
           : `${newViolations.length} subjects were taken out of order: ${newViolations.join(", ")}. See the audit for what was missing.`
       );
     }
-    redirect(`/students/${studentId}?${params}`);
+    return flashRedirect(`/students/${studentId}?${params}`);
   }
 
   return { result, error: null };

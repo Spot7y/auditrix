@@ -2,7 +2,7 @@
 
 import { AlertTriangle, HelpCircle, Loader2 } from "lucide-react";
 import { useId, useRef, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import { useFormPending } from "./formPending";
 import { Button, type ButtonSize, type ButtonVariant } from "./Button";
 import { DialogPanel } from "./Dialog";
 
@@ -37,7 +37,7 @@ export default function ConfirmButton({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
-  const { pending } = useFormStatus();
+  const pending = useFormPending();
   const Icon = tone === "danger" ? AlertTriangle : HelpCircle;
 
   return (

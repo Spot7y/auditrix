@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { noticeUrl } from "../../../../../lib/notices";
 import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getStudentAudit } from "../../../../../lib/queries/students";
 import { getCurrentTerm, getYearLevelHistory } from "../../../../../lib/queries/yearLevels";
@@ -16,6 +17,7 @@ import { Table, Td, Th, Tr } from "../../../../../components/ui/Table";
 import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import TermFields from "../../../../../components/ui/TermFields";
 import { requireRole } from "../../../../../lib/queries/access";
+import ActionForm from "../../../../../components/ui/ActionForm";
 
 export const metadata: Metadata = { title: "Edit student" };
 
@@ -33,7 +35,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
   const [data, currentTerm, history] = await Promise.all([getStudentAudit(id), getCurrentTerm(), getYearLevelHistory(id)]);
   if (!data) notFound();
   if (await getRecordLock(id)) {
-    redirect(`/students/${id}?error=${encodeURIComponent("This record is locked. Reopen it to make changes.")}`);
+    redirect(noticeUrl(`/students/${id}`, "record-locked-edit"));
   }
 
   const term = currentTerm ? parseTerm(currentTerm.term) : null;
@@ -47,7 +49,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
       />
       <Card>
         <CardHeader title="Details" description="Grades, transfers and history follow a new ID automatically." />
-        <form action={updateStudentInfo}>
+        <ActionForm action={updateStudentInfo}>
           <CardBody className="space-y-4">
             <input type="hidden" name="currentId" value={id} />
             <Field label="ID number" htmlFor="id" hint={STUDENT_ID_HINT}>
@@ -70,7 +72,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
               Save changes
             </ConfirmButton>
           </div>
-        </form>
+        </ActionForm>
       </Card>
 
       <Card>
@@ -78,7 +80,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
           title="Year level"
           description={`${YEAR_LABEL[data.yearLevel.level] ?? `Year ${data.yearLevel.level}`} ${BASIS[data.yearLevel.basis]}`}
         />
-        <form action={setYearLevel}>
+        <ActionForm action={setYearLevel}>
           <CardBody className="grid gap-4 sm:grid-cols-2">
             <input type="hidden" name="studentId" value={id} />
             <p className="text-sm text-ink-600 sm:col-span-2">
@@ -120,7 +122,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
               Save year level
             </ConfirmButton>
           </div>
-        </form>
+        </ActionForm>
         {history.length > 0 && (
           <Table>
             <thead>

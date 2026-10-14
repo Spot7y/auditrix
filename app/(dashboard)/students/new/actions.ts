@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../lib/flash";
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
@@ -9,7 +9,7 @@ import { userMessage } from "../../../../lib/userMessage";
 export async function registerStudent(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/new?error=${encodeURIComponent("Not authorized to register students.")}`);
+    return { error: "Not authorized to register students." };
   }
 
   const id = normalizeStudentId(String(formData.get("id") ?? ""));
@@ -17,12 +17,12 @@ export async function registerStudent(formData: FormData) {
   const nominalYearLevel = Number(formData.get("nominalYearLevel"));
 
   if (!isValidStudentId(id)) {
-    redirect(`/students/new?error=${encodeURIComponent(STUDENT_ID_HINT)}`);
+    return { error: STUDENT_ID_HINT };
   }
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
   if (!curriculumId) {
-    redirect(`/students/new?error=${encodeURIComponent("Please select a curriculum version.")}`);
+    return { error: "Please select a curriculum version." };
   }
 
   const supabase = await createServerClientForUser();
@@ -35,8 +35,8 @@ export async function registerStudent(formData: FormData) {
 
   if (error) {
     const message = error.code === "23505" ? `A student with the ID ${id} is already registered.` : userMessage(error);
-    redirect(`/students/new?error=${encodeURIComponent(message)}`);
+    return { error: message };
   }
 
-  redirect(`/students/${id}?success=${encodeURIComponent(`Registered ${name}.`)}`);
+  return flashRedirect(`/students/${id}?success=${encodeURIComponent(`Registered ${name}.`)}`);
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { flashRedirect } from "../../../../../lib/flash";
 import { revalidatePath } from "next/cache";
 import { createServerClientForUser } from "../../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
@@ -12,7 +12,7 @@ export async function recordDropped(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return { error: "Not authorized." };
   }
   await refuseIfLocked(studentId);
 
@@ -27,19 +27,19 @@ export async function recordDropped(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return { error: userMessage(error) };
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as dropped. The record is now locked.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Marked as dropped. The record is now locked.")}`);
 }
 
 export async function recordTransferOut(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return { error: "Not authorized." };
   }
   await refuseIfLocked(studentId);
 
@@ -54,19 +54,19 @@ export async function recordTransferOut(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return { error: userMessage(error) };
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred out. The record is now locked.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred out. The record is now locked.")}`);
 }
 
 export async function recordTransferIn(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return { error: "Not authorized." };
   }
 
   const supabase = await createServerClientForUser();
@@ -80,18 +80,18 @@ export async function recordTransferIn(formData: FormData) {
     to_program: staff!.program,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return { error: userMessage(error) };
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/home");
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred in.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Marked as transferred in.")}`);
 }
 
 export async function requestShiftOut(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return { error: "Not authorized." };
   }
 
   const supabase = await createServerClientForUser();
@@ -104,32 +104,32 @@ export async function requestShiftOut(formData: FormData) {
     const message = error.message.toLowerCase().includes("duplicate") || error.message.toLowerCase().includes("unique")
       ? "This student already has a pending shift request."
       : userMessage(error);
-    redirect(`/students/${studentId}?error=${encodeURIComponent(message)}`);
+    return { error: message };
   }
 
   revalidatePath(`/students/${studentId}`);
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Shift request submitted.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Shift request submitted.")}`);
 }
 
 export async function cancelShiftRequest(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return flashRedirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
 
   const supabase = await createServerClientForUser();
   const { error } = await supabase.from("shift_requests").delete().eq("student_id", studentId);
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return flashRedirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Shift request cancelled.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Shift request cancelled.")}`);
 }
 /** Sends the chairperson back when the student's record is already locked. */
 async function refuseIfLocked(studentId: string) {
   const lock = await getRecordLock(studentId);
   if (lock) {
-    redirect(
+    return flashRedirect(
       `/students/${studentId}?error=${encodeURIComponent(`This record is already locked (${LOCK_LABEL[lock.status].toLowerCase()}).`)}`
     );
   }
@@ -140,10 +140,10 @@ export async function reopenRecord(formData: FormData) {
   const staff = await getCurrentStaff();
   const studentId = String(formData.get("studentId") ?? "");
   if (!staff || staff.role !== "chairperson" || !staff.program) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
+    return flashRedirect(`/students/${studentId}?error=${encodeURIComponent("Not authorized.")}`);
   }
   if (!(await getRecordLock(studentId))) {
-    redirect(`/students/${studentId}?error=${encodeURIComponent("This record isn’t locked.")}`);
+    return flashRedirect(`/students/${studentId}?error=${encodeURIComponent("This record isn’t locked.")}`);
   }
 
   const supabase = await createServerClientForUser();
@@ -158,10 +158,10 @@ export async function reopenRecord(formData: FormData) {
     to_program: null,
     recorded_by: staff!.name,
   });
-  if (error) redirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
+  if (error) return flashRedirect(`/students/${studentId}?error=${encodeURIComponent(userMessage(error))}`);
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   revalidatePath("/home");
-  redirect(`/students/${studentId}?success=${encodeURIComponent("Record reopened. It can be changed again.")}`);
+  return flashRedirect(`/students/${studentId}?success=${encodeURIComponent("Record reopened. It can be changed again.")}`);
 }
