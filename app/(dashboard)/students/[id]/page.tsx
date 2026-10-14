@@ -39,7 +39,13 @@ function requirementLabel(requirement: Requirement) {
 function EnrollmentBadge({ status }: { status: EnrollmentStatus }) {
   const [tone, label, detail]: [BadgeTone, string, string] =
     status.kind === "REGULAR"
-      ? ["green", "Regular", `Enrolled in the full prescribed load for ${status.term}.`]
+      ? [
+          "green",
+          "Regular",
+          status.assumed
+            ? `First-year students count as regular until their grades for ${status.term} are in.`
+            : `Enrolled in the full prescribed load for ${status.term}.`,
+        ]
       : status.kind === "IRREGULAR"
         ? [
             "amber",
@@ -51,6 +57,9 @@ function EnrollmentBadge({ status }: { status: EnrollmentStatus }) {
     <span title={detail} className="inline-flex items-center gap-1.5">
       <Badge tone={tone}>{label}</Badge>
       {status.kind === "IRREGULAR" && <span className="text-xs text-ink-500">missing {status.missing.join(", ")}</span>}
+      {status.kind === "REGULAR" && status.assumed && (
+        <span className="text-xs text-ink-500">first year, until {status.term} grades are in</span>
+      )}
     </span>
   );
 }

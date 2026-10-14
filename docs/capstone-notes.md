@@ -191,6 +191,8 @@ instead of a violation.
 - **Enrollment** means grades recorded for the current semester. Until they're entered, the status is
   **"Not determined"** and the student isn't counted either way, so regular and irregular students are known once the
   semester's grades are in.
+- **First-year students** count as **regular** until their grades for the semester are in, since first years take
+  the full first-year load. Once their grades are entered, the grades decide, like for everyone else.
 
 ---
 
@@ -256,7 +258,8 @@ the order grades are entered, and all five cases above are covered by automated 
   with a shared scale. The Kalinga State University seal is the logo (sidebar, login page corner and browser tab).
 - 2026-10-14 — curriculum versions locked once students are registered on them; "In progress" removed (regular and
   irregular known once grades are in); grade form: the term's semester follows the curriculum semester and the
-  school year must be typed; a retake with the same grade can be saved; bottleneck chart removed.
+  school year must be typed; a retake with the same grade can be saved; bottleneck chart removed; first-year students
+  count as regular until their grades for the semester are in.
 
 ---
 

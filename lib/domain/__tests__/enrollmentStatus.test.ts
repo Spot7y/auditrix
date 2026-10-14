@@ -68,6 +68,18 @@ describe("regular or irregular (KSU Operations Manual)", () => {
     });
   });
 
+  it("counts a first-year student as regular until their grades for the semester are in", () => {
+    assert.deepEqual(status([], "25-1", 1), { kind: "REGULAR", term: "25-1", assumed: "FIRST_YEAR" });
+    assert.deepEqual(status([taken("CC 101", "25-1")], "25-2", 1), { kind: "REGULAR", term: "25-2", assumed: "FIRST_YEAR" });
+  });
+
+  it("lets a first year's grades decide once they're in", () => {
+    assert.deepEqual(status([taken("CC 102", "25-2")], "25-2", 1), { kind: "REGULAR", term: "25-2" });
+    const missing = new CurriculumMap("BSIT", [subject("CC 101", 1, 1), subject("CC 103", 1, 1)]);
+    const record = new AcademicRecord("S", missing, 1, [taken("CC 101", "25-1")]);
+    assert.deepEqual(enrollmentStatus(record, "25-1", 1), { kind: "IRREGULAR", term: "25-1", missing: ["CC 103"] });
+  });
+
   it("is not determined before the dean sets the current semester", () => {
     assert.equal(status([taken("CC 201", "25-2")], null).kind, "NOT_DETERMINED");
   });
