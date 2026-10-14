@@ -42,6 +42,8 @@ next-env.d.ts
 
 # data saved with `npm run db:save` (real accounts and student records)
 /supabase/seed.sql
+# Written by scripts/seed-showcase.ts --apply; names the sample students.
+/showcase-guide.md
 
 # local HTTPS certificate made by `npm run dev:https`
 /certificates
