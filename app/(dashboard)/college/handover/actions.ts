@@ -6,6 +6,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../../lib/domain/names";
 
 
 /**
@@ -19,12 +20,14 @@ export async function handOverDeanship(formData: FormData) {
     return { error: "Only a dean can hand over the deanship." };
   }
 
-  const name = String(formData.get("deanName") ?? "").trim();
+  const name = normalizeName(String(formData.get("deanName") ?? ""));
   const email = String(formData.get("deanEmail") ?? "").trim();
   const password = String(formData.get("deanPassword") ?? "");
   if (!name || !email || !password) return { error: "All fields are required." };
   const weakPassword = passwordProblem(password);
   if (weakPassword) return { error: weakPassword };
+  const badName = nameProblem(name);
+  if (badName) return { error: badName };
 
   const admin = createAdminClient();
   const { data: newUser, error: userError } = await admin.auth.admin.createUser({

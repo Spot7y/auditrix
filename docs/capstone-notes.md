@@ -387,7 +387,7 @@ Full list of screens worth showing:
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 176, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 187, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |
@@ -404,6 +404,21 @@ system (PostgreSQL + the app) with sample CEIT data, logging in as dean and chai
 feature: violations and their reasons, INC completion, the out-of-order warning after saving, setting the current
 semester, automatic year levels moving up with grades and semesters, chairperson overrides, regular/irregular
 counts, .xls and .xlsx imports, the earlier-term warning and the password checklist. All scenarios passed after fixes.
+
+**Beta test (2026-10-14).** The whole system was used as a chairperson and as a dean, the way a user would,
+including mistakes on purpose (blank and very long names, odd IDs and years, duplicate programs and emails, bad
+files, locked records, moving every program out of a college). These were found and fixed:
+
+| Found | Fixed |
+| --- | --- |
+| A student could be registered with a name of only spaces; names kept extra spaces and had no length limit | Names are tidied (extra spaces removed), must not be empty and are at most 120 characters, everywhere a name is typed or imported |
+| Grades could be saved for a term that hasn't happened (typing 99 gave 99-1, SY 2099–2100) | Terms after the current semester are refused; a term more than 8 school years back is pointed out in the confirmation (e.g. 2 typed for 26) |
+| A subject could be its own prerequisite, get the same prerequisite twice, or be part of a loop (A needs B, B needs A), so neither could ever be taken | All three are refused, by hand and in the curriculum import (skipped with a note) |
+| A subject could have 999 units or a blank title | Units 0–12 and a title are required, by hand and in the import |
+| A program code could contain symbols ("BS IT!") | Program codes are letters and numbers (BSCE, BSED-MATH) |
+| The dean could move the semester back (26-1 → 25-1) with the same confirmation as moving forward | The confirmation names the semester and warns in red when it's earlier than the current one |
+| Looking up your own program's shifting student showed an Accept form that then failed | It now explains that the receiving program accepts them |
+| An ID pasted with spaces around it was blocked by the browser | Spaces are allowed in the box and removed on saving |
 
 **Not done yet** (don't report results for these): user acceptance testing with actual chairpersons/deans, an
 evaluation questionnaire (e.g. ISO 25010), and testing on a hosted (online) deployment. The system currently runs

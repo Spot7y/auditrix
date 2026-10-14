@@ -64,7 +64,15 @@ export default async function ShiftInPage({ searchParams }: { searchParams: Prom
         </Card>
       )}
 
-      {result && (
+      {result && result.fromProgram === staff.program && (
+        <Alert tone="info" className="mt-6">
+          {result.studentName} ({result.studentId}) is shifting out of your own program. The chairperson of the program
+          they’re shifting into accepts them here. To keep them in {staff.program}, cancel the request on their Transfer /
+          shift page.
+        </Alert>
+      )}
+
+      {result && result.fromProgram !== staff.program && (
         <Card className="mt-6">
           <CardHeader
             title={result.studentName}

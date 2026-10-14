@@ -8,6 +8,7 @@ import { getCurrentStaff } from "../../../lib/queries/staff";
 import { logCurriculumChange } from "../../../lib/queries/curriculumHistory";
 import { readTableFile } from "../../../lib/domain/import/tableFile";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
+import { prerequisiteProblem, type PrerequisiteLinks } from "../../../lib/domain/requirements/prerequisiteLinks";
 import type { ImportResult, PreviewResult } from "../../../components/ImportDialog";
 import {
   parseSubjectRows,
@@ -18,6 +19,7 @@ import {
   type ExistingSubject,
 } from "../../../lib/domain/import/curriculumImport";
 import { userMessage } from "../../../lib/userMessage";
+import { normalizeName, subjectProblem } from "../../../lib/domain/names";
 import { countStudentsOnCurriculum, LOCKED_CURRICULUM_MESSAGE } from "../../../lib/queries/curriculum";
 
 const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
@@ -133,10 +135,12 @@ export async function createSubject(formData: FormData) {
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
   const code = normalizeCode(String(formData.get("code") ?? ""));
-  const title = String(formData.get("title") ?? "").trim();
+  const title = normalizeName(String(formData.get("title") ?? ""));
   const units = Number(formData.get("units"));
   const yearLevel = Number(formData.get("yearLevel"));
   const semester = Number(formData.get("semester"));
+  const badSubject = subjectProblem({ code, title, units });
+  if (badSubject) return { error: badSubject };
   await refuseIfLocked(curriculumId);
 
   const { error } = await supabase.from("subjects").insert({
@@ -170,10 +174,12 @@ export async function updateSubject(formData: FormData) {
 
   const subjectId = String(formData.get("subjectId") ?? "");
   const code = normalizeCode(String(formData.get("code") ?? ""));
-  const title = String(formData.get("title") ?? "").trim();
+  const title = normalizeName(String(formData.get("title") ?? ""));
   const units = Number(formData.get("units"));
   const yearLevel = Number(formData.get("yearLevel"));
   const semester = Number(formData.get("semester"));
+  const badSubject = subjectProblem({ code, title, units });
+  if (badSubject) return { error: badSubject };
 
   const { data: before } = await supabase
     .from("subjects")
@@ -289,6 +295,31 @@ export async function addRequirement(formData: FormData) {
     if (!matched) {
       return { error: `No subject with code "${requiredCodeRaw}" found in this curriculum version.` };
     }
+
+    // The version's prerequisites, to refuse a subject requiring itself, the
+    // same requirement twice, or a loop (A needs B needs A).
+    const codeById = new Map((candidateSubjects ?? []).map((s) => [s.id as string, s.code as string]));
+    const { data: linkRows, error: linksError } = await supabase
+      .from("requirements")
+      .select("subject_id, type, required_subject_id")
+      .in("subject_id", [...codeById.keys()])
+      .in("type", ["PREREQUISITE", "COREQUISITE"]);
+    if (linksError) return { error: userMessage(linksError) };
+    const links: PrerequisiteLinks = new Map();
+    for (const r of linkRows ?? []) {
+      if (r.type !== "PREREQUISITE") continue;
+      const from = codeById.get(r.subject_id);
+      const to = codeById.get(r.required_subject_id ?? "");
+      if (from && to) links.set(from, [...(links.get(from) ?? []), to]);
+    }
+    const existing = (linkRows ?? [])
+      .filter((r) => r.subject_id === subjectId && r.type === type)
+      .map((r) => codeById.get(r.required_subject_id ?? "") ?? "");
+    const problem = prerequisiteProblem(subjectRow?.code ?? "", matched.code, links, {
+      corequisite: type === "COREQUISITE",
+      existing,
+    });
+    if (problem) return { error: problem };
 
     const { error } = await supabase
       .from("requirements")

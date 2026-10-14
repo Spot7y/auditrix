@@ -6,7 +6,7 @@ import type { CollegeTerm } from "../../../lib/queries/yearLevels";
 import { Card, CardHeader, CardBody } from "../../../components/ui/Card";
 import { Label, Hint } from "../../../components/ui/Field";
 import TermFields from "../../../components/ui/TermFields";
-import ConfirmButton from "../../../components/ui/ConfirmButton";
+import SetSemesterButton from "./SetSemesterButton";
 import Alert from "../../../components/ui/Alert";
 import ActionForm from "../../../components/ui/ActionForm";
 
@@ -43,14 +43,7 @@ export default function CurrentTermCard({ current, collegeName }: { current: Col
               defaultYear={parsed ? String(parsed.year).padStart(2, "0") : ""}
               defaultSemester={current?.term.split("-")[1] ?? ""}
             >
-              <ConfirmButton
-                tone="primary"
-                title="Change the current semester?"
-                description={`This applies to every program in ${collegeName}. New grades default to this semester, and students’ year levels count the subjects passed before it, so moving to a new school year moves students up.`}
-                confirmLabel="Set semester"
-              >
-                Set semester
-              </ConfirmButton>
+              <SetSemesterButton currentTerm={current?.term ?? null} collegeName={collegeName} />
             </TermFields>
             <Hint>
               Two-digit school year, e.g. 25 – 1 is the first semester of SY 2025–2026. Midyear is S, as on KSU records:

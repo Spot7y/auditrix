@@ -5,6 +5,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import type { ImportResult } from "../../../../components/ImportDialog";
 import { isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
+import { nameProblem, normalizeName } from "../../../../lib/domain/names";
 import { readTableFile } from "../../../../lib/domain/import/tableFile";
 import { userMessage } from "../../../../lib/userMessage";
 
@@ -51,7 +52,7 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
   for (let i = 0; i < dataRows.length; i++) {
     const row = dataRows[i];
     const id = normalizeStudentId(row[idCol] ?? "");
-    const name = (row[nameCol] ?? "").trim();
+    const name = normalizeName(row[nameCol] ?? "");
     const yearLevel = Number((row[yearCol] ?? "").trim());
 
     if (!id && !name) continue;
@@ -61,6 +62,11 @@ export async function importStudentsCsv(_prev: ImportResult | null, formData: Fo
     }
     if (!isValidStudentId(id)) {
       warnings.push(`Row ${i + 2}: "${id}" is not a valid ID number, skipped.`);
+      continue;
+    }
+    const badName = nameProblem(name);
+    if (badName) {
+      warnings.push(`Row ${i + 2}: ${badName} Skipped.`);
       continue;
     }
     parsedStudents.push({ id, name, yearLevel });

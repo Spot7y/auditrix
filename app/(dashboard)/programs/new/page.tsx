@@ -7,6 +7,7 @@ import { Field, Input } from "../../../../components/ui/Field";
 import ConfirmButton from "../../../../components/ui/ConfirmButton";
 import { requireRole } from "../../../../lib/queries/access";
 import ActionForm from "../../../../components/ui/ActionForm";
+import { PROGRAM_CODE_MAX_LENGTH } from "../../../../lib/domain/names";
 
 export const metadata: Metadata = { title: "Create program" };
 
@@ -25,7 +26,7 @@ export default async function NewProgramPage() {
           <CardHeader title="Program" />
           <CardBody className="grid gap-4 sm:grid-cols-2">
             <Field label="Program code" htmlFor="program" hint="Short name, e.g. BSCE. Must be unique.">
-              <Input id="program" name="program" required placeholder="BSCE" className="uppercase" />
+              <Input id="program" name="program" required maxLength={PROGRAM_CODE_MAX_LENGTH} placeholder="BSCE" className="uppercase" />
             </Field>
             <Field label="First curriculum year" htmlFor="effectiveYear">
               <Input id="effectiveYear" name="effectiveYear" type="number" required min={2000} max={thisYear + 10} defaultValue={thisYear} />

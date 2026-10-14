@@ -1,4 +1,5 @@
 import { Field, Input, Select } from "../../../components/ui/Field";
+import { MAX_SUBJECT_UNITS } from "../../../lib/domain/names";
 
 /** Code, title, units, year and semester — shared by Add Subject and Edit Subject. */
 export default function SubjectFields({
@@ -15,7 +16,7 @@ export default function SubjectFields({
         <Input id="title" name="title" required placeholder="Introduction to Computing" defaultValue={subject?.title} />
       </Field>
       <Field label="Units" htmlFor="units" className="sm:col-span-2">
-        <Input id="units" name="units" type="number" step="0.5" min={0} required defaultValue={subject?.units ?? 3} />
+        <Input id="units" name="units" type="number" step="0.5" min={0} max={MAX_SUBJECT_UNITS} required defaultValue={subject?.units ?? 3} />
       </Field>
       <Field label="Year level" htmlFor="yearLevel" className="sm:col-span-2">
         <Select id="yearLevel" name="yearLevel" defaultValue={subject?.yearLevel ?? 1}>

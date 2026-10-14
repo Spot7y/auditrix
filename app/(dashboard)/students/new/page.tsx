@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { getCurriculumVersionsForStaff } from "../../../../lib/queries/curriculum";
-import { STUDENT_ID_HINT, STUDENT_ID_PATTERN } from "../../../../lib/domain/studentId";
+import { STUDENT_ID_HINT, STUDENT_ID_INPUT_PATTERN } from "../../../../lib/domain/studentId";
 import { registerStudent } from "./actions";
 import ImportStudentsModal from "./ImportStudentsModal";
 import PageHeader from "../../../../components/ui/PageHeader";
@@ -11,6 +11,7 @@ import SubmitButton from "../../../../components/ui/SubmitButton";
 import Alert from "../../../../components/ui/Alert";
 import { requireRole } from "../../../../lib/queries/access";
 import ActionForm from "../../../../components/ui/ActionForm";
+import { NAME_MAX_LENGTH } from "../../../../lib/domain/names";
 
 export const metadata: Metadata = { title: "Register student" };
 
@@ -45,14 +46,14 @@ export default async function NewStudentPage() {
                 id="id"
                 name="id"
                 required
-                pattern={STUDENT_ID_PATTERN}
+                pattern={STUDENT_ID_INPUT_PATTERN}
                 title={STUDENT_ID_HINT}
                 placeholder="25-123456"
                 className="font-mono"
               />
             </Field>
             <Field label="Full name" htmlFor="name" hint="Last, First Middle">
-              <Input id="name" name="name" required placeholder="Dela Cruz, Juan Santos" />
+              <Input id="name" name="name" required maxLength={NAME_MAX_LENGTH} placeholder="Dela Cruz, Juan Santos" />
             </Field>
             <Field label="Curriculum version" htmlFor="curriculumId">
               <Select id="curriculumId" name="curriculumId" required defaultValue="">

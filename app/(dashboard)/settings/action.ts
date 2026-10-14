@@ -7,13 +7,15 @@ import { createAdminClient } from "../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../lib/queries/staff";
 import { passwordProblem } from "../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../lib/domain/names";
 
 export async function updateName(formData: FormData) {
   const staff = await getCurrentStaff();
   if (!staff) redirect("/login");
 
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return { error: "Name cannot be empty." };
+  const name = normalizeName(String(formData.get("name") ?? ""));
+  const badName = nameProblem(name);
+  if (badName) return { error: badName };
 
   const supabase = await createServerClientForUser();
   const { data: updated, error } = await supabase.from("staff").update({ name }).eq("id", staff!.id).select("id");

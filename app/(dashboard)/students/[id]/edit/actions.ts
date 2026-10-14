@@ -7,6 +7,7 @@ import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../../lib/domain/studentId";
 import { isValidTerm } from "../../../../../lib/domain/Term";
 import { userMessage } from "../../../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../../../lib/domain/names";
 
 export async function updateStudentInfo(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -16,7 +17,7 @@ export async function updateStudentInfo(formData: FormData) {
   }
 
   const newId = normalizeStudentId(String(formData.get("id") ?? ""));
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeName(String(formData.get("name") ?? ""));
 
   if (!newId || !name) {
     return { error: "ID and name are required." };
@@ -25,6 +26,8 @@ export async function updateStudentInfo(formData: FormData) {
   if (newId !== currentId && !isValidStudentId(newId)) {
     return { error: STUDENT_ID_HINT };
   }
+  const badName = nameProblem(name);
+  if (badName) return { error: badName };
 
   const supabase = await createServerClientForUser();
   const { data: updated, error } = await supabase

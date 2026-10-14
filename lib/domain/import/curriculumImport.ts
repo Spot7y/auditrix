@@ -1,5 +1,7 @@
 import { normalizeCode, findMatchingCode } from "./codeMatching";
 import { readTable } from "./tableFile";
+import { MAX_SUBJECT_UNITS } from "../names";
+import { prerequisiteProblem, type PrerequisiteLinks } from "../requirements/prerequisiteLinks";
 
 // Parsing and planning for the curriculum import (CSV, .xlsx or .xls). Kept free of database
 // calls so the preview and the real import work from exactly the same plan.
@@ -114,6 +116,10 @@ export function parseSubjectRows(rows: string[][]): ParsedSubjects {
       warnings.push(`Row ${i + 2}: missing or invalid data, skipped.`);
       continue;
     }
+    if (units < 0 || units > MAX_SUBJECT_UNITS) {
+      warnings.push(`Row ${i + 2}: ${code} has ${units} units; units must be from 0 to ${MAX_SUBJECT_UNITS}. Skipped.`);
+      continue;
+    }
     if (seenCodes.has(code)) {
       warnings.push(`Row ${i + 2}: ${code} appears more than once in the file, skipped.`);
       continue;
@@ -163,12 +169,18 @@ export function planCurriculumImport(
   const added: string[] = [];
   const changed: SubjectChange[] = [];
   let unchangedCount = 0;
+  // Prerequisites accepted so far, to skip a subject requiring itself, the
+  // same one twice, or a loop (A needs B needs A).
+  const links: PrerequisiteLinks = new Map();
+  const planned: ParsedSubject[] = [];
 
   for (const s of subjects) {
     const newRequirements: string[] = [];
+    const kept: ParsedRequirement[] = [];
     for (const req of s.requirements) {
       if (req.kind === "year_standing") {
         newRequirements.push(describeYearStanding(req.level));
+        kept.push(req);
         continue;
       }
       const matched = findMatchingCode(req.code, codeCandidates);
@@ -176,8 +188,16 @@ export function planCurriculumImport(
         warnings.push(`${s.code}: prerequisite "${req.code}" not found, skipped.`);
         continue;
       }
+      const problem = prerequisiteProblem(s.code, matched.code, links, { existing: links.get(s.code) ?? [] });
+      if (problem) {
+        warnings.push(`${s.code}: ${problem} Skipped.`);
+        continue;
+      }
+      links.set(s.code, [...(links.get(s.code) ?? []), matched.code]);
       newRequirements.push(matched.code);
+      kept.push({ kind: "code", code: matched.code });
     }
+    planned.push({ ...s, requirements: kept });
 
     const current = existingByCode.get(s.code);
     if (!current) {
@@ -209,5 +229,5 @@ export function planCurriculumImport(
     else unchangedCount++;
   }
 
-  return { subjects, added, changed, unchangedCount, removed, keptWithGrades, warnings };
+  return { subjects: planned, added, changed, unchangedCount, removed, keptWithGrades, warnings };
 }

@@ -5,6 +5,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { STUDENT_ID_HINT, isValidStudentId, normalizeStudentId } from "../../../../lib/domain/studentId";
 import { userMessage } from "../../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../../lib/domain/names";
 
 export async function registerStudent(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -13,12 +14,14 @@ export async function registerStudent(formData: FormData) {
   }
 
   const id = normalizeStudentId(String(formData.get("id") ?? ""));
-  const name = String(formData.get("name") ?? "").trim();
+  const name = normalizeName(String(formData.get("name") ?? ""));
   const nominalYearLevel = Number(formData.get("nominalYearLevel"));
 
   if (!isValidStudentId(id)) {
     return { error: STUDENT_ID_HINT };
   }
+  const badName = nameProblem(name);
+  if (badName) return { error: badName };
 
   const curriculumId = String(formData.get("curriculumId") ?? "");
   if (!curriculumId) {

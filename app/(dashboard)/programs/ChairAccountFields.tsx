@@ -6,6 +6,7 @@ import { Field, Input } from "../../../components/ui/Field";
 import { Button } from "../../../components/ui/Button";
 import { MIN_PASSWORD_LENGTH } from "../../../lib/domain/passwordPolicy";
 import PasswordChecklist from "../../../components/PasswordChecklist";
+import { NAME_MAX_LENGTH } from "../../../lib/domain/names";
 
 // No look-alike characters (0/O, 1/l/I), so it can be read out or copied by hand.
 const ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -30,7 +31,7 @@ export default function ChairAccountFields({ role = "chairperson" }: { role?: "c
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Full name" htmlFor={`${prefix}Name`}>
-        <Input id={`${prefix}Name`} name={`${prefix}Name`} required autoComplete="off" placeholder="Juan Dela Cruz" />
+        <Input id={`${prefix}Name`} name={`${prefix}Name`} required maxLength={NAME_MAX_LENGTH} autoComplete="off" placeholder="Juan Dela Cruz" />
       </Field>
       <Field label="Email" htmlFor={`${prefix}Email`}>
         <Input

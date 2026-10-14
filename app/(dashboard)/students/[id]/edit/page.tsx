@@ -18,6 +18,7 @@ import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import TermFields from "../../../../../components/ui/TermFields";
 import { requireRole } from "../../../../../lib/queries/access";
 import ActionForm from "../../../../../components/ui/ActionForm";
+import { NAME_MAX_LENGTH } from "../../../../../lib/domain/names";
 
 export const metadata: Metadata = { title: "Edit student" };
 
@@ -56,7 +57,7 @@ export default async function EditStudentPage({ params }: { params: Promise<{ id
               <Input id="id" name="id" defaultValue={data.studentId} required className="font-mono" />
             </Field>
             <Field label="Full name" htmlFor="name" hint="Last, First Middle">
-              <Input id="name" name="name" defaultValue={data.studentName} required />
+              <Input id="name" name="name" defaultValue={data.studentName} required maxLength={NAME_MAX_LENGTH} />
             </Field>
           </CardBody>
           <div className="flex justify-end gap-2 rounded-b-xl border-t border-line bg-ink-50 px-5 py-3">

@@ -8,6 +8,8 @@ import { GradeEntryService } from "../../../../../lib/domain/import/GradeEntrySe
 import { AuditEngine } from "../../../../../lib/domain/AuditEngine";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { getRecordLock } from "../../../../../lib/queries/transitions";
+import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
+import { gradeTermProblem } from "../../../../../lib/domain/Term";
 import { LOCK_LABEL } from "../../../../../lib/format";
 import type { GradeEntryResult } from "../../../../../lib/domain/import/GradeEntryResult";
 import type { RawGradeInput } from "../../../../../lib/domain/import/GradeValidator";
@@ -56,6 +58,8 @@ export async function submitTermGrades(
   }
 
   const term = `${String(termYear).padStart(2, "0")}-${termSemesterRaw}`;
+  const futureTerm = gradeTermProblem(term, (await getCurrentTerm())?.term ?? null);
+  if (futureTerm) return { result: null, error: `${futureTerm} Nothing was saved.` };
 
   const entries: { subjectCode: string; input: RawGradeInput }[] = [];
   for (const [key, value] of formData.entries()) {

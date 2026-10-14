@@ -6,6 +6,7 @@ import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../../lib/domain/names";
 import { getEmptyColleges } from "../../../../lib/queries/college";
 
 
@@ -26,7 +27,7 @@ export async function splitCollege(formData: FormData) {
   const collegeName = String(formData.get("collegeName") ?? "").trim();
   const shortName = String(formData.get("shortName") ?? "").trim().toUpperCase();
   const programs = [...new Set(formData.getAll("program").map((p) => String(p).trim()).filter(Boolean))];
-  const deanName = String(formData.get("deanName") ?? "").trim();
+  const deanName = normalizeName(String(formData.get("deanName") ?? ""));
   const deanEmail = String(formData.get("deanEmail") ?? "").trim();
   const deanPassword = String(formData.get("deanPassword") ?? "");
 
@@ -36,6 +37,8 @@ export async function splitCollege(formData: FormData) {
   if (programs.length === 0) return { error: "Choose at least one program to move to the new college." };
   const weakPassword = passwordProblem(deanPassword);
   if (weakPassword) return { error: weakPassword };
+  const badName = nameProblem(deanName);
+  if (badName) return { error: badName };
 
   const admin = createAdminClient();
 

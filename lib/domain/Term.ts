@@ -56,3 +56,31 @@ export function describeTerm(value: string): string {
   const start = 2000 + term.year - (term.semester === 3 ? 1 : 0);
   return `${SEMESTER_NAME[term.semester]}, SY ${start}–${start + 1}`;
 }
+
+/** The first year of the school year a term belongs to, e.g. "26-S" → 2025. */
+export function schoolYearStart(value: string): number | null {
+  const term = parseTerm(value);
+  return term ? 2000 + term.year - (term.semester === 3 ? 1 : 0) : null;
+}
+
+/** Grades from more school years back than this get a "check the school year" note. */
+export const OLD_TERM_YEARS = 8;
+
+/**
+ * Why grades can't be saved for `term`: a term after the college's current
+ * semester hasn't happened yet (e.g. "99" typed for "26"). Null when it's fine
+ * or no current semester is set.
+ */
+export function gradeTermProblem(term: string, currentTerm: string | null): string | null {
+  if (!isValidTerm(term) || !isValidTerm(currentTerm)) return null;
+  if (compareTerms(term, currentTerm) <= 0) return null;
+  return `${term} (${describeTerm(term)}) is after the current semester, ${currentTerm}. Check the school year.`;
+}
+
+/** A note when `term` is unusually long ago, e.g. "2" typed for "26"; null otherwise. */
+export function oldTermNote(term: string, currentTerm: string | null): string | null {
+  const then = schoolYearStart(term);
+  const now = currentTerm ? schoolYearStart(currentTerm) : null;
+  if (then === null || now === null || now - then <= OLD_TERM_YEARS) return null;
+  return `${term} is ${describeTerm(term)}, ${now - then} school years ago. Check the school year.`;
+}

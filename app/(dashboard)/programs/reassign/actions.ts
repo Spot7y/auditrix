@@ -6,6 +6,7 @@ import { createAdminClient } from "../../../../lib/domain/supabase/adminClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { passwordProblem } from "../../../../lib/domain/passwordPolicy";
 import { userMessage } from "../../../../lib/userMessage";
+import { nameProblem, normalizeName } from "../../../../lib/domain/names";
 
 export async function reassignChairperson(formData: FormData) {
   const staff = await getCurrentStaff();
@@ -14,7 +15,7 @@ export async function reassignChairperson(formData: FormData) {
   }
 
   const program = String(formData.get("program") ?? "").trim();
-  const chairName = String(formData.get("chairName") ?? "").trim();
+  const chairName = normalizeName(String(formData.get("chairName") ?? ""));
   const chairEmail = String(formData.get("chairEmail") ?? "").trim();
   const chairPassword = String(formData.get("chairPassword") ?? "");
 
@@ -23,6 +24,8 @@ export async function reassignChairperson(formData: FormData) {
   }
   const weakPassword = passwordProblem(chairPassword);
   if (weakPassword) return { error: weakPassword };
+  const badName = nameProblem(chairName);
+  if (badName) return { error: badName };
 
   const admin = createAdminClient();
 

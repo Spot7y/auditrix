@@ -13,7 +13,7 @@ import ConfirmButton from "../../../../../components/ui/ConfirmButton";
 import Alert from "../../../../../components/ui/Alert";
 import EmptyState from "../../../../../components/ui/EmptyState";
 import { plural } from "../../../../../lib/format";
-import { compareTerms, isValidTerm } from "../../../../../lib/domain/Term";
+import { compareTerms, gradeTermProblem, isValidTerm, oldTermNote } from "../../../../../lib/domain/Term";
 
 interface SubjectRow {
   code: string;
@@ -69,6 +69,9 @@ export default function GradeEntryForm({
 
   const yearValid = /^\d{1,2}$/.test(termYear.trim());
   const term = yearValid && termSemester ? `${termYear.trim().padStart(2, "0")}-${termSemester}` : "";
+  // A term after the current semester can't have grades yet; one long ago is likely a typo.
+  const futureTerm = term ? gradeTermProblem(term, currentTerm) : null;
+  const oldTerm = term ? oldTermNote(term, currentTerm) : null;
   // Only grades the chairperson picked that differ from what's recorded are
   // submitted, so untouched subjects keep their original term. The same
   // grade in another term is a retake with the same result (e.g. 5.0 again),
@@ -141,7 +144,11 @@ export default function GradeEntryForm({
               }}
               onSemesterChange={(e) => setTermSemester(e.target.value)}
             />
-            {missingYear && !term ? (
+            {futureTerm ? (
+              <p role="alert" className="mt-1.5 text-sm font-medium text-status-violation">
+                {futureTerm}
+              </p>
+            ) : missingYear && !term ? (
               <p role="alert" className="mt-1.5 text-sm font-medium text-status-violation">
                 {yearValid
                   ? "Choose the semester the grades were earned in. Nothing was saved."
@@ -243,7 +250,7 @@ export default function GradeEntryForm({
         <Link href={`/students/${studentId}`} className="text-sm font-medium text-ink-500 hover:text-ink-800">
           Cancel
         </Link>
-        {edits.length === 0 ? (
+        {edits.length === 0 || futureTerm ? (
           <button type="button" disabled className="h-10 rounded-lg bg-brand-800 px-4 text-sm font-medium text-white opacity-50">
             Save grades
           </button>
@@ -269,6 +276,7 @@ export default function GradeEntryForm({
                 <p>
                   {edits.map((s) => `${s.code}: ${values[s.code]}`).join(", ")}.
                 </p>
+                {oldTerm && <p className="mt-2 font-medium text-amber-800">{oldTerm}</p>}
                 {resolutions.length > 0 && (
                   <p className="mt-2">
                     {resolutions.map((s) => `${s.code}’s INC${s.currentTerm ? ` from ${s.currentTerm}` : ""}`).join(", ")}{" "}

@@ -8,6 +8,7 @@ import { Field, Input } from "../../../components/ui/Field";
 import SubmitButton from "../../../components/ui/SubmitButton";
 import { requireRole } from "../../../lib/queries/access";
 import ActionForm from "../../../components/ui/ActionForm";
+import { NAME_MAX_LENGTH } from "../../../lib/domain/names";
 
 export const metadata: Metadata = { title: "Account settings" };
 
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
           <ActionForm action={updateName}>
             <CardBody className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" htmlFor="name">
-                <Input id="name" name="name" required defaultValue={staff?.name} />
+                <Input id="name" name="name" required maxLength={NAME_MAX_LENGTH} defaultValue={staff?.name} />
               </Field>
               <Field label="Role" htmlFor="role">
                 <Input
