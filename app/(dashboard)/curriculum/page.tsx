@@ -154,7 +154,7 @@ export default async function CurriculumPage({
             </p>
             <p className="mt-0.5 text-ink-600">
               Its subjects and requirements can’t be changed, so those students’ audits stay as they are. To change the
-              curriculum, use New version: it starts as a copy of the latest version.
+              curriculum, use New version: it starts as a copy of the latest version, or from an Excel or CSV file.
             </p>
           </div>
         </div>

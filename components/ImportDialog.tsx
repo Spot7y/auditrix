@@ -10,6 +10,8 @@ export interface ImportResult {
   error?: string;
   success?: string;
   warnings?: string[];
+  /** Where "Done" goes after this import, when only the server knows (e.g. a version it just created). */
+  doneHref?: string;
 }
 
 // Keep in step with serverActions.bodySizeLimit in next.config.ts, which
@@ -112,7 +114,8 @@ async function noPreview<P>(): Promise<PreviewResult<P>> {
   return {};
 }
 
-function ImportForm<P>({
+/** The dialog's contents: the form, the preview step and the result. Also used inside other dialogs. */
+export function ImportForm<P>({
   title,
   description,
   titleId,
@@ -176,8 +179,8 @@ function ImportForm<P>({
             <WarningList warnings={warnings} />
           </div>
           <Footer>
-            {doneHref ? (
-              <LinkButton href={doneHref}>Done</LinkButton>
+            {(state.doneHref ?? doneHref) ? (
+              <LinkButton href={(state.doneHref ?? doneHref)!}>Done</LinkButton>
             ) : (
               <Button onClick={onClose}>Done</Button>
             )}

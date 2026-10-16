@@ -2,7 +2,6 @@
 
 import ImportDialog from "../../../components/ImportDialog";
 import FileInput from "../../../components/ui/FileInput";
-import Alert from "../../../components/ui/Alert";
 import { Badge, type BadgeTone } from "../../../components/ui/Badge";
 import type { CurriculumImportSummary } from "../../../lib/domain/import/curriculumImport";
 import { importSubjectsCsv, previewSubjectsCsv } from "./actions";
@@ -13,7 +12,7 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
       <ImportDialog
         triggerLabel="Import curriculum"
         title="Import curriculum"
-        description="Replace this version’s subjects with the ones in an Excel or CSV file."
+        description="Fill this version with the subjects in an Excel or CSV file."
         action={importSubjectsCsv}
         doneHref={`/curriculum?version=${curriculumId}`}
         preview={{ action: previewSubjectsCsv, render: (summary) => <ImportSummary summary={summary} /> }}
@@ -25,10 +24,6 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
           accept=".xlsx,.xls,.csv"
           hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester (1, 2 or S for midyear), prerequisites (separate several with “;”)."
         />
-        <Alert tone="warning">
-          Subjects that aren’t in the file are removed, and prerequisites are replaced with the ones in the file.
-          You’ll see exactly what changes before anything is saved.
-        </Alert>
       </ImportDialog>
       <a href="/curriculum-import-template.csv" download className="text-sm font-medium text-brand-700 hover:underline">
         Download template

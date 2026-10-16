@@ -53,15 +53,24 @@ export default async function NewSubjectPage({ searchParams }: { searchParams: P
         </ActionForm>
       </Card>
 
-      <Card className="mt-6">
-        <CardHeader
-          title="Import the whole curriculum"
-          description="Replace this version’s subjects with the ones in an Excel or CSV file. You’ll see a preview before anything is saved."
-        />
-        <CardBody>
-          <ImportCurriculumModal curriculumId={data.curriculumId} />
-        </CardBody>
-      </Card>
+      {/* Only while the version is empty, e.g. a new program's first curriculum. A revised
+          curriculum from a file is a new version: New version → An Excel or CSV file. */}
+      {data.subjects.length === 0 ? (
+        <Card className="mt-6">
+          <CardHeader
+            title="Import the whole curriculum"
+            description="This version has no subjects yet. Fill it from an Excel or CSV file; you’ll see a preview before anything is saved."
+          />
+          <CardBody>
+            <ImportCurriculumModal curriculumId={data.curriculumId} />
+          </CardBody>
+        </Card>
+      ) : (
+        <p className="mt-6 text-sm text-ink-500">
+          Have the revised curriculum as a file? On the Curriculum page, choose New version, then “An Excel or CSV
+          file”.
+        </p>
+      )}
     </div>
   );
 }

@@ -83,7 +83,10 @@ applies, the student's **year level** and **Regular / Irregular** status.
 - Versions per program by effective year (e.g. BSCpE 2019, 2023); a new version can copy an existing one.
 - Subjects (code, title, units, year level, semester including **midyear**) and requirements: prerequisite,
   co-requisite, year standing, "all subjects completed".
-- **Import** from Excel (.xlsx or .xls) or CSV, with a **preview** of what will be added, changed or removed before saving.
+- **New version from a file:** a new version starts as a copy of the latest one, or from an Excel (.xlsx or .xls) or
+  CSV file with a **preview** (subjects and units) before saving. It's all or nothing: if anything fails, no version
+  is created. A version with no subjects yet (a new program's first curriculum) can also be filled from a file on its
+  Add subject page. The **Download template** link is next to both.
 - **Export** to CSV or PDF.
 - A **change history** per version (who changed what, when).
 - **Locked versions:** once any student is registered on a version, its subjects and requirements can't be added,

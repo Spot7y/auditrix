@@ -28,7 +28,9 @@ what each student has completed, can take next, or took out of order.
   When nothing was recorded for that term and the grades alone don't show the standing, the subject is marked
   "Year standing: please verify" instead of a violation.
 - **Curriculum management.** Versions per program (by effective year), subjects, prerequisites and year-standing
-  requirements. Import from an Excel (.xlsx or .xls) or CSV file with a preview of what will be added, changed or removed before anything is saved.
+  requirements. A new version starts either as a copy of the latest one (to edit what changed) or from an Excel (.xlsx
+  or .xls) or CSV file, with a preview before anything is saved; a version with no subjects yet (e.g. a new program's
+  first curriculum) can also be filled from a file on its Add subject page.
   Export to CSV or PDF. Every edit is kept in a per-version change history (who changed what, and when). A version
   is locked once any student is registered on it: its subjects and requirements can't be changed (the database
   refuses it too), so students' audits don't change under them. An edited curriculum is a new version, which starts

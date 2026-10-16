@@ -21,6 +21,7 @@ import {
 import { userMessage } from "../../../lib/userMessage";
 import { normalizeName, subjectProblem } from "../../../lib/domain/names";
 import { countStudentsOnCurriculum, LOCKED_CURRICULUM_MESSAGE } from "../../../lib/queries/curriculum";
+import { createAdminClient } from "../../../lib/domain/supabase/adminClient";
 
 const SEMESTER_NAME: Record<number, string> = { 1: "first semester", 2: "second semester", 3: "midyear" };
 
@@ -654,4 +655,144 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
   });
 
   return { success: parts.join(" "), warnings };
+}
+
+/** What the preview shows before a new version is created from a file. */
+export interface NewVersionPreview {
+  effectiveYear: number;
+  codes: string[];
+  units: number;
+}
+
+type LoadedVersionFile =
+  | { error: string; warnings?: string[] }
+  | { plan: CurriculumImportPlan; effectiveYear: number; program: string; staffName: string };
+
+// Shared by the preview and the real creation, so the preview shows exactly what gets saved.
+async function loadVersionFile(formData: FormData): Promise<LoadedVersionFile> {
+  const staff = await getCurrentStaff();
+  if (!staff || staff.role !== "chairperson" || !staff.program) {
+    return { error: "Only a chairperson account can manage curriculum." };
+  }
+  const effectiveYear = Number(formData.get("effectiveYear"));
+  const thisYear = new Date().getFullYear();
+  if (!Number.isInteger(effectiveYear) || effectiveYear < 2000 || effectiveYear > thisYear + 10) {
+    return { error: `Enter an effective year from 2000 to ${thisYear + 10}.` };
+  }
+
+  const supabase = await createServerClientForUser();
+  const { data: sameYear, error: sameYearError } = await supabase
+    .from("curricula")
+    .select("id")
+    .eq("program", staff.program)
+    .eq("effective_year", effectiveYear)
+    .limit(1);
+  if (sameYearError) return { error: userMessage(sameYearError) };
+  if (sameYear && sameYear.length > 0) {
+    return { error: `${staff.program} already has a ${effectiveYear} curriculum version.` };
+  }
+
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { error: "Please choose a file." };
+  const table = await readTableFile(new Uint8Array(await file.arrayBuffer()));
+  if ("error" in table) return { error: table.error };
+  const parsed = parseSubjectRows(table.rows);
+  if ("error" in parsed) return { error: parsed.error };
+
+  // A new version has nothing yet, so every subject in the file is added.
+  const plan = planCurriculumImport(parsed.subjects, [], [], new Set(), parsed.warnings);
+  return { plan, effectiveYear, program: staff.program, staffName: staff.name };
+}
+
+export async function previewVersionFromFile(
+  _prev: PreviewResult<NewVersionPreview> | null,
+  formData: FormData
+): Promise<PreviewResult<NewVersionPreview>> {
+  const loaded = await loadVersionFile(formData);
+  if ("error" in loaded) return { error: loaded.error, warnings: loaded.warnings };
+  const { plan, effectiveYear } = loaded;
+  return {
+    preview: {
+      effectiveYear,
+      codes: plan.subjects.map((s) => s.code),
+      units: plan.subjects.reduce((sum, s) => sum + s.units, 0),
+    },
+    warnings: plan.warnings,
+  };
+}
+
+/**
+ * Creates a curriculum version from an Excel or CSV file instead of a copy of
+ * the latest one. All or nothing: the whole file is checked first, subjects
+ * and requirements are each saved in one go, and if saving fails the new
+ * version is removed again, so no half-filled version is left behind.
+ */
+export async function createVersionFromFile(_prev: ImportResult | null, formData: FormData): Promise<ImportResult> {
+  const loaded = await loadVersionFile(formData);
+  if ("error" in loaded) return { error: loaded.error, warnings: loaded.warnings };
+  const { plan, effectiveYear, program, staffName } = loaded;
+  const supabase = await createServerClientForUser();
+
+  const { data: curriculum, error: curriculumError } = await supabase
+    .from("curricula")
+    .insert({ program, effective_year: effectiveYear })
+    .select("id")
+    .single();
+  if (curriculumError) return { error: userMessage(curriculumError) };
+
+  // Chairpersons can't delete curriculum versions, so undoing a failed one needs the server's own access.
+  const undo = async (message: string): Promise<ImportResult> => {
+    await createAdminClient().from("curricula").delete().eq("id", curriculum.id);
+    return { error: `${message} Nothing was created.` };
+  };
+
+  // created_at is spaced out so subjects keep the file's order.
+  const baseTime = Date.now();
+  const { data: subjects, error: subjectsError } = await supabase
+    .from("subjects")
+    .insert(
+      plan.subjects.map((s, i) => ({
+        curriculum_id: curriculum.id,
+        code: s.code,
+        title: s.title,
+        units: s.units,
+        year_level: s.yearLevel,
+        semester: s.semester,
+        created_at: new Date(baseTime + i * 10).toISOString(),
+      }))
+    )
+    .select("id, code");
+  if (subjectsError) return undo(userMessage(subjectsError));
+
+  const candidates = (subjects ?? []).map((s) => ({ code: s.code as string, id: s.id as string }));
+  const idOf = new Map(candidates.map((s) => [s.code, s.id]));
+  type RequirementRow = { subject_id: string; type: string; required_subject_id?: string; required_year_level?: number };
+  const requirementRows = plan.subjects.flatMap((s) =>
+    s.requirements.flatMap((req): RequirementRow[] => {
+      const subjectId = idOf.get(s.code);
+      if (!subjectId) return [];
+      if (req.kind === "year_standing") {
+        return [{ subject_id: subjectId, type: "YEAR_STANDING", required_year_level: req.level }];
+      }
+      const matched = findMatchingCode(req.code, candidates);
+      return matched ? [{ subject_id: subjectId, type: "PREREQUISITE", required_subject_id: matched.id }] : [];
+    })
+  );
+  if (requirementRows.length > 0) {
+    const { error: requirementsError } = await supabase.from("requirements").insert(requirementRows);
+    if (requirementsError) return undo(userMessage(requirementsError));
+  }
+
+  await logCurriculumChange(supabase, {
+    curriculumId: curriculum.id,
+    changedBy: staffName,
+    summary: `Created the ${effectiveYear} version from an imported file (${plan.subjects.length} subjects)`,
+  });
+
+  revalidatePath("/curriculum");
+  return {
+    success: `Created the ${effectiveYear} curriculum version with ${plan.subjects.length} subjects from the file.`,
+    warnings: plan.warnings,
+    doneHref: `/curriculum?version=${curriculum.id}`,
+  };
 }
