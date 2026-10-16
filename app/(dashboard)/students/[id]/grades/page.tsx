@@ -6,6 +6,7 @@ import { getStudentGradeEntryData } from "../../../../../lib/queries/students";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
 import PageHeader from "../../../../../components/ui/PageHeader";
 import GradeEntryForm from "./GradeEntryForm";
+import PasteFromMis from "./PasteFromMis";
 import { requireRole } from "../../../../../lib/queries/access";
 
 export const metadata: Metadata = { title: "Enter grades" };
@@ -34,6 +35,7 @@ export default async function GradeEntryPage({ params }: { params: Promise<{ id:
         title="Enter grades"
         description={`${data.studentName} · ${data.program}`}
       />
+      <PasteFromMis studentId={data.studentId} subjects={subjects} currentTerm={currentTerm?.term ?? null} />
       <GradeEntryForm studentId={id} subjects={subjects} currentTerm={currentTerm?.term ?? null} />
     </div>
   );

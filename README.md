@@ -8,6 +8,11 @@ what each student has completed, can take next, or took out of order.
 
 - **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
   or Violation, with the reason (e.g. the missing prerequisite).
+- **Paste from MIS.** On Enter Grades, the chairperson pastes a student's "Academic Grades" copied from the
+  KSU-MIS (all terms at once; the MIS can't export). Auditrix reads each term and grade, matches subjects by code or
+  else by title (the rest can be picked by hand), and shows what will happen to each row: new, retake, completes an
+  INC, already recorded, in progress (IP), dropped (UD), or not a KSU grade. Only ticked rows are saved, oldest term
+  first, through the same checks as grades entered by hand; a paste showing another student's ID is refused.
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
   5.0 failing, INC); a subject is recorded only once it has a grade. The term's semester follows the chosen
   curriculum semester (midyear is S) and can still be changed, e.g. for a subject retaken in a midyear; the school

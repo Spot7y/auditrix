@@ -78,6 +78,13 @@ applies, the student's **year level** and **Regular / Irregular** status.
   recorded one is refused unless the chairperson confirms it corrects a wrongly entered term.
 - After saving, a red message names any subject that just became a violation.
 - Every grade ever entered is kept in the student's **grade logbook** (who entered it and when).
+- **Paste from MIS:** the KSU-MIS can't print or export grades, but its "Academic Grades" page can be highlighted and
+  copied. Pasting it on Enter Grades reads every term ("Term: 25-1 - First Semester", "26-S - Mid-Year") and grade,
+  matches each subject by code or, when the MIS code differs (e.g. "PRE CALL 11" vs "PRE CAL"), by title, and lets the
+  chairperson choose the subject for anything left. A preview shows what happens to each row (new, retake, completes
+  an INC, already recorded, in progress, dropped, not a KSU grade); only ticked rows are saved, oldest term first,
+  through the same validation as manual entry. Pasting the same grades again saves nothing twice, and a paste with
+  another student's ID number is refused.
 
 ### 2.3 Curriculum management
 - Versions per program by effective year (e.g. BSCpE 2019, 2023); a new version can copy an existing one.

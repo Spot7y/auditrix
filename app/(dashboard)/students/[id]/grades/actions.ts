@@ -9,7 +9,7 @@ import { AuditEngine } from "../../../../../lib/domain/AuditEngine";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
-import { gradeTermProblem } from "../../../../../lib/domain/Term";
+import { compareTerms, gradeTermProblem, isValidTerm } from "../../../../../lib/domain/Term";
 import { LOCK_LABEL } from "../../../../../lib/format";
 import type { GradeEntryResult } from "../../../../../lib/domain/import/GradeEntryResult";
 import type { RawGradeInput } from "../../../../../lib/domain/import/GradeValidator";
@@ -115,4 +115,79 @@ export async function submitTermGrades(
   }
 
   return { result, error: null };
+}
+/**
+ * Saves the grades read from a paste of the student's MIS "Academic Grades"
+ * page, after the chairperson checked them. Each term goes through the same
+ * service as grades entered by hand, oldest term first, so retakes and INC
+ * completions are recorded in order and every check still applies.
+ */
+export async function savePastedGrades(formData: FormData) {
+  const staff = await getCurrentStaff();
+  if (!staff || staff.role !== "chairperson") return { error: "Only a chairperson can enter grades." };
+
+  const studentId = String(formData.get("studentId") ?? "");
+  const lock = await getRecordLock(studentId);
+  if (lock) {
+    return { error: `This student’s record is locked (${LOCK_LABEL[lock.status].toLowerCase()}). Reopen it from Transfer / shift to change grades.` };
+  }
+
+  let rows: { term: string; code: string; grade: string }[];
+  try {
+    rows = JSON.parse(String(formData.get("rows") ?? "[]"));
+  } catch {
+    return { error: "The pasted grades couldn’t be read. Paste them again." };
+  }
+  rows = rows.filter((r) => r && isValidTerm(r.term) && r.code && r.grade);
+  if (rows.length === 0) return { error: "No grades are ticked to save." };
+
+  const currentTerm = (await getCurrentTerm())?.term ?? null;
+  const future = rows.find((r) => gradeTermProblem(r.term, currentTerm));
+  if (future) return { error: `${gradeTermProblem(future.term, currentTerm)} Nothing was saved.` };
+
+  const supabase = await createServerClientForUser();
+  const repository = new SupabaseAcademicRecordRepository(supabase);
+  const record = await repository.getRecord(studentId);
+  if (!record) return { error: "Student record not found, or not in your program." };
+  const engine = new AuditEngine();
+  const violationsBefore = new Set(
+    engine.auditCurriculum(record).filter((r) => r.status === "VIOLATION").map((r) => r.subjectCode)
+  );
+
+  const service = new GradeEntryService(repository);
+  const terms = [...new Set(rows.map((r) => r.term))].sort(compareTerms);
+  let saved = 0;
+  const refused: string[] = [];
+  let lastAudit: GradeEntryResult["audit"] = [];
+  for (const term of terms) {
+    const entries = rows
+      .filter((r) => r.term === term)
+      .map((r) => ({ subjectCode: r.code, input: parseGradeInput(r.grade) }))
+      .filter((e): e is { subjectCode: string; input: RawGradeInput } => e.input !== null);
+    if (entries.length === 0) continue;
+    const result = await service.submit({ studentId, term, entries }, record.curriculum, staff.name);
+    for (const row of result.rows) {
+      if (row.accepted) saved++;
+      else refused.push(`${row.rawCode} (${term}): ${row.reason}`);
+    }
+    if (result.audit.length > 0) lastAudit = result.audit;
+  }
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath(`/students/${studentId}/logbook`);
+  revalidatePath("/home");
+
+  if (saved === 0) return { error: `Nothing was saved. ${refused.join(" ")}` };
+  const newViolations = lastAudit
+    .filter((r) => r.status === "VIOLATION" && !violationsBefore.has(r.subjectCode))
+    .map((r) => r.subjectCode);
+  const problems = [
+    ...(refused.length > 0 ? [`Not saved: ${refused.join("; ")}`] : []),
+    ...(newViolations.length > 0 ? [`Taken out of order: ${newViolations.join(", ")}. See the audit for what was missing.`] : []),
+  ];
+  const params = new URLSearchParams({
+    success: `Saved ${saved === 1 ? "1 grade" : `${saved} grades`} from the MIS (${terms.join(", ")}).`,
+  });
+  if (problems.length > 0) params.set("error", problems.join(" "));
+  return flashRedirect(`/students/${studentId}?${params}`);
 }
