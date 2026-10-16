@@ -9,6 +9,8 @@ import { logCurriculumChange } from "../../../lib/queries/curriculumHistory";
 import { readTableFile } from "../../../lib/domain/import/tableFile";
 import { normalizeCode, findMatchingCode } from "../../../lib/domain/import/codeMatching";
 import { prerequisiteProblem, type PrerequisiteLinks } from "../../../lib/domain/requirements/prerequisiteLinks";
+import { describeLost, lostRequirements } from "../../../lib/domain/requirements/lostRequirements";
+import { plural } from "../../../lib/format";
 import type { ImportResult, PreviewResult } from "../../../components/ImportDialog";
 import {
   parseSubjectRows,
@@ -795,4 +797,93 @@ export async function createVersionFromFile(_prev: ImportResult | null, formData
     warnings: plan.warnings,
     doneHref: `/curriculum?version=${curriculum.id}`,
   };
+}
+
+/**
+ * Deletes the subjects ticked on the curriculum page in one go. Subjects that
+ * stay but require one of them lose that requirement (the confirmation lists
+ * them first). Refused on a locked version, and for subjects that still have
+ * grades recorded (e.g. from students who moved to another version).
+ */
+export async function deleteSubjects(formData: FormData) {
+  const staff = await requireChairperson();
+  const supabase = await createServerClientForUser();
+  const curriculumId = String(formData.get("curriculumId") ?? "");
+  const ids = [...new Set(formData.getAll("subjectId").map(String))].filter(Boolean);
+  const back = `/curriculum?version=${curriculumId}`;
+  const fail = (message: string) => flashRedirect(`${back}&error=${encodeURIComponent(message)}`);
+
+  if (!curriculumId || ids.length === 0) return fail("Tick the subjects to delete first.");
+  await refuseIfLocked(curriculumId);
+
+  const { data: rows, error: rowsError } = await supabase
+    .from("subjects")
+    .select("id, code")
+    .eq("curriculum_id", curriculumId)
+    .in("id", ids);
+  if (rowsError) return fail(userMessage(rowsError));
+  if (!rows || rows.length !== ids.length) {
+    return fail("Some of those subjects aren’t in this version any more. Nothing was deleted; reload the page and try again.");
+  }
+  const codeOf = new Map(rows.map((r) => [r.id as string, r.code as string]));
+
+  const { data: graded, error: gradedError } = await supabase.from("subject_records").select("subject_id").in("subject_id", ids);
+  if (gradedError) return fail(userMessage(gradedError));
+  if (graded && graded.length > 0) {
+    const codes = [...new Set(graded.map((g) => codeOf.get(g.subject_id as string)))].join(", ");
+    return fail(`${codes} can’t be deleted: students have grades recorded for them. Nothing was deleted.`);
+  }
+
+  // Requirements of kept subjects that point at a deleted one.
+  const { data: links, error: linksError } = await supabase
+    .from("requirements")
+    .select("id, subject_id")
+    .in("required_subject_id", ids);
+  if (linksError) return fail(userMessage(linksError));
+  const keptLinks = (links ?? []).filter((l) => !codeOf.has(l.subject_id as string));
+
+  const { data: allSubjects } = await supabase.from("subjects").select("id, code").eq("curriculum_id", curriculumId);
+  const { data: allLinks } = await supabase
+    .from("requirements")
+    .select("subject_id, required_subject_id")
+    .in("subject_id", (allSubjects ?? []).map((s) => s.id))
+    .not("required_subject_id", "is", null);
+  const codeById = new Map((allSubjects ?? []).map((s) => [s.id as string, s.code as string]));
+  const lost = describeLost(
+    lostRequirements(
+      (allSubjects ?? []).map((s) => ({
+        code: s.code as string,
+        requires: (allLinks ?? [])
+          .filter((l) => l.subject_id === s.id)
+          .map((l) => codeById.get(l.required_subject_id as string) ?? ""),
+      })),
+      [...codeOf.values()]
+    )
+  );
+
+  if (keptLinks.length > 0) {
+    const { error } = await supabase.from("requirements").delete().in("id", keptLinks.map((l) => l.id));
+    if (error) return fail(`${userMessage(error)} Nothing was deleted.`);
+  }
+  const { error: deleteError } = await supabase.from("subjects").delete().in("id", ids);
+  if (deleteError) {
+    return fail(
+      `${userMessage(deleteError)}${keptLinks.length > 0 ? " The requirements pointing at them were already removed." : ""}`
+    );
+  }
+
+  const codes = [...codeOf.values()].sort();
+  await logCurriculumChange(supabase, {
+    curriculumId,
+    changedBy: staff.name,
+    summary: `Deleted ${plural(codes.length, "subject")}: ${codes.join(", ")}${lost.length > 0 ? `. ${lost.join("; ")}` : ""}`,
+  });
+
+  revalidatePath("/curriculum");
+  revalidatePath("/students/[id]", "page");
+  return flashRedirect(
+    `${back}&success=${encodeURIComponent(
+      `Deleted ${plural(codes.length, "subject")}.${lost.length > 0 ? ` Removed ${plural(lost.length, "requirement")} that pointed at them.` : ""}`
+    )}`
+  );
 }

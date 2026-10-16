@@ -87,6 +87,10 @@ applies, the student's **year level** and **Regular / Irregular** status.
   CSV file with a **preview** (subjects and units) before saving. It's all or nothing: if anything fails, no version
   is created. A version with no subjects yet (a new program's first curriculum) can also be filled from a file on its
   Add subject page. The **Download template** link is next to both.
+- **Delete several subjects at once** (versions without students): tick subjects, or a whole semester with "Select
+  all", then **Delete selected**. The confirmation lists the subjects and any requirement the kept subjects lose
+  (e.g. "CC 102 no longer requires CC 101"); those requirements are removed with them. Subjects with recorded grades
+  can't be deleted. The deletion is listed in the version's change history.
 - **Export** to CSV or PDF.
 - A **change history** per version (who changed what, when).
 - **Locked versions:** once any student is registered on a version, its subjects and requirements can't be added,

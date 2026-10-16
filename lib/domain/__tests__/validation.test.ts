@@ -12,6 +12,7 @@ import {
 import { prerequisiteProblem, type PrerequisiteLinks } from "../requirements/prerequisiteLinks";
 import { gradeTermProblem, oldTermNote, schoolYearStart } from "../Term";
 import { parseSubjectsCsv, planCurriculumImport } from "../import/curriculumImport";
+import { describeLost, lostRequirements } from "../requirements/lostRequirements";
 
 describe("names", () => {
   it("tidies spaces", () => {
@@ -99,5 +100,26 @@ describe("curriculum import prerequisites", () => {
     assert.deepEqual(required("CC 102"), ["CC 101", "CC 103"]);
     assert.deepEqual(required("CC 103"), []);
     assert.equal(plan.warnings.length, 3);
+  });
+});
+
+describe("deleting several subjects", () => {
+  const subjects = [
+    { code: "CC 101", requires: [] },
+    { code: "CC 102", requires: ["CC 101"] },
+    { code: "CC 103", requires: ["CC 102", "CC 101"] },
+    { code: "GE 101", requires: [] },
+  ];
+
+  it("lists the kept subjects that lose a requirement", () => {
+    assert.deepEqual(describeLost(lostRequirements(subjects, ["CC 101"])), [
+      "CC 102 no longer requires CC 101",
+      "CC 103 no longer requires CC 101",
+    ]);
+  });
+
+  it("doesn't list requirements of subjects deleted along with them", () => {
+    assert.deepEqual(describeLost(lostRequirements(subjects, ["CC 101", "CC 102", "CC 103"])), []);
+    assert.deepEqual(lostRequirements(subjects, ["GE 101"]), []);
   });
 });

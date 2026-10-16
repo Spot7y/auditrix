@@ -10,6 +10,7 @@ import { getCurriculumHistory } from "../../../lib/queries/curriculumHistory";
 import { formatDateTime, plural } from "../../../lib/format";
 import { moveSubjectUp, moveSubjectDown } from "./actions";
 import NewVersionForm from "./NewVersionForm";
+import SubjectSelection, { SelectAllCheckbox, SubjectCheckbox } from "./SubjectSelection";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { buttonClasses, LinkButton } from "../../../components/ui/Button";
@@ -170,6 +171,16 @@ export default async function CurriculumPage({
           />
         </Card>
       ) : (
+        // Unlocked versions get checkboxes to delete several subjects at once.
+        <SubjectSelection
+          key={`${data.curriculumId}-${data.subjects.length}`}
+          curriculumId={data.curriculumId}
+          subjects={data.subjects.map((s) => ({
+            id: s.id,
+            code: s.code,
+            requires: s.requirements.flatMap((r) => (r.requiredSubjectCode ? [r.requiredSubjectCode] : [])),
+          }))}
+        >
         <div className="space-y-5">
           <nav
             aria-label="Semesters"
@@ -210,6 +221,7 @@ export default async function CurriculumPage({
               />
               <Table className="table-fixed">
                 <colgroup>
+                  {!locked && <col className="w-11" />}
                   <col className="w-28" />
                   <col />
                   <col className="w-16" />
@@ -218,6 +230,14 @@ export default async function CurriculumPage({
                 </colgroup>
                 <thead>
                   <tr>
+                    {!locked && (
+                      <Th className="pr-0">
+                        <SelectAllCheckbox
+                          ids={subjects.map((s) => s.id)}
+                          label={`Select all of ${YEAR_LABEL[year] ?? `Year ${year}`}, ${SEMESTER_LABEL[semester] ?? `Semester ${semester}`}`}
+                        />
+                      </Th>
+                    )}
                     <Th>Code</Th>
                     <Th>Subject</Th>
                     <Th className="text-right">Units</Th>
@@ -230,6 +250,11 @@ export default async function CurriculumPage({
                 <tbody>
                   {subjects.map((s, i) => (
                     <Tr key={s.id}>
+                      {!locked && (
+                        <Td className="pr-0">
+                          <SubjectCheckbox id={s.id} code={s.code} />
+                        </Td>
+                      )}
                       <Td className="font-mono text-ink-600">{s.code}</Td>
                       <Td className="text-ink-900">{s.title}</Td>
                       <Td className="tabular text-right text-ink-600">{Number(s.units)}</Td>
@@ -269,6 +294,7 @@ export default async function CurriculumPage({
             </Card>
           ))}
         </div>
+        </SubjectSelection>
       )}
 
       <Card className="mt-6">
