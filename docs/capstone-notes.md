@@ -85,6 +85,9 @@ applies, the student's **year level** and **Regular / Irregular** status.
   an INC, already recorded, in progress, dropped, not a KSU grade); only ticked rows are saved, oldest term first,
   through the same validation as manual entry. Pasting the same grades again saves nothing twice, and a paste with
   another student's ID number is refused.
+  If the MIS has a wrong code (e.g. "SOC SCI 12 – Understanding the Self" when Understanding the Self is PHILO 11 in
+  the curriculum), the row is marked "Code and title disagree" and left unticked until the chairperson chooses the
+  subject, so a grade never lands on the wrong subject. Prerequisites are never read from the MIS.
 
 ### 2.3 Curriculum management
 - Versions per program by effective year (e.g. BSCpE 2019, 2023); a new version can copy an existing one.

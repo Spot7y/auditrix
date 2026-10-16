@@ -118,6 +118,7 @@ export type PlanAction =
   | "dropped"
   | "invalid"
   | "not-found"
+  | "check"
   | "future";
 
 export interface PlannedRow extends MisRow {
@@ -149,11 +150,52 @@ const simplify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 export function matchSubject<T extends { code: string; title: string }>(
   row: { code: string; description: string },
   subjects: T[]
-): { subject: T; by: "code" | "title" } | null {
-  const byCode = findMatchingCode(row.code, subjects);
-  if (byCode) return { subject: byCode, by: "code" };
+): { subject: T; by: "code" | "title"; conflict?: string } | null {
   const byTitle = subjects.filter((s) => simplify(s.title) === simplify(row.description) && simplify(s.title) !== "");
+  const byCode = findMatchingCode(row.code, subjects);
+  if (byCode) {
+    // The MIS can have a wrong code (e.g. "SOC SCI 12 – Understanding the Self" when that's
+    // PHILO 11): a code whose subject has a different title is left for the chairperson to check.
+    const description = row.description.trim();
+    if (description && simplify(byCode.title) !== simplify(description)) {
+      const other = byTitle.find((s) => s.code !== byCode.code);
+      if (other) {
+        return {
+          subject: byCode,
+          by: "code",
+          conflict: `The MIS says ${row.code} “${description}”, but ${byCode.code} here is “${byCode.title}”, and ${other.code} is “${other.title}”. Choose the right subject.`,
+        };
+      }
+      if (titleSimilarity(byCode.title, description) < 0.5) {
+        return {
+          subject: byCode,
+          by: "code",
+          conflict: `The MIS calls it “${description}”, but ${byCode.code} here is “${byCode.title}”. Choose the right subject.`,
+        };
+      }
+    }
+    return { subject: byCode, by: "code" };
+  }
   return byTitle.length === 1 ? { subject: byTitle[0], by: "title" } : null;
+}
+
+const SMALL_WORDS = new Set(["and", "the", "of", "in", "to", "a", "an", "for", "with", "on"]);
+const words = (s: string) =>
+  new Set(
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w && !SMALL_WORDS.has(w))
+      .map((w) => w.replace(/s$/, ""))
+  );
+
+/** How alike two subject titles are, from 0 to 1, by shared words ("Data Structure" ≈ "Data Structures"). */
+export function titleSimilarity(a: string, b: string): number {
+  const x = words(a);
+  const y = words(b);
+  if (x.size === 0 || y.size === 0) return 0;
+  const shared = [...x].filter((w) => y.has(w)).length;
+  return shared / new Set([...x, ...y]).size;
 }
 
 const sameGrade = (input: PastedGrade, status: PlanSubject["currentStatus"], grade: number | null) =>
@@ -208,6 +250,10 @@ export function planMisPaste(
     }
     if (grade === "invalid") {
       planned[index] = result("invalid", `${row.grade} isn’t a KSU grade.`);
+      continue;
+    }
+    if (match?.conflict) {
+      planned[index] = result("check", match.conflict, grade);
       continue;
     }
     if (!match) {

@@ -175,3 +175,30 @@ describe("pasting the whole MIS page (Ctrl+A)", () => {
     }
   });
 });
+
+describe("a wrong code in the MIS", () => {
+  const subjects = [
+    { code: "SOC SCI 12", title: "The Contemporary World", currentGrade: null, currentStatus: "NOT_TAKEN" as const, currentTerm: null },
+    { code: "PHILO 11", title: "Understanding the Self", currentGrade: null, currentStatus: "NOT_TAKEN" as const, currentTerm: null },
+    { code: "CPE 211", title: "Data Structures and Algorithms", currentGrade: null, currentStatus: "NOT_TAKEN" as const, currentTerm: null },
+  ];
+
+  it("doesn't put a grade on the code's subject when the title belongs to another one", () => {
+    const rows = [{ term: "25-1", code: "SOC SCI 12", description: "Understanding the Self", grade: "2" }];
+    const [row] = planMisPaste(rows, subjects, "26-1");
+    assert.equal(row.action, "check");
+    assert.equal(row.save, false);
+    assert.match(row.note, /PHILO 11 is “Understanding the Self”/);
+    assert.equal(planMisPaste(rows, subjects, "26-1", { 0: "PHILO 11" })[0].action, "new");
+  });
+
+  it("asks to check a code whose title is quite different", () => {
+    const rows = [{ term: "25-1", code: "SOC SCI 12", description: "Readings in Philippine History", grade: "2" }];
+    assert.equal(planMisPaste(rows, subjects, "26-1")[0].action, "check");
+  });
+
+  it("accepts small differences in the title", () => {
+    const rows = [{ term: "25-1", code: "CPE 211", description: "Data Structure and Algorithms", grade: "2" }];
+    assert.equal(planMisPaste(rows, subjects, "26-1")[0].action, "new");
+  });
+});

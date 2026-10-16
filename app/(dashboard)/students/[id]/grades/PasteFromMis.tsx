@@ -25,6 +25,7 @@ const ACTION: Record<PlanAction, [string, BadgeTone]> = {
   dropped: ["Dropped", "gray"],
   invalid: ["Not a KSU grade", "red"],
   "not-found": ["Choose subject", "red"],
+  check: ["Code and title disagree", "amber"],
   future: ["After this semester", "red"],
 };
 
@@ -140,7 +141,8 @@ export default function PasteFromMis({
                       .filter(({ row }) => row.term === term)
                       .map(({ row, index }) => {
                         const [label, tone] = ACTION[row.action];
-                        const canChoose = row.action === "not-found" || chosen[index] !== undefined || row.matchedBy === "title";
+                        const canChoose =
+                          row.action === "not-found" || row.action === "check" || chosen[index] !== undefined || row.matchedBy === "title";
                         return (
                           <tr key={index} className={row.save && !leftOut.has(index) ? "" : "text-ink-500"}>
                             <td className="px-3 py-2">
@@ -170,7 +172,8 @@ export default function PasteFromMis({
                               {canChoose ? (
                                 <Select
                                   aria-label={`Auditrix subject for ${row.code}`}
-                                  value={row.subjectCode ?? ""}
+                                  // A row whose code and title disagree starts blank: the chairperson chooses.
+                                  value={row.action === "check" ? "" : (row.subjectCode ?? "")}
                                   onChange={(e) =>
                                     setChosen((c) => {
                                       const next = { ...c };
