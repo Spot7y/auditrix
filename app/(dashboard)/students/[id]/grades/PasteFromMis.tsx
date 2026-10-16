@@ -71,7 +71,7 @@ export default function PasteFromMis({
             Paste from MIS
           </span>
         }
-        description="In the KSU-MIS, open this student’s Grades, highlight the Academic Grades (all terms, including the “Term:” lines), copy, and paste here. Nothing is saved until you check the grades and confirm."
+        description="In the KSU-MIS, open this student’s Grades, select the page (Ctrl+A selects all of it; menus and names are ignored), copy (Ctrl+C) and paste here. Nothing is saved until you check the grades and confirm."
       />
       <CardBody className="space-y-4">
         {!read ? (

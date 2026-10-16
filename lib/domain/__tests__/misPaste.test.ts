@@ -158,3 +158,20 @@ describe("planning what to save", () => {
     assert.equal(picked.action, "new");
   });
 });
+
+describe("pasting the whole MIS page (Ctrl+A)", () => {
+  const menu = ["Information", "Grades", "Enrollment", "Curriculum", "Checklist", "SOA", "Assessment", "Account"];
+  const footer = ["© 2026 Kalinga State University", "Management Information System", "Version 2.1"];
+
+  it("skips the menu, names and footer, before or after the grades", () => {
+    for (const text of [
+      ["KSU-MIS", ...menu, tabbed, ...footer].join("\n"),
+      [tabbed, ...menu, ...footer].join("\n"),
+      ["KSU-MIS", ...menu, perLine, ...menu, ...footer].join("\n"),
+    ]) {
+      const codes = parseMisPaste(text).rows.map((r) => `${r.code} ${r.grade}`);
+      assert.ok(codes.includes("PE 11 1.75") && codes.includes("MATH 11 2.5"), codes.join(", "));
+      assert.ok(codes.every((c) => /^(PE 11|PRE CALL 11|MATH 11|MATH 111|CPE 211) /.test(c)), codes.join(", "));
+    }
+  });
+});
