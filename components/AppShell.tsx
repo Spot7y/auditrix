@@ -16,6 +16,7 @@ import {
   Menu,
   Search,
   Settings,
+  PencilLine,
   Split,
   UserCog,
   UserPlus,
@@ -53,6 +54,7 @@ const NAV: { heading?: string; items: NavItem[] }[] = [
   {
     heading: "College",
     items: [
+      { href: "/college/rename", label: "College Name", icon: PencilLine, roles: ["dean"] },
       { href: "/college/split", label: "Split College", icon: Split, roles: ["dean"] },
       { href: "/college/handover", label: "Hand Over Deanship", icon: Handshake, roles: ["dean"] },
     ],

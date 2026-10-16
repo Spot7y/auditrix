@@ -159,7 +159,10 @@ Auditrix has no super administrator, because no office would operate one. Change
 - **Hand over the deanship.** The outgoing dean creates their successor's account; their own account is closed right
   away (signed out, can't log in again). Everything they recorded keeps their name, and the college's programs,
   students and history stay as they are.
-- Both happen in one database transaction (all or nothing) and are listed in the college's **history** (what
+- **Rename the college** (College Name page): the dean changes their own college's name and short name, e.g. after a
+  split. Names must be unique (regardless of capitals). Programs, students and records point at the college itself,
+  so nothing else changes; the new name shows everywhere, including printed student evaluations.
+- All three happen in one database transaction (all or nothing) and are listed in the college's **history** (what
   happened, who did it, when).
 
 ---

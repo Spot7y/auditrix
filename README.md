@@ -81,7 +81,9 @@ what each student has completed, can take next, or took out of order.
   and create its dean. Only the programs' college changes (curricula, students, grades,
   chairpersons and history stay), and the new college starts on a copy of the current semester. A dean can also
   **hand over the deanship**: they create their successor's account and their own account is closed (they're signed
-  out and can't log in again; their name stays on what they recorded). Both are listed in the college's history.
+  out and can't log in again; their name stays on what they recorded). A dean can also **rename their college** (name
+  and short name, e.g. after a split); the new name shows everywhere, including printed evaluations. All three are
+  listed in the college's history.
 - **Safeguards.** Actions that are hard to undo (dropping a student, deleting a subject, replacing a chairperson,
   saving grades) ask for confirmation first, and every result is shown as a notification. When a form is refused
   (e.g. a student ID that's already registered), the reason appears above it and everything typed stays filled in.

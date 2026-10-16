@@ -92,6 +92,6 @@ export async function splitCollege(formData: FormData) {
 
   revalidatePath("/home");
   return flashRedirect(
-    `/home?success=${encodeURIComponent(`${programs.join(", ")} moved to ${destinationName}. ${deanName} is its dean.`)}`
+    `/home?success=${encodeURIComponent(`${programs.join(", ")} moved to ${destinationName}. ${deanName} is its dean. To rename your college, go to College Name.`)}`
   );
 }

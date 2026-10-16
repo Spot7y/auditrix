@@ -2,13 +2,13 @@ import { createServerClientForUser } from "../domain/supabase/serverClient";
 
 export interface CollegeHistoryEntry {
   id: string;
-  event: "DEAN_HANDOVER" | "COLLEGE_SPLIT" | "COLLEGE_CREATED";
+  event: "DEAN_HANDOVER" | "COLLEGE_SPLIT" | "COLLEGE_CREATED" | "COLLEGE_RENAMED";
   summary: string;
   recordedBy: string;
   recordedAt: string;
 }
 
-/** Deanship handovers and splits of the signed-in dean's college, newest first. */
+/** Deanship handovers, splits and renames of the signed-in dean's college, newest first. */
 export async function getCollegeHistory(): Promise<CollegeHistoryEntry[]> {
   const supabase = await createServerClientForUser();
   const { data, error } = await supabase
@@ -52,4 +52,12 @@ export async function getEmptyColleges(): Promise<EmptyCollege[]> {
   return (colleges.data ?? [])
     .filter((c) => !used.has(c.id))
     .map((c) => ({ id: c.id, name: c.name, shortName: c.short_name }));
+}
+
+/** The signed-in staff member's college: its name and short name. */
+export async function getOwnCollege(collegeId: string): Promise<{ name: string; shortName: string } | null> {
+  const supabase = await createServerClientForUser();
+  const { data, error } = await supabase.from("colleges").select("name, short_name").eq("id", collegeId).maybeSingle();
+  if (error) throw error;
+  return data ? { name: data.name, shortName: data.short_name } : null;
 }

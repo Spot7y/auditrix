@@ -4,13 +4,13 @@ import type { CollegeHistoryEntry } from "../../../lib/queries/college";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import EmptyState from "../../../components/ui/EmptyState";
 
-/** Past deanship handovers and splits of the dean's college. */
+/** Past deanship handovers, splits and renames of the dean's college. */
 export default function CollegeHistory({ entries }: { entries: CollegeHistoryEntry[] }) {
   return (
     <Card className="mt-6">
-      <CardHeader title="College history" description="Deanship handovers and splits, newest first." />
+      <CardHeader title="College history" description="Deanship handovers, splits and renames, newest first." />
       {entries.length === 0 ? (
-        <EmptyState icon={History} title="Nothing recorded yet" description="Handovers and splits will be listed here." />
+        <EmptyState icon={History} title="Nothing recorded yet" description="Handovers, splits and renames will be listed here." />
       ) : (
         <ol className="divide-y divide-line">
           {entries.map((h) => (

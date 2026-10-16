@@ -43,3 +43,14 @@ export function subjectProblem({ code, title, units }: { code: string; title: st
   }
   return null;
 }
+
+export const COLLEGE_SHORT_NAME_MAX_LENGTH = 15;
+
+/** Why a (normalized, upper-case) college short name can't be used, or null when it's fine. */
+export function collegeShortNameProblem(shortName: string): string | null {
+  if (!shortName) return "Enter the college’s short name, e.g. CEIT.";
+  if (shortName.length > COLLEGE_SHORT_NAME_MAX_LENGTH || !programCodePattern.test(shortName)) {
+    return `A short name is letters and numbers, up to ${COLLEGE_SHORT_NAME_MAX_LENGTH} characters, e.g. CEIT or COE.`;
+  }
+  return null;
+}
