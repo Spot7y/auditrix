@@ -9,6 +9,7 @@ import { form, importFromRoot, mockCurrentStaff, mockNext, projectFile, redirect
 type Row = Record<string, unknown>;
 let tables: Record<string, Row[]>;
 let writes: string[];
+let renamed: Row | null = null;
 
 function resetDatabase() {
   writes = [];
@@ -70,6 +71,10 @@ const adminClient = {
       tables.shift_requests = tables.shift_requests.filter((r) => r.student_id !== args.p_student_id);
       return { data: target?.program, error: null };
     }
+    if (fn === "rename_college") {
+      renamed = args;
+      return { data: null, error: null };
+    }
     if (fn === "hand_over_deanship" || fn === "split_college") {
       return { data: null, error: null };
     }
@@ -113,6 +118,7 @@ const { handOverDeanship } = await importFromRoot<{ handOverDeanship: Action }>(
   "app/(dashboard)/college/handover/actions.ts"
 );
 const { splitCollege } = await importFromRoot<{ splitCollege: Action }>("app/(dashboard)/college/split/actions.ts");
+const { renameCollege } = await importFromRoot<{ renameCollege: Action }>("app/(dashboard)/college/rename/actions.ts");
 
 const ceitDean: Staff = { id: "dean", name: "Dean", role: "dean", program: null, collegeId: "ceit" };
 const cpeChair: Staff = { id: "chair", name: "Joan Doe", role: "chairperson", program: "BSCPE", collegeId: null };
@@ -244,7 +250,7 @@ describe("Split the college", () => {
     current.staff = ceitDean;
     assert.equal(
       await redirectOf(splitCollege, split(["BSCPE"], { existingCollege: "citm", collegeName: "", shortName: "" })),
-      "/home?success=BSCPE moved to College of Information Technology and Mathematics. Ana Reyes is its dean."
+      "/home?success=BSCPE moved to College of Information Technology and Mathematics. Ana Reyes is its dean. To rename your college, go to College Name."
     );
     assert.deepEqual(writes, ["createUser", "rpc split_college"]);
   });
@@ -260,8 +266,38 @@ describe("Split the college", () => {
     current.staff = ceitDean;
     assert.equal(
       await redirectOf(splitCollege, split(["BSCPE"])),
-      "/home?success=BSCPE moved to College of Computing. Ana Reyes is its dean."
+      "/home?success=BSCPE moved to College of Computing. Ana Reyes is its dean. To rename your college, go to College Name."
     );
     assert.deepEqual(writes, ["createUser", "rpc split_college"]);
+  });
+});
+
+describe("Rename the college", () => {
+  beforeEach(() => {
+    renamed = null;
+  });
+
+  it("a chairperson cannot rename a college", async () => {
+    current.staff = cpeChair;
+    const url = await redirectOf(renameCollege, form({ collegeName: "College of Computing", shortName: "COC" }));
+    assert.match(url ?? "", /Only a dean can rename/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a short name with symbols is refused", async () => {
+    current.staff = ceitDean;
+    const url = await redirectOf(renameCollege, form({ collegeName: "College of Engineering", shortName: "CO E!" }));
+    assert.match(url ?? "", /A short name is letters and numbers/);
+    assert.deepEqual(writes, []);
+  });
+
+  it("a dean renames their own college, with the name tidied", async () => {
+    current.staff = ceitDean;
+    assert.equal(
+      await redirectOf(renameCollege, form({ collegeName: "  College of   Engineering ", shortName: "coe" })),
+      "/college/rename?success=The college is now College of Engineering (COE)."
+    );
+    assert.deepEqual(writes, ["rpc rename_college"]);
+    assert.deepEqual(renamed, { p_dean_id: "dean", p_name: "College of Engineering", p_short_name: "COE" });
   });
 });
