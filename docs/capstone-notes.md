@@ -125,6 +125,12 @@ applies, the student's **year level** and **Regular / Irregular** status.
   (e.g. "Out of order: PHYS 201", "Not enrolled in GE 101, MATH 101").
 - **Student Movements** page (sidebar): every shift, transfer, drop and returnee, searchable and filterable by type,
   program and year.
+- **Printable movements report** (PDF, **Print report** on the Student Movements page), for both chairpersons and
+  deans: it prints exactly what the page lists with its search and filters (e.g. "Dropped, recorded in 2026"). KSU
+  letterhead with the college; what the report covers and the current semester; how many students shifted in and out,
+  transferred in and out, dropped and returned; then every movement, oldest first (student, ID, movement, program,
+  notes, recorded by, date). A chairperson's report covers their program and is noted by the dean; a dean's covers the
+  college, grouped by program. "Prepared by" carries the signed-in user's name.
 - **Student search** in the top bar on every page (Ctrl+K), next to the current semester (chairpersons only).
 - **Printable student evaluation** (PDF, from the student's page): KSU letterhead with the college; the student's
   name, ID, program, curriculum version, year level and regular/irregular standing; subjects and units completed and
@@ -312,6 +318,7 @@ the order grades are entered, and all five cases above are covered by automated 
   deanship (successor's account created, their own closed), both recorded in the college history.
 - 2026-10-14 — printable student evaluation (PDF); forms keep what was typed when refused; notifications can no
   longer be put on screen by a link; loading placeholders and fewer database round trips per page.
+- 2026-10-18 — printable Student Movements report (PDF) for chairpersons and deans, following the page's filters.
 
 ---
 
@@ -402,12 +409,13 @@ Full list of screens worth showing:
 11. Shift request / accept shift-in; transfer and drop.
 12. Curriculum PDF export.
 13. Printable student evaluation (PDF), e.g. for a student with a subject taken out of order.
+14. Student Movements → filter (e.g. Dropped, this year) → Print report.
 
 ---
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 187, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 209, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |

@@ -1,26 +1,22 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ArrowRight, History, SearchX } from "lucide-react";
-import { getAllTransitions, type TransitionRow } from "../../../lib/queries/transitions";
+import { ArrowRight, History, Printer, SearchX } from "lucide-react";
+import { getAllTransitions } from "../../../lib/queries/transitions";
 import { requireRole } from "../../../lib/queries/access";
 import { formatDate, TRANSITION_LABEL, TRANSITION_TONE } from "../../../lib/format";
-import { searchTerms } from "../../../lib/domain/searchTerms";
+import { filterMovements, movementYear } from "../../../lib/domain/movements";
 import PageHeader from "../../../components/ui/PageHeader";
 import { Card } from "../../../components/ui/Card";
 import { Badge } from "../../../components/ui/Badge";
 import { Table, Td, Th, Tr } from "../../../components/ui/Table";
+import { buttonClasses } from "../../../components/ui/Button";
 import EmptyState from "../../../components/ui/EmptyState";
 import MovementFilters from "./MovementFilters";
 
 export const metadata: Metadata = { title: "Student movements" };
 
 const LIMIT = 200;
-
-/** The calendar year a movement was recorded, in Philippine time. */
-function yearOf(t: TransitionRow): number {
-  return Number(new Intl.DateTimeFormat("en-PH", { year: "numeric", timeZone: "Asia/Manila" }).format(new Date(t.recordedAt)));
-}
 
 export default async function MovementsPage({
   searchParams,
@@ -34,16 +30,11 @@ export default async function MovementsPage({
   const all = await getAllTransitions();
 
   const programs = [...new Set(all.flatMap((t) => [t.fromProgram, t.toProgram]).filter((p): p is string => !!p))].sort();
-  const years = [...new Set(all.map(yearOf))].sort((a, b) => b - a);
-  const terms = searchTerms(q).map((t) => t.toLowerCase());
-  const shown = all.filter(
-    (t) =>
-      (!type || t.type === type) &&
-      (!program || t.fromProgram === program || t.toProgram === program) &&
-      (!year || yearOf(t) === Number(year)) &&
-      terms.every((term) => t.studentId.toLowerCase().includes(term) || t.studentName.toLowerCase().includes(term))
-  );
+  const years = [...new Set(all.map((t) => movementYear(t.recordedAt)))].sort((a, b) => b - a);
+  const shown = filterMovements(all, { q, type, program, year });
   const filtered = !!(q || type || program || year);
+  // The report prints the same filtered list, every row of it.
+  const reportQuery = new URLSearchParams(Object.entries({ q, type, program, year }).filter(([, v]) => v)).toString();
 
   return (
     <>
@@ -53,6 +44,20 @@ export default async function MovementsPage({
           staff.role === "dean"
             ? "Every shift, transfer and drop recorded in your college’s programs."
             : `Every shift, transfer and drop recorded for ${staff.program}.`
+        }
+        actions={
+          shown.length > 0 && (
+            // A PDF from a route handler, so a plain link; it opens in a new tab to print.
+            <a
+              href={`/movements/report-pdf${reportQuery ? `?${reportQuery}` : ""}`}
+              target="_blank"
+              rel="noopener"
+              className={buttonClasses({ variant: "secondary" })}
+            >
+              <Printer aria-hidden />
+              Print report
+            </a>
+          )
         }
       />
 

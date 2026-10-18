@@ -56,7 +56,8 @@ what each student has completed, can take next, or took out of order.
 - **Shifting, transfers and drops.** A chairperson releases a student who is shifting; the receiving program's
   chairperson accepts them into one of their curriculum versions. Transfers in and out and dropped students are
   recorded too, and every move is kept in the student's logbook. The Student Movements page lists every shift,
-  transfer, drop and returnee in your scope, with a search and filters by type, program and year. A dropped or transferred-out student's record is
+  transfer, drop and returnee in your scope, with a search and filters by type, program and year, and **Print report**
+  turns what's listed into a PDF for the office files. A dropped or transferred-out student's record is
   locked: their grades, details and year level can't be changed (the database refuses it too) until a chairperson
   reopens the record, which is kept in the history as a **returnee** (KSU's term for a student who comes back).
 - **Regular and irregular students.** Per the KSU Operations Manual, a student is regular when enrolled this semester
@@ -142,7 +143,7 @@ check permissions in the server action and do their database writes in one trans
 
 - [Next.js 16](https://nextjs.org) (App Router, server actions) with React 19 and Tailwind CSS 4 (Inter font, KSU green theme)
 - [Supabase](https://supabase.com): Postgres, Auth and row-level security
-- `@react-pdf/renderer` for the curriculum and student evaluation PDFs, ExcelJS for reading .xlsx imports, and Lucide for icons
+- `@react-pdf/renderer` for the curriculum, student evaluation and movements report PDFs, ExcelJS for reading .xlsx imports, and Lucide for icons
 
 ## Getting started
 

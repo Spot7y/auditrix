@@ -1,4 +1,5 @@
-import { Document, Font, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Font, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { KsuLetterhead, PDF_GREEN as GREEN, PDF_LINE as LINE, PDF_MUTED as MUTED, Signature } from "../../../../../components/pdf/KsuLetterhead";
 
 // Wrap whole words only; the default splits words like "stand-ing" across lines.
 Font.registerHyphenationCallback((word) => [word]);
@@ -40,19 +41,8 @@ export interface EvaluationPdfProps {
   generatedAt: string;
 }
 
-const GREEN = "#14532d";
-const MUTED = "#5b6660";
-const LINE = "#c9d1cc";
-
 const styles = StyleSheet.create({
   page: { paddingTop: 30, paddingBottom: 46, paddingHorizontal: 36, fontSize: 8.5, fontFamily: "Helvetica", color: "#1d2420" },
-  letterhead: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 6 },
-  seal: { width: 54, height: 54, marginRight: 12 },
-  letterText: { alignItems: "center" },
-  republic: { fontSize: 8.5, color: MUTED },
-  university: { fontSize: 14, fontFamily: "Helvetica-Bold", color: GREEN, marginTop: 1 },
-  college: { fontSize: 9.5, marginTop: 1 },
-  rule: { borderBottomWidth: 1.5, borderBottomColor: GREEN, marginTop: 4 },
   title: { fontSize: 12, fontFamily: "Helvetica-Bold", textAlign: "center", letterSpacing: 1, marginTop: 10 },
   asOf: { fontSize: 8.5, textAlign: "center", color: MUTED, marginTop: 2, marginBottom: 10 },
 
@@ -88,11 +78,6 @@ const styles = StyleSheet.create({
   red: { color: "#a11d1d" },
 
   signatures: { flexDirection: "row", justifyContent: "space-between", marginTop: 30 },
-  signature: { width: "30%" },
-  signatureCaption: { fontSize: 7.5, color: MUTED, marginBottom: 22 },
-  signatureLine: { borderTopWidth: 0.75, borderTopColor: "#1d2420", paddingTop: 2, alignItems: "center" },
-  signatureName: { fontFamily: "Helvetica-Bold", fontSize: 8.5, minHeight: 10 },
-  signatureRole: { fontSize: 7.5, color: MUTED },
 
   footer: { position: "absolute", bottom: 20, left: 36, right: 36, flexDirection: "row", justifyContent: "space-between", fontSize: 7, color: MUTED },
 });
@@ -107,18 +92,6 @@ function SubjectRow({ s }: { s: EvaluationSubjectRow }) {
       <Text style={[styles.cell, styles.colGrade, styles.bold]}>{s.grade}</Text>
       <Text style={[styles.cell, styles.colTerm]}>{s.term}</Text>
       <Text style={[styles.cell, styles.colRemarks, s.violation ? styles.red : {}]}>{s.remarks}</Text>
-    </View>
-  );
-}
-
-function Signature({ caption, name, role }: { caption: string; name: string; role: string }) {
-  return (
-    <View style={styles.signature}>
-      <Text style={styles.signatureCaption}>{caption}</Text>
-      <View style={styles.signatureLine}>
-        <Text style={styles.signatureName}>{name}</Text>
-        <Text style={styles.signatureRole}>{role}</Text>
-      </View>
     </View>
   );
 }
@@ -139,16 +112,7 @@ export default function EvaluationPdfDocument(props: EvaluationPdfProps) {
   return (
     <Document title={`Student evaluation – ${student.name} (${student.id})`} author="Auditrix">
       <Page size="A4" style={styles.page}>
-        <View style={styles.letterhead}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image, not an HTML img */}
-          <Image src={props.sealPath} style={styles.seal} />
-          <View style={styles.letterText}>
-            <Text style={styles.republic}>Republic of the Philippines</Text>
-            <Text style={styles.university}>KALINGA STATE UNIVERSITY</Text>
-            {props.college && <Text style={styles.college}>{props.college}</Text>}
-          </View>
-        </View>
-        <View style={styles.rule} />
+        <KsuLetterhead sealPath={props.sealPath} college={props.college} />
 
         <Text style={styles.title}>STUDENT EVALUATION</Text>
         <Text style={styles.asOf}>As of {props.asOf}</Text>
