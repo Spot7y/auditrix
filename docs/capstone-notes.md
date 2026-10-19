@@ -50,10 +50,16 @@ it was taken**, and a status:
 | Status | Meaning |
 | --- | --- |
 | **Completed** | Passed, and the pass counts (taken in order). |
-| **Available** | Can be taken now (requirements met), or must be retaken (failed / taken out of order). |
-| **Pending** | INC, or waiting for another subject's final grade. |
-| **Unavailable** | Requirements not met yet; the missing ones are listed ("Needs: CC 104"). |
-| **Violation** | Taken before a requirement was met; the reason is given, e.g. "CC 101 was taken in the same term (24-1)". |
+| **Available** | Can be taken now (requirements met), or must be retaken (failed, or taken out of order and its requirements are passed now). |
+| **INC** | The subject's grade is INC; it counts once completed. A subject passed with a co-requisite that is INC is shown the same way. |
+| **Unavailable** | Requirements not met yet; the missing ones are listed ("Needs: CC 104"), with "(INC)" after one that is INC ("Needs: MATH 101 (INC)"). |
+| **Violation** | Taken before a requirement was met, and the requirement still isn't met; the reason is given, e.g. "NSTP 1 was not passed before 25-2". |
+
+A subject taken out of order stays a **Violation** only while what it needed is still missing. Example: NSTP 1 failed
+(5.0), NSTP 2 passed the next semester anyway → NSTP 2 is a Violation. Once NSTP 1 is retaken and passed, NSTP 2
+becomes **Available** with "Retake — taken out of order in 25-2: NSTP 1 was passed only in 26-1": its earlier pass
+still doesn't count, so it is retaken. It is still counted as taken out of order on the student's page, the
+students list and the dashboard. Co-requisites taken in different terms stay a Violation until retaken together.
 
 The page also shows: subjects completed, units earned (with progress bar), subjects available now, number of
 violations, a red alert listing subjects taken out of order, an amber "Year standing: please verify" alert when it
@@ -319,6 +325,9 @@ the order grades are entered, and all five cases above are covered by automated 
 - 2026-10-14 — printable student evaluation (PDF); forms keep what was typed when refused; notifications can no
   longer be put on screen by a link; loading placeholders and fewer database round trips per page.
 - 2026-10-18 — printable Student Movements report (PDF) for chairpersons and deans, following the page's filters.
+- 2026-10-19 — "Pending" removed: an INC subject shows INC, and a subject whose prerequisite is INC shows
+  Unavailable ("Needs: MATH 101 (INC)"); a subject taken out of order becomes Available to retake once its
+  prerequisite is passed.
 
 ---
 
@@ -415,11 +424,11 @@ Full list of screens worth showing:
 
 ## 9. Testing that was actually done
 
-**Automated unit and integration tests: 209, all passing** (`npm test`). They cover:
+**Automated unit and integration tests: 210, all passing** (`npm test`). They cover:
 
 | Area | What is checked |
 | --- | --- |
-| Audit engine | prerequisite chains; pending prerequisites; the student's own grade; prerequisites checked by term (same term, later term, never passed, out-of-order credit, retake clears it, midyear ordering, waiting for a grade); INC (resolved term, taken while INC); co-requisites (passed together, one failed, different terms, one without the other, waiting, partner not yet available); "all subjects completed" |
+| Audit engine | prerequisite chains; INC prerequisites shown as unavailable with "(INC)"; a violation becoming available to retake once its prerequisite is passed; the student's own grade; prerequisites checked by term (same term, later term, never passed, out-of-order credit, retake clears it, midyear ordering, waiting for a grade); INC (resolved term, taken while INC); co-requisites (passed together, one failed, different terms, one without the other, waiting, partner not yet available); "all subjects completed" |
 | Year level & standing | Operations Manual thresholds (25 / >50 / 75%); finishing earlier years; only grades before the current semester; failed and out-of-order subjects excluded; registered level and chairperson override; year standing as of the term taken; "please verify" |
 | Regular/irregular | full load, back subjects on top, already passed, missing subjects, failed earlier, graded in the current term, not determined (no enrollment, no semester set, nothing prescribed) |
 | Grade entry | KSU grade values; rejected rows with reasons; same-term violations in any row order; entry order doesn't matter; violations survive re-saving; INC completion and its term; earlier-term protection and confirmed correction; malformed terms |

@@ -9,6 +9,8 @@ import { yearLevelFromProgress, type YearLevelEntry, type YearLevelInfo } from "
 interface TakenCheck {
   /** Requirements that weren't met in the term the subject was taken. */
   violations: string[];
+  /** Of those, co-requisites not taken in the same term; only retaking both together fixes these. */
+  pairing: string[];
   /** Requirements that can't be decided yet, e.g. a prerequisite with no final grade. */
   pending: string[];
   /** Requirements that couldn't be confirmed from the records; the credit still counts. */
@@ -150,7 +152,7 @@ class RecordAudit implements AuditContext {
 
     const subject = this.record.curriculum.findSubject(code);
     const attempt = this.record.recordOf(code);
-    const result: TakenCheck = { violations: [], pending: [], verify: [] };
+    const result: TakenCheck = { violations: [], pairing: [], pending: [], verify: [] };
     if (!subject || !attempt || attempt.status === "NOT_TAKEN") return result;
 
     const hitsBefore = this.guardHits;
@@ -165,11 +167,12 @@ class RecordAudit implements AuditContext {
     for (const partner of this.corequisitesOf(code)) {
       const other = this.record.recordOf(partner);
       if (!other || other.status === "NOT_TAKEN") {
-        result.violations.push(`${partner} (co-requisite) wasn't taken in the same term`);
+        result.pairing.push(`${partner} (co-requisite) wasn't taken in the same term`);
       } else if (asOf && isValidTerm(other.term) && other.term !== asOf) {
-        result.violations.push(`${partner} (co-requisite) was taken in ${other.term}, not ${asOf}`);
+        result.pairing.push(`${partner} (co-requisite) was taken in ${other.term}, not ${asOf}`);
       }
     }
+    result.violations.push(...result.pairing);
 
     if (this.guardHits === hitsBefore) this.checks.set(code, result);
     return result;
@@ -238,6 +241,21 @@ class RecordAudit implements AuditContext {
     warnings.push(...check.verify);
 
     if (check.violations.length > 0) {
+      // Taken out of order, but what it needed is passed now (e.g. NSTP 2 taken
+      // while NSTP 1 was failed, then NSTP 1 retaken and passed): it only has
+      // to be retaken. Co-requisites taken apart stay a violation.
+      const now = check.pairing.length === 0 ? this.notTaken(subject, partners, make) : null;
+      if (now?.status === "AVAILABLE") {
+        const when = isValidTerm(attempt.term) ? ` in ${attempt.term}` : "";
+        return {
+          ...make(
+            "AVAILABLE",
+            [`Retake — taken out of order${when}: ${check.violations.join("; ")}`, ...now.reasons],
+            [...warnings, ...check.pending]
+          ),
+          outOfOrder: true,
+        };
+      }
       return make("VIOLATION", check.violations, [...warnings, ...check.pending]);
     }
 
@@ -248,12 +266,13 @@ class RecordAudit implements AuditContext {
           return make("COMPLETED", attempt.resolvedTerm ? [`INC resolved in ${attempt.resolvedTerm}`] : [], warnings);
         }
         if (credit.kind === "PENDING") {
+          // Passed, but it counts only with its co-requisite, which is INC.
           const waiting = partners.filter((p) => this.record.statusOf(p) === "INCOMPLETE");
           const reasons = [
-            ...(waiting.length > 0 ? [`Waiting for the grade of ${waiting.join(", ")} (co-requisite)`] : []),
+            ...(waiting.length > 0 ? [`Counts once the INC in ${waiting.join(", ")} (co-requisite) is completed`] : []),
             ...check.pending,
           ];
-          return make("PENDING", reasons.length > 0 ? reasons : ["Waiting for a co-requisite's earlier grades"], warnings);
+          return make("INCOMPLETE", reasons.length > 0 ? reasons : ["Counts once its co-requisite’s INC is completed"], warnings);
         }
         return make(
           "AVAILABLE",
@@ -268,11 +287,7 @@ class RecordAudit implements AuditContext {
           [...warnings, ...check.pending]
         );
       default:
-        return make(
-          "PENDING",
-          ["Incomplete grade"],
-          [...warnings, ...check.pending]
-        );
+        return make("INCOMPLETE", [], [...warnings, ...check.pending]);
     }
   }
 
@@ -300,8 +315,8 @@ class RecordAudit implements AuditContext {
     if (unmet.length === 0) {
       return make("AVAILABLE", partners.length > 0 ? [`Take together with ${partners.join(", ")}`] : []);
     }
-    const status: AuditStatus = unmet.every((o) => o.state === "PENDING") ? "PENDING" : "UNAVAILABLE";
-    return make(status, unmet.map((o) => o.reason));
+    // A prerequisite that is INC is still missing: the reason says so.
+    return make("UNAVAILABLE", unmet.map((o) => o.reason));
   }
 }
 

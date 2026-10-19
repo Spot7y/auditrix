@@ -7,6 +7,7 @@ import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
 import { describeTerm } from "../../../../../lib/domain/Term";
 import { isCorequisite } from "../../../../../lib/domain/requirements/CoursePrerequisite";
+import { isOutOfOrder } from "../../../../../lib/domain/AuditResult";
 import type { EnrollmentStatus } from "../../../../../lib/domain/enrollmentStatus";
 import { formatDate, formatDateTime, formatGrade, LOCK_LABEL } from "../../../../../lib/format";
 import EvaluationPdfDocument, { type EvaluationSection } from "./EvaluationPdfDocument";
@@ -30,13 +31,14 @@ function remarks({ result, recordStatus, resolvedTerm }: StudentAuditRow): strin
       return `Taken out of order: ${reasons}`;
     case "COMPLETED":
       return resolvedTerm ? `Passed (INC completed ${resolvedTerm})` : "Passed";
-    case "PENDING":
-      return reasons || "Pending";
+    case "INCOMPLETE":
+      return reasons || "Incomplete";
     case "UNAVAILABLE":
       return `${recordStatus === "FAILED" ? "Failed. " : ""}Needs ${reasons}`;
     case "AVAILABLE":
+      if (result.outOfOrder) return reasons;
       if (recordStatus === "FAILED") return "Failed, to be retaken";
-      if (recordStatus === "INCOMPLETE") return "Incomplete";
+      if (recordStatus !== "NOT_TAKEN" && reasons) return reasons;
       return "Not yet taken";
   }
 }
@@ -88,13 +90,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       grade: row.recordStatus === "INCOMPLETE" && row.grade === null ? "INC" : formatGrade(row.grade),
       term: row.term ?? "—",
       remarks: remarks(row),
-      violation: row.result.status === "VIOLATION",
+      violation: isOutOfOrder(row.result),
     });
     sections.set(key, section);
   }
 
   const completed = data.rows.filter((r) => r.result.status === "COMPLETED");
-  const violations = data.rows.filter((r) => r.result.status === "VIOLATION");
+  const violations = data.rows.filter((r) => isOutOfOrder(r.result));
   const now = new Date();
 
   const pdf = await renderToBuffer(

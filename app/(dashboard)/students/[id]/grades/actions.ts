@@ -6,6 +6,7 @@ import { createServerClientForUser } from "../../../../../lib/domain/supabase/se
 import { SupabaseAcademicRecordRepository } from "../../../../../lib/domain/import/SupabaseAcademicRecordRepository";
 import { GradeEntryService } from "../../../../../lib/domain/import/GradeEntryService";
 import { AuditEngine } from "../../../../../lib/domain/AuditEngine";
+import { isOutOfOrder } from "../../../../../lib/domain/AuditResult";
 import { getCurrentStaff } from "../../../../../lib/queries/staff";
 import { getRecordLock } from "../../../../../lib/queries/transitions";
 import { getCurrentTerm } from "../../../../../lib/queries/yearLevels";
@@ -83,7 +84,7 @@ export async function submitTermGrades(
   const violationsBefore = new Set(
     new AuditEngine()
       .auditCurriculum(record)
-      .filter((r) => r.status === "VIOLATION")
+      .filter(isOutOfOrder)
       .map((r) => r.subjectCode)
   );
 
@@ -101,7 +102,7 @@ export async function submitTermGrades(
     const saved = result.rows.length === 1 ? "1 grade" : `${result.rows.length} grades`;
     const params = new URLSearchParams({ success: `Saved ${saved} for term ${term}.` });
     const newViolations = result.audit
-      .filter((r) => r.status === "VIOLATION" && !violationsBefore.has(r.subjectCode))
+      .filter((r) => isOutOfOrder(r) && !violationsBefore.has(r.subjectCode))
       .map((r) => r.subjectCode);
     if (newViolations.length > 0) {
       params.set(

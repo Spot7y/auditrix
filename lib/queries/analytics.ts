@@ -2,6 +2,7 @@ import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { fetchAll } from "../domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
+import { isOutOfOrder } from "../domain/AuditResult";
 import { getCurrentStaff } from "./staff";
 import { getCurrentTerm } from "./yearLevels";
 import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentStatus";
@@ -143,12 +144,12 @@ export async function getAnalytics(): Promise<ProgramSummary[]> {
 
     if (record) {
       const audit = engine.auditStudent(record, currentTerm);
-      hasViolation = audit.results.some((r) => r.status === "VIOLATION");
+      hasViolation = audit.results.some(isOutOfOrder);
 
       const programViolations = violations.get(program) ?? new Map<string, SubjectViolation>();
       violations.set(program, programViolations);
       for (const result of audit.results) {
-        if (result.status !== "VIOLATION") continue;
+        if (!isOutOfOrder(result)) continue;
         const subject = record.curriculum.findSubject(result.subjectCode);
         const entry = programViolations.get(result.subjectCode) ?? {
           code: result.subjectCode,

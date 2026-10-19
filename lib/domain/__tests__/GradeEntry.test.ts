@@ -7,6 +7,7 @@ import { GradeValidator } from "../import/GradeValidator";
 import { GradeEntryService } from "../import/GradeEntryService";
 import { InMemoryAcademicRecordRepository } from "../import/InMemoryAcademicRecordRepository";
 import type { Subject } from "../Subject";
+import { isOutOfOrder, type AuditResult } from "../AuditResult";
 
 describe("GradeValidator — KSU grade values", () => {
   const validator = new GradeValidator();
@@ -92,6 +93,8 @@ describe("GradeEntryService — submitting a term's grades", () => {
   const grade = (subjectCode: string, value: number) => ({ subjectCode, input: { kind: "numeric" as const, value } });
   const statusIn = (result: { audit: { subjectCode: string; status: string }[] }, code: string) =>
     result.audit.find((a) => a.subjectCode === code)?.status;
+  const outOfOrderIn = (result: { audit: AuditResult[] }, code: string) =>
+    isOutOfOrder(result.audit.find((a) => a.subjectCode === code)!);
 
   it("flags a subject taken before its prerequisite was passed", async () => {
     const { curriculum, service } = setup();
@@ -111,7 +114,9 @@ describe("GradeEntryService — submitting a term's grades", () => {
     ]) {
       const { curriculum, service } = setup();
       const result = await service.submit({ studentId: "23-110414", term: "23-1", entries }, curriculum, "test-chairperson");
-      assert.equal(statusIn(result, "CC 103"), "VIOLATION");
+      // CC 101 is passed now, so CC 103 is available to be retaken, still marked as taken out of order.
+      assert.equal(statusIn(result, "CC 103"), "AVAILABLE");
+      assert.ok(outOfOrderIn(result, "CC 103"));
     }
   });
 
@@ -149,13 +154,14 @@ describe("GradeEntryService — submitting a term's grades", () => {
     const { curriculum, service } = setup();
     await service.submit({ studentId: "23-110414", term: "23-1", entries: [grade("CC 103", 2.0)] }, curriculum, "chair");
     await service.submit({ studentId: "23-110414", term: "23-2", entries: [grade("CC 101", 1.5)] }, curriculum, "chair");
-    // Correcting CC 103's grade in the term it was taken doesn't clear the violation.
+    // Correcting CC 103's grade in the term it was taken doesn't clear it: it still has to be retaken.
     const result = await service.submit(
       { studentId: "23-110414", term: "23-1", entries: [grade("CC 103", 1.75)] },
       curriculum,
       "chair"
     );
-    assert.equal(statusIn(result, "CC 103"), "VIOLATION");
+    assert.ok(outOfOrderIn(result, "CC 103"));
+    assert.notEqual(statusIn(result, "CC 103"), "COMPLETED");
   });
 
   it("completes an INC in its original term and records when it was resolved", async () => {

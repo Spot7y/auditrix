@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ClipboardPen, History, Lock, Pencil, Printer, Repeat, TriangleAlert } from "lucide-react";
 import type { Requirement } from "../../../../lib/domain/requirements/Requirement";
 import { isCorequisite } from "../../../../lib/domain/requirements/CoursePrerequisite";
+import { isOutOfOrder } from "../../../../lib/domain/AuditResult";
 import { getStudentAudit } from "../../../../lib/queries/students";
 import { getPendingShiftRequest, getRecordLock } from "../../../../lib/queries/transitions";
 import { reopenRecord } from "./transitions/actions";
@@ -110,7 +111,8 @@ export default async function StudentAuditPage({ params }: { params: Promise<{ i
   const earnedUnits = data.rows
     .filter((r) => r.result.status === "COMPLETED")
     .reduce((sum, r) => sum + Number(r.subject.units), 0);
-  const violations = data.rows.filter((r) => r.result.status === "VIOLATION");
+  // Still a violation, or available again to be retaken: either way taken out of order.
+  const violations = data.rows.filter((r) => isOutOfOrder(r.result));
   const toVerify = data.rows.filter((r) => r.result.warnings.some((w) => w.startsWith("Year standing: please verify")));
   const progress = totalUnits ? Math.round((earnedUnits / totalUnits) * 100) : 0;
 

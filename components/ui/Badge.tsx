@@ -23,7 +23,7 @@ export function Badge({ tone = "gray", children }: { tone?: BadgeTone; children:
 const statusTone: Record<AuditStatus, BadgeTone> = {
   COMPLETED: "green",
   AVAILABLE: "blue",
-  PENDING: "amber",
+  INCOMPLETE: "amber",
   UNAVAILABLE: "gray",
   VIOLATION: "red",
 };
@@ -31,7 +31,7 @@ const statusTone: Record<AuditStatus, BadgeTone> = {
 const statusLabel: Record<AuditStatus, string> = {
   COMPLETED: "Completed",
   AVAILABLE: "Available",
-  PENDING: "Pending",
+  INCOMPLETE: "INC",
   UNAVAILABLE: "Unavailable",
   VIOLATION: "Violation",
 };

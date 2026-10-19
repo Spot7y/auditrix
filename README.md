@@ -6,8 +6,8 @@ what each student has completed, can take next, or took out of order.
 
 ## Features
 
-- **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
-  or Violation, with the reason (e.g. the missing prerequisite).
+- **Student audit.** Every subject in a student's curriculum is marked Completed, Available, INC, Unavailable
+  or Violation, with the reason (e.g. the missing prerequisite, or "MATH 101 (INC)" when it's INC).
 - **Paste from MIS.** On Enter Grades, the chairperson pastes a student's "Academic Grades" copied from the
   KSU-MIS (all terms at once; the MIS can't export). Auditrix reads each term and grade, matches subjects by code or
   else by title (the rest can be picked by hand), and shows what will happen to each row: new, retake, completes an
