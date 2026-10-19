@@ -25,6 +25,7 @@ import { fetchAll } from "../lib/domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../lib/domain/import/SupabaseAcademicRecordRepository";
 import { AcademicRecord } from "../lib/domain/AcademicRecord";
 import { AuditEngine } from "../lib/domain/AuditEngine";
+import { isOutOfOrder } from "../lib/domain/AuditResult";
 import type { CurriculumMap } from "../lib/domain/CurriculumMap";
 import type { SubjectRecord } from "../lib/domain/SubjectRecord";
 import type { YearLevelEntry } from "../lib/domain/yearLevels";
@@ -230,7 +231,7 @@ function planGrades(
   for (let i = 0; i < 30; i++) {
     const unwanted = engine
       .auditCurriculum(recordOf())
-      .filter((r) => r.status === "VIOLATION" && !allowed.has(r.subjectCode))
+      .filter((r) => isOutOfOrder(r) && !allowed.has(r.subjectCode))
       .map((r) => r.subjectCode);
     if (unwanted.length === 0) break;
     records = records.filter((r) => !unwanted.includes(r.subjectCode));
@@ -246,7 +247,7 @@ function planGrades(
   const record = recordOf();
   const { results, yearLevel: level } = engine.auditStudent(record, currentTerm);
   const status = enrollmentStatus(record, currentTerm, level.level);
-  const violations = results.filter((r) => r.status === "VIOLATION").map((r) => r.subjectCode);
+  const violations = results.filter(isOutOfOrder).map((r) => r.subjectCode);
   const outcome = [
     `year ${level.level}`,
     status.kind === "REGULAR" ? "regular" : status.kind === "IRREGULAR" ? "irregular" : "not determined",

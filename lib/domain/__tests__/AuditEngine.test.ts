@@ -7,6 +7,7 @@ import { CoursePrerequisite } from "../requirements/CoursePrerequisite";
 import { YearStandingRequirement, meetsUnitThreshold } from "../requirements/YearStandingRequirement";
 import { CompletionRequirement } from "../requirements/CompletionRequirement";
 import type { Subject } from "../Subject";
+import { isOutOfOrder } from "../AuditResult";
 import type { SubjectRecord, SubjectRecordStatus } from "../SubjectRecord";
 import type { YearLevelEntry } from "../yearLevels";
 
@@ -58,8 +59,8 @@ describe("AuditEngine — prerequisite chains", () => {
   });
 });
 
-describe("AuditEngine — pending prerequisites", () => {
-  it("is PENDING when every unmet prerequisite is incomplete", () => {
+describe("AuditEngine — prerequisites that are INC", () => {
+  it("is UNAVAILABLE when the prerequisites are INC, and says so", () => {
     const curriculum = new CurriculumMap("BSIT", [
       subject("CC 111"),
       subject("CC 112"),
@@ -72,13 +73,13 @@ describe("AuditEngine — pending prerequisites", () => {
 
     assert.deepEqual(engine.auditEnrollment(record, "CC 120"), {
       subjectCode: "CC 120",
-      status: "PENDING",
-      reasons: ["CC 111", "CC 112"],
+      status: "UNAVAILABLE",
+      reasons: ["CC 111 (INC)", "CC 112 (INC)"],
       warnings: [],
     });
   });
 
-  it("is UNAVAILABLE when one unmet prerequisite is pending but another was never taken", () => {
+  it("lists an INC prerequisite with one that was never taken", () => {
     const curriculum = new CurriculumMap("BSIT", [
       subject("CC 105"),
       subject("CC 108"),
@@ -93,7 +94,7 @@ describe("AuditEngine — pending prerequisites", () => {
     assert.deepEqual(engine.auditEnrollment(record, "CC 116"), {
       subjectCode: "CC 116",
       status: "UNAVAILABLE",
-      reasons: ["CC 108", "CC 109"],
+      reasons: ["CC 108 (INC)", "CC 109"],
       warnings: [],
     });
   });
@@ -112,10 +113,10 @@ describe("AuditEngine — the student's own grade", () => {
     });
   });
 
-  it("is PENDING while the subject itself is incomplete", () => {
+  it("is INC while the subject itself is incomplete", () => {
     const record = new AcademicRecord("S", curriculum, 1, [taken("CC 102", "25-1", "INCOMPLETE")]);
-    assert.equal(engine.auditEnrollment(record, "CC 102").status, "PENDING");
-    assert.deepEqual(engine.auditEnrollment(record, "CC 102").reasons, ["Incomplete grade"]);
+    assert.equal(engine.auditEnrollment(record, "CC 102").status, "INCOMPLETE");
+    assert.deepEqual(engine.auditEnrollment(record, "CC 102").reasons, []);
   });
 
   it("rejects an unknown subject code", () => {
@@ -150,28 +151,50 @@ describe("AuditEngine — prerequisites are checked by term", () => {
     assert.equal(statusOf(results, "CC 103")?.status, "COMPLETED");
   });
 
-  it("flags a prerequisite taken in the same term", () => {
+  it("flags a prerequisite taken in the same term; once it's passed, the subject is to be retaken", () => {
     for (const records of [
       [taken("CC 101", "24-1"), taken("CC 103", "24-1")],
       [taken("CC 103", "24-1"), taken("CC 101", "24-1")],
     ]) {
       assert.deepEqual(statusOf(audit(records), "CC 103"), {
         subjectCode: "CC 103",
-        status: "VIOLATION",
-        reasons: ["CC 101 was taken in the same term (24-1)"],
+        status: "AVAILABLE",
+        reasons: ["Retake — taken out of order in 24-1: CC 101 was taken in the same term (24-1)"],
         warnings: [],
+        outOfOrder: true,
       });
     }
   });
 
   it("flags a prerequisite passed only in a later term", () => {
     const results = audit([taken("CC 103", "24-1"), taken("CC 101", "24-2")]);
-    assert.deepEqual(statusOf(results, "CC 103")?.reasons, ["CC 101 was passed only in 24-2"]);
+    assert.deepEqual(statusOf(results, "CC 103")?.reasons, ["Retake — taken out of order in 24-1: CC 101 was passed only in 24-2"]);
   });
 
   it("flags a prerequisite that was never passed", () => {
     const results = audit([taken("CC 101", "24-1", "FAILED"), taken("CC 103", "24-2")]);
-    assert.deepEqual(statusOf(results, "CC 103")?.reasons, ["CC 101 was not passed before 24-2"]);
+    assert.deepEqual(statusOf(results, "CC 103"), {
+      subjectCode: "CC 103",
+      status: "VIOLATION",
+      reasons: ["CC 101 was not passed before 24-2"],
+      warnings: [],
+    });
+  });
+
+  it("is a violation until the prerequisite is retaken and passed, then available to retake", () => {
+    // NSTP 1 failed, NSTP 2 passed anyway, then NSTP 1 retaken and passed.
+    const before = audit([taken("CC 101", "24-1", "FAILED"), taken("CC 103", "24-2")]);
+    assert.equal(statusOf(before, "CC 103")?.status, "VIOLATION");
+    const after = audit([taken("CC 101", "25-1"), taken("CC 103", "24-2")]);
+    assert.deepEqual(statusOf(after, "CC 103"), {
+      subjectCode: "CC 103",
+      status: "AVAILABLE",
+      reasons: ["Retake — taken out of order in 24-2: CC 101 was passed only in 25-1"],
+      warnings: [],
+      outOfOrder: true,
+    });
+    // Its pass still doesn't count for the subjects after it.
+    assert.deepEqual(statusOf(after, "CC 107")?.reasons, ["CC 103"]);
   });
 
   it("flags a subject with an INC that was taken while its prerequisite wasn't passed", () => {
@@ -181,7 +204,7 @@ describe("AuditEngine — prerequisites are checked by term", () => {
 
   it("gives no credit for a subject taken out of order, so later subjects are flagged too", () => {
     const results = audit([taken("CC 101", "24-1"), taken("CC 103", "24-1"), taken("CC 107", "24-2")]);
-    assert.equal(statusOf(results, "CC 103")?.status, "VIOLATION");
+    assert.ok(isOutOfOrder(statusOf(results, "CC 103")!));
     assert.deepEqual(statusOf(results, "CC 107")?.reasons, ["CC 103 doesn't count (it has to be retaken)"]);
   });
 
@@ -206,8 +229,8 @@ describe("AuditEngine — prerequisites are checked by term", () => {
   it("orders the midyear as KSU records do: 24-S comes after 23-2 and before 24-1", () => {
     assert.equal(statusOf(audit([taken("CC 101", "23-2"), taken("CC 103", "24-S")]), "CC 103")?.status, "COMPLETED");
     assert.equal(statusOf(audit([taken("CC 101", "24-S"), taken("CC 103", "24-1")]), "CC 103")?.status, "COMPLETED");
-    assert.equal(statusOf(audit([taken("CC 101", "24-1"), taken("CC 103", "24-S")]), "CC 103")?.status, "VIOLATION");
-    assert.equal(statusOf(audit([taken("CC 101", "24-2"), taken("CC 103", "24-S")]), "CC 103")?.status, "VIOLATION");
+    assert.ok(isOutOfOrder(statusOf(audit([taken("CC 101", "24-1"), taken("CC 103", "24-S")]), "CC 103")!));
+    assert.ok(isOutOfOrder(statusOf(audit([taken("CC 101", "24-2"), taken("CC 103", "24-S")]), "CC 103")!));
   });
 
 });
@@ -227,7 +250,7 @@ describe("AuditEngine — INC", () => {
 
   it("flags a subject taken while its prerequisite was still INC", () => {
     assert.deepEqual(cc103([resolved("25-1"), taken("CC 103", "24-2")]).reasons, [
-      "CC 101 was still INC in 24-2 (resolved 25-1)",
+      "Retake — taken out of order in 24-2: CC 101 was still INC in 24-2 (resolved 25-1)",
     ]);
     assert.deepEqual(cc103([taken("CC 101", "24-1", "INCOMPLETE"), taken("CC 103", "24-2")]).reasons, [
       "CC 101 was still INC in 24-2",
@@ -286,8 +309,18 @@ describe("AuditEngine — co-requisites", () => {
 
   it("waits for the other's grade", () => {
     const results = audit([taken("CC 104", "25-1", "INCOMPLETE"), taken("CC 105", "25-1")]);
-    assert.deepEqual(statusOf(results, "CC 105")?.reasons, ["Waiting for the grade of CC 104 (co-requisite)"]);
-    assert.equal(statusOf(results, "CC 106")?.status, "PENDING");
+    assert.deepEqual(statusOf(results, "CC 105"), {
+      subjectCode: "CC 105",
+      status: "INCOMPLETE",
+      reasons: ["Counts once the INC in CC 104 (co-requisite) is completed"],
+      warnings: [],
+    });
+    assert.deepEqual(statusOf(results, "CC 106"), {
+      subjectCode: "CC 106",
+      status: "UNAVAILABLE",
+      reasons: ["CC 105 (its co-requisite is INC)"],
+      warnings: [],
+    });
   });
 
   it("isn't available when the other can't be taken yet", () => {
@@ -400,7 +433,9 @@ describe("YearStandingRequirement — as of the term the subject was taken", () 
 
   it("doesn't count units passed in the same term or later", () => {
     const result = cc300(1, [...firstTwoYears, taken("CC 300", "25-1")], [registered("24-1", 1)]);
-    assert.equal(result.status, "VIOLATION");
+    // The standing is reached now, so it's to be retaken.
+    assert.ok(isOutOfOrder(result));
+    assert.equal(result.status, "AVAILABLE");
   });
 
   it("asks to verify, rather than flagging, when nothing is recorded for that term", () => {
@@ -527,7 +562,7 @@ describe("CompletionRequirement", () => {
       taken("CC 128", "26-2"),
     ]);
     assert.deepEqual(engine.auditEnrollment(record, "CC 128").reasons, [
-      "All subjects completed (1 subject was not passed before 26-2)",
+      "Retake — taken out of order in 26-2: All subjects completed (1 subject was not passed before 26-2)",
     ]);
   });
 });

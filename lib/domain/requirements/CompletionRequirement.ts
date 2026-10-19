@@ -41,7 +41,9 @@ export class CompletionRequirement implements Requirement {
 
     if (missing === 0 && waiting === 0) return MET;
     if (term === null) {
-      return { state: missing > 0 ? "UNMET" : "PENDING", reason: this.description };
+      return missing > 0
+        ? { state: "UNMET", reason: this.description }
+        : { state: "PENDING", reason: `${this.description} (some are still INC)` };
     }
     if (missing > 0) {
       const count = missing === 1 ? "1 subject was" : `${missing} subjects were`;

@@ -28,7 +28,9 @@ export class CoursePrerequisite implements Requirement {
     if (asOf === null || !isValidTerm(asOf)) {
       const credit = context.creditOf(code);
       if (credit.kind === "CREDITED") return MET;
-      if (credit.kind === "PENDING") return { state: "PENDING", reason: code };
+      if (credit.kind === "PENDING") {
+        return { state: "PENDING", reason: attempt?.status === "INCOMPLETE" ? `${code} (INC)` : `${code} (its co-requisite is INC)` };
+      }
       return { state: "UNMET", reason: code };
     }
 

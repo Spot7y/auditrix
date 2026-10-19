@@ -2,7 +2,7 @@ import { createServerClientForUser } from "../domain/supabase/serverClient";
 import { fetchAll } from "../domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../domain/import/SupabaseAcademicRecordRepository";
 import { AuditEngine } from "../domain/AuditEngine";
-import type { AuditResult } from "../domain/AuditResult";
+import { isOutOfOrder, type AuditResult } from "../domain/AuditResult";
 import type { Subject } from "../domain/Subject";
 import { searchTerms } from "../domain/searchTerms";
 import { enrollmentStatus, type EnrollmentStatus } from "../domain/enrollmentStatus";
@@ -95,7 +95,7 @@ export async function listStudents(
     const { results, yearLevel } = engine.auditStudent(record, term);
     const closed = recordStatus === "DROPPED" || recordStatus === "TRANSFERRED_OUT";
     const enrollment = enrollmentStatus(record, term, yearLevel.level);
-    const outOfOrder = results.filter((r) => r.status === "VIOLATION").map((r) => r.subjectCode);
+    const outOfOrder = results.filter(isOutOfOrder).map((r) => r.subjectCode);
 
     const notes: string[] = [];
     if (outOfOrder.length > 0) notes.push(`Out of order: ${codeList(outOfOrder)}`);

@@ -6,8 +6,8 @@ what each student has completed, can take next, or took out of order.
 
 ## Features
 
-- **Student audit.** Every subject in a student's curriculum is marked Completed, Available, Pending, Unavailable
-  or Violation, with the reason (e.g. the missing prerequisite).
+- **Student audit.** Every subject in a student's curriculum is marked Completed, Available, INC, Unavailable
+  or Violation, with the reason (e.g. the missing prerequisite, or "MATH 101 (INC)" when it's INC).
 - **Grade entry.** Chairpersons enter a term's grades at once. Only KSU grade values are accepted (1.0–3.0 passing,
   5.0 failing, INC); a subject is recorded only once it has a grade. The term's semester follows the chosen
   curriculum semester (midyear is S) and can still be changed, e.g. for a subject retaken in a midyear; the school

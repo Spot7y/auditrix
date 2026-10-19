@@ -32,7 +32,7 @@ import { fetchAll } from "../lib/domain/supabase/fetchAll";
 import { SupabaseAcademicRecordRepository } from "../lib/domain/import/SupabaseAcademicRecordRepository";
 import { AcademicRecord } from "../lib/domain/AcademicRecord";
 import { AuditEngine } from "../lib/domain/AuditEngine";
-import type { AuditResult } from "../lib/domain/AuditResult";
+import { isOutOfOrder, type AuditResult } from "../lib/domain/AuditResult";
 import type { CurriculumMap } from "../lib/domain/CurriculumMap";
 import type { Subject } from "../lib/domain/Subject";
 import type { SubjectRecord } from "../lib/domain/SubjectRecord";
@@ -621,7 +621,7 @@ function settle(id: string, ctx: Context, draft: Draft, history: YearLevelEntry[
     const record = new AcademicRecord(id, ctx.curriculum, draft.year, records, history);
     const unwanted = engine
       .auditCurriculum(record)
-      .filter((r) => r.status === "VIOLATION" && !allow.has(r.subjectCode))
+      .filter((r) => isOutOfOrder(r) && !allow.has(r.subjectCode))
       .map((r) => r.subjectCode);
     if (unwanted.length === 0) break;
     records = records.filter((r) => !unwanted.includes(r.subjectCode));
@@ -633,7 +633,7 @@ function settle(id: string, ctx: Context, draft: Draft, history: YearLevelEntry[
     results,
     yearLevel,
     enrollment: enrollmentStatus(record, ctx.currentTerm, yearLevel.level),
-    violations: results.filter((r) => r.status === "VIOLATION").map((r) => r.subjectCode),
+    violations: results.filter(isOutOfOrder).map((r) => r.subjectCode),
   };
   return { records, outcome };
 }
