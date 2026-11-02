@@ -69,14 +69,51 @@ function parseSemester(raw: string | undefined): number {
 
 const semesterLabel = (semester: number) => (semester === 3 ? "S" : String(semester));
 
+const LEVEL_WORDS: Record<string, number> = {
+  "1": 1, first: 1, i: 1,
+  "2": 2, second: 2, ii: 2,
+  "3": 3, third: 3, iii: 3,
+  "4": 4, fourth: 4, iv: 4,
+};
+const CLASS_WORDS: Record<string, number> = { freshman: 1, sophomore: 2, junior: 3, senior: 4 };
+
+/** "4th Yr Standing": how a year standing is written in exports and the template. */
+export function yearStandingLabel(level: number): string {
+  const ordinal = { 1: "1st", 2: "2nd", 3: "3rd" }[level] ?? `${level}th`;
+  return `${ordinal} Yr Standing`;
+}
+
+/**
+ * The year level a year-standing prerequisite asks for, however it is
+ * written: "4th Yr Standing", "Fourth year standing", "4th-year standing",
+ * "4th yr. std.", "IV year standing", "4th year" or "Senior standing".
+ * Null when the text isn't a year standing.
+ */
+export function parseYearStanding(raw: string): number | null {
+  const words = raw.toLowerCase().replace(/[.\-_]/g, " ").split(/\s+/).filter(Boolean);
+  const isStanding = (rest: string[]) =>
+    rest.length === 1 && ["standing", "std", "stdg"].includes(rest[0]);
+
+  const classLevel = CLASS_WORDS[words[0]];
+  if (classLevel) {
+    const rest = words[1] === "year" || words[1] === "yr" ? words.slice(2) : words.slice(1);
+    return isStanding(rest) ? classLevel : null;
+  }
+
+  // A digit with any ordinal ending, so older exports' "3th" still reads.
+  const level = LEVEL_WORDS[words[0].replace(/^(\d)(st|nd|rd|th)$/, "$1")];
+  if (!level || !["yr", "yrs", "year", "years"].includes(words[1])) return null;
+  const rest = words[2] === "level" ? words.slice(3) : words.slice(2);
+  // "4th year" alone also means the standing.
+  return rest.length === 0 || isStanding(rest) ? level : null;
+}
+
 export function parseRequirementToken(raw: string): ParsedRequirement | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
 
-  const yearMatch = trimmed.match(/^(\d)(?:st|nd|rd|th)?\s+(?:yr|year)s?\s+standing$/i);
-  if (yearMatch) {
-    return { kind: "year_standing", level: Number(yearMatch[1]) };
-  }
+  const level = parseYearStanding(trimmed);
+  if (level !== null) return { kind: "year_standing", level };
 
   return { kind: "code", code: normalizeCode(trimmed) };
 }

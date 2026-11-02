@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { findMatchingCode, normalizeCode } from "../import/codeMatching";
-import { parseSubjectsCsv, planCurriculumImport, type ExistingSubject } from "../import/curriculumImport";
+import { parseSubjectsCsv, planCurriculumImport, type ExistingSubject, parseYearStanding, yearStandingLabel } from "../import/curriculumImport";
 import { isValidStudentId, normalizeStudentId } from "../studentId";
 
 describe("subject code matching", () => {
@@ -65,6 +65,46 @@ describe("curriculum CSV parsing", () => {
         },
       ],
     });
+  });
+
+  it("reads a year standing however it is written", () => {
+    for (const [text, level] of [
+      ["4th Yr Standing", 4],
+      ["Fourth year standing", 4],
+      ["FOURTH YEAR STANDING", 4],
+      ["4th-year standing", 4],
+      ["4th yr. std.", 4],
+      ["4 year standing", 4],
+      ["IV year standing", 4],
+      ["4th year", 4],
+      ["4th year level standing", 4],
+      ["Senior standing", 4],
+      ["Third Year Standing", 3],
+      ["3rd yr standing", 3],
+      ["Junior standing", 3],
+      ["Second yr. Standing", 2],
+      ["First year standing", 1],
+      ["3th Yr Standing", 3],
+    ] as const) {
+      assert.equal(parseYearStanding(text), level, text);
+    }
+    for (const text of ["CC 101", "5th year standing", "Year 2", "standing", "4th", "Senior", "4th year students"]) {
+      assert.equal(parseYearStanding(text), null, text);
+    }
+  });
+
+  it("writes a year standing the way it reads it back", () => {
+    assert.deepEqual([1, 2, 3, 4].map(yearStandingLabel), ["1st Yr Standing", "2nd Yr Standing", "3rd Yr Standing", "4th Yr Standing"]);
+    for (const level of [1, 2, 3, 4]) assert.equal(parseYearStanding(yearStandingLabel(level)), level);
+  });
+
+  it("imports \"Fourth year standing\" as a year standing, not as a subject code", () => {
+    const result = parseSubjectsCsv([header, "CC 300,Practicum,6,4,2,Fourth year standing; CC 101"].join("\n"));
+    assert.ok("subjects" in result);
+    assert.deepEqual(result.subjects[0].requirements, [
+      { kind: "year_standing", level: 4 },
+      { kind: "code", code: "CC 101" },
+    ]);
   });
 
   it("reads S as the midyear, and 3 from older files", () => {

@@ -3,6 +3,7 @@ import { createServerClientForUser } from "../../../../lib/domain/supabase/serve
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import CurriculumPdfDocument from "./CurriculumPdfDocument";
 import { userMessage } from "../../../../lib/userMessage";
+import { yearStandingLabel } from "../../../../lib/domain/import/curriculumImport";
 
 export const runtime = "nodejs";
 
@@ -63,7 +64,7 @@ export async function GET(request: Request) {
   for (const r of requirementRows ?? []) {
     const list = requirementsBySubject.get(r.subject_id) ?? [];
     if (r.type === "YEAR_STANDING") {
-      list.push(`${r.required_year_level}th Yr Standing`);
+      list.push(yearStandingLabel(r.required_year_level));
     } else if (r.type === "COMPLETION") {
       list.push("All Subjects");
     } else {
