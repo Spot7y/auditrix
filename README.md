@@ -104,8 +104,12 @@ what each student has completed, can take next, or took out of order.
   movements and curriculum changes are stamped the same way. Grades must be KSU grades that match their status, and
   terms must look like `25-1` or `26-S`.
 - **Accounts.** Passwords are stored by Supabase Auth as bcrypt hashes and must have 8+ characters with a letter and a
-  number. After 5 wrong passwords an account is blocked for 15 minutes, and users are signed out after 30 minutes
-  without activity (with a minute's warning). New chairpersons must replace their temporary password.
+  number. After 5 wrong passwords an account is blocked for 15 minutes (counted in the database, so it holds when
+  the app runs on several servers), and users are signed out after 30 minutes without activity (with a minute's
+  warning). New chairpersons must replace their temporary password. Public sign-up is off: accounts are only created
+  by a dean in Auditrix.
+- **Least database access.** The app's database roles get only the table access Auditrix uses, written out in a
+  migration; the public (anon) key alone can't read any table.
 - **Browser protections.** A Content Security Policy, no framing by other sites (clickjacking), `nosniff`, a strict
   referrer policy and, in production, HSTS. Technical database errors are logged on the server, not shown.
 - **Locked records.** A dropped or transferred-out student's record can't be changed until it's reopened.
@@ -213,6 +217,34 @@ where to click, and with `--apply` saves that list to `showcase-guide.md`. `--pr
 Staff accounts are Supabase Auth users with a matching row in the `staff` table. Deans create chairperson accounts
 from the app; the first dean account is created in Supabase Studio. After that, deans create new deans themselves:
 the dean of a new college when splitting, or their successor when handing over.
+
+## Hosting online (Vercel and Supabase)
+
+Auditrix runs on Vercel (the web app) with a hosted Supabase project (database and logins), both on free plans.
+`vercel.json` runs the app in Vercel's Singapore region, close to the Philippines; create the Supabase project in
+**Southeast Asia (Singapore)** too, so pages load fast.
+
+1. **Supabase:** create a project at supabase.com (region Singapore, a strong database password). Under
+   Authentication → Sign In / Providers, turn off **Allow new users to sign up**.
+2. **Database:** on your computer, in this folder:
+
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your project ref>   # asks for the database password
+   npx supabase db push --include-seed                  # migrations, then the data saved with npm run db:save
+   ```
+
+   Without a saved `supabase/seed.sql`, leave out `--include-seed` and create the first college and dean in the
+   project's Studio (see above).
+3. **Vercel:** at vercel.com, import the GitHub repository and add three Environment Variables from the Supabase
+   project's API settings: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and
+   `SUPABASE_SECRET_KEY`. Deploy. Every push to `main` deploys again.
+4. **Later database changes:** run `npx supabase db push` after pulling a new migration.
+
+Since May 30, 2026, new Supabase projects don't give the app's database roles any table access by default: a new
+table needs explicit `grant`s in its migration (see `20261102090000_explicit_table_grants.sql`), or every query on it
+fails with "permission denied". The free Supabase plan pauses a project after 7 days without use; open the site (or
+restore it from the Supabase dashboard) before you need it. Uploads are limited to 4 MB on Vercel.
 
 ## Scripts
 

@@ -15,8 +15,9 @@ export interface ImportResult {
 }
 
 // Keep in step with serverActions.bodySizeLimit in next.config.ts, which
-// allows a little extra for the form's own overhead.
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+// allows a little extra for the form's own overhead. Hosted on Vercel, a
+// request can be at most 4.5 MB, so files are kept to 4 MB.
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 export type ImportAction = (prev: ImportResult | null, formData: FormData) => Promise<ImportResult>;
 
@@ -230,7 +231,7 @@ export function ImportForm<P>({
                 (v): v is File => v instanceof File && v.size > MAX_FILE_BYTES
               );
               if (tooLarge) {
-                setSizeError(`${tooLarge.name} is too large. Files can be up to 10 MB.`);
+                setSizeError(`${tooLarge.name} is too large. Files can be up to 4 MB.`);
                 return;
               }
               setSizeError(null);

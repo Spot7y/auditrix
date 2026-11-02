@@ -1,7 +1,7 @@
 import { createServerClientForUser } from "../../../../lib/domain/supabase/serverClient";
 import { getCurrentStaff } from "../../../../lib/queries/staff";
 import { userMessage } from "../../../../lib/userMessage";
-import { yearStandingLabel } from "../../../../lib/domain/import/curriculumImport";
+import { requirementLabel } from "../../../../lib/domain/import/curriculumImport";
 
 function csvField(value: string): string {
   if (/[",\n]/.test(value)) {
@@ -54,13 +54,7 @@ export async function GET(request: Request) {
   const requirementsBySubject = new Map<string, string[]>();
   for (const r of requirementRows ?? []) {
     const list = requirementsBySubject.get(r.subject_id) ?? [];
-    if (r.type === "YEAR_STANDING") {
-      list.push(yearStandingLabel(r.required_year_level));
-    } else if (r.type === "COMPLETION") {
-      list.push("All Subjects");
-    } else {
-      list.push(idToCode.get(r.required_subject_id) ?? "");
-    }
+    list.push(requirementLabel(r, () => idToCode.get(r.required_subject_id) ?? ""));
     requirementsBySubject.set(r.subject_id, list);
   }
 

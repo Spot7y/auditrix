@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { findMatchingCode, normalizeCode } from "../import/codeMatching";
-import { parseSubjectsCsv, planCurriculumImport, type ExistingSubject, parseYearStanding, yearStandingLabel } from "../import/curriculumImport";
+import { parseSubjectsCsv, planCurriculumImport, type ExistingSubject, parseYearStanding, yearStandingLabel, parseRequirementToken, requirementLabel } from "../import/curriculumImport";
 import { isValidStudentId, normalizeStudentId } from "../studentId";
 
 describe("subject code matching", () => {
@@ -106,6 +106,39 @@ describe("curriculum CSV parsing", () => {
     assert.deepEqual(result.subjects[1].requirements, [
       { kind: "code", code: "CC 101" },
       { kind: "code", code: "CC 102" },
+    ]);
+  });
+
+  it("reads co-requisites and \"All subjects\"", () => {
+    for (const text of ["CC 104 (co-req)", "cc 104 (Coreq)", "CC 104 (co-requisite)", "Co-req: CC 104", "coreq CC 104"]) {
+      assert.deepEqual(parseRequirementToken(text), { kind: "code", code: "CC 104", corequisite: true }, text);
+    }
+    for (const text of ["All Subjects", "all subjects completed", "ALL SUBJECTS"]) {
+      assert.deepEqual(parseRequirementToken(text), { kind: "completion" }, text);
+    }
+    assert.deepEqual(parseRequirementToken("CC 104"), { kind: "code", code: "CC 104" });
+  });
+
+  it("imports back what it exports: co-requisites, year standing and all subjects", () => {
+    const codes: Record<string, string> = { a: "CC 104", b: "CC 101" };
+    const exported = [
+      { type: "COREQUISITE", required_subject_id: "a", required_year_level: null },
+      { type: "PREREQUISITE", required_subject_id: "b", required_year_level: null },
+      { type: "YEAR_STANDING", required_subject_id: null, required_year_level: 3 },
+      { type: "COMPLETION", required_subject_id: null, required_year_level: null },
+    ].map((r) => requirementLabel(r, () => codes[r.required_subject_id ?? ""] ?? ""));
+    assert.deepEqual(exported, ["CC 104 (co-req)", "CC 101", "3rd Yr Standing", "All Subjects"]);
+    const result = parseSubjectsCsv(
+      [header, "CC 101,Intro,3,1,1,", "CC 104,Lab,1,1,1,", `CC 105,Lec,3,1,1,"${exported.join("; ")}"`].join("\n")
+    );
+    assert.ok("subjects" in result);
+    const plan = planCurriculumImport(result.subjects, [], [], new Set());
+    assert.deepEqual(plan.warnings, []);
+    assert.deepEqual(plan.subjects.find((s) => s.code === "CC 105")!.requirements, [
+      { kind: "code", code: "CC 104", corequisite: true },
+      { kind: "code", code: "CC 101" },
+      { kind: "year_standing", level: 3 },
+      { kind: "completion" },
     ]);
   });
 

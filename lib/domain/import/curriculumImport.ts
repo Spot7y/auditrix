@@ -6,7 +6,10 @@ import { prerequisiteProblem, type PrerequisiteLinks } from "../requirements/pre
 // Parsing and planning for the curriculum import (CSV, .xlsx or .xls). Kept free of database
 // calls so the preview and the real import work from exactly the same plan.
 
-export type ParsedRequirement = { kind: "code"; code: string } | { kind: "year_standing"; level: number };
+export type ParsedRequirement =
+  | { kind: "code"; code: string; corequisite?: true }
+  | { kind: "year_standing"; level: number }
+  | { kind: "completion" };
 
 export interface ParsedSubject {
   code: string;
@@ -108,14 +111,35 @@ export function parseYearStanding(raw: string): number | null {
   return rest.length === 0 || isStanding(rest) ? level : null;
 }
 
+/** "All subjects" (completed): every other subject of the curriculum, e.g. for a practicum. */
+const COMPLETION = /^all\s+subjects(\s+completed)?$/i;
+/** A co-requisite: "CC 104 (co-req)", "(coreq)", "(co-requisite)" or "co-req: CC 104". */
+const COREQ_SUFFIX = /\s*\(\s*co-?req(uisite)?\s*\)$/i;
+const COREQ_PREFIX = /^co-?req(uisite)?\s*:?\s+/i;
+
 export function parseRequirementToken(raw: string): ParsedRequirement | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.toUpperCase() === "NONE") return null;
+  if (COMPLETION.test(trimmed)) return { kind: "completion" };
 
   const level = parseYearStanding(trimmed);
   if (level !== null) return { kind: "year_standing", level };
 
+  if (COREQ_SUFFIX.test(trimmed) || COREQ_PREFIX.test(trimmed)) {
+    const code = trimmed.replace(COREQ_SUFFIX, "").replace(COREQ_PREFIX, "");
+    return { kind: "code", code: normalizeCode(code), corequisite: true };
+  }
   return { kind: "code", code: normalizeCode(trimmed) };
+}
+
+/** How a requirement is written in a curriculum file, so an exported file imports back the same. */
+export function requirementLabel(
+  r: { type: string; required_year_level: number | null },
+  codeOf: () => string
+): string {
+  if (r.type === "YEAR_STANDING") return yearStandingLabel(r.required_year_level ?? 0);
+  if (r.type === "COMPLETION") return "All Subjects";
+  return r.type === "COREQUISITE" ? `${codeOf()} (co-req)` : codeOf();
 }
 
 export type ParsedSubjects = { subjects: ParsedSubject[]; warnings: string[] } | { error: string };
@@ -221,14 +245,28 @@ export function planCurriculumImport(
         kept.push(req);
         continue;
       }
-      const matched = findMatchingCode(req.code, codeCandidates);
-      if (!matched) {
-        warnings.push(`${s.code}: prerequisite "${req.code}" not found, skipped.`);
+      if (req.kind === "completion") {
+        newRequirements.push("All subjects");
+        kept.push(req);
         continue;
       }
-      const problem = prerequisiteProblem(s.code, matched.code, links, { existing: links.get(s.code) ?? [] });
+      const matched = findMatchingCode(req.code, codeCandidates);
+      if (!matched) {
+        warnings.push(`${s.code}: ${req.corequisite ? "co-requisite" : "prerequisite"} "${req.code}" not found, skipped.`);
+        continue;
+      }
+      const taken = kept.flatMap((r) => (r.kind === "code" ? [r.code] : []));
+      const problem = prerequisiteProblem(s.code, matched.code, links, {
+        corequisite: req.corequisite === true,
+        existing: req.corequisite ? taken : [...(links.get(s.code) ?? []), ...taken],
+      });
       if (problem) {
         warnings.push(`${s.code}: ${problem} Skipped.`);
+        continue;
+      }
+      if (req.corequisite) {
+        newRequirements.push(`${matched.code} (corequisite)`);
+        kept.push({ kind: "code", code: matched.code, corequisite: true });
         continue;
       }
       links.set(s.code, [...(links.get(s.code) ?? []), matched.code]);
