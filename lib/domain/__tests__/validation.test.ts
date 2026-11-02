@@ -95,7 +95,7 @@ describe("curriculum import prerequisites", () => {
     assert.ok("subjects" in parsed);
     const plan = planCurriculumImport(parsed.subjects, [], [], new Set());
     const required = (code: string) =>
-      plan.subjects.find((s) => s.code === code)!.requirements.map((r) => (r.kind === "code" ? r.code : r.level));
+      plan.subjects.find((s) => s.code === code)!.requirements.map((r) => (r.kind === "code" ? r.code : r.kind === "year_standing" ? r.level : "all"));
     assert.deepEqual(required("CC 101"), []);
     assert.deepEqual(required("CC 102"), ["CC 101", "CC 103"]);
     assert.deepEqual(required("CC 103"), []);

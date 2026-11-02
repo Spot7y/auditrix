@@ -618,13 +618,18 @@ export async function importSubjectsCsv(_prev: ImportResult | null, formData: Fo
         if (error) warnings.push(`${s.code} (Year ${req.level} standing): ${userMessage(error)}`);
         continue;
       }
+      if (req.kind === "completion") {
+        const { error } = await supabase.from("requirements").insert({ subject_id: subjectId, type: "COMPLETION" });
+        if (error) warnings.push(`${s.code} (All subjects): ${userMessage(error)}`);
+        continue;
+      }
 
       // Unmatched prerequisites were already reported by the plan.
       const matched = findMatchingCode(req.code, codeCandidates);
       if (!matched) continue;
       const { error } = await supabase.from("requirements").insert({
         subject_id: subjectId,
-        type: "PREREQUISITE",
+        type: req.corequisite ? "COREQUISITE" : "PREREQUISITE",
         required_subject_id: matched.id,
       });
       if (error) warnings.push(`${s.code} → ${req.code}: ${userMessage(error)}`);
@@ -776,8 +781,10 @@ export async function createVersionFromFile(_prev: ImportResult | null, formData
       if (req.kind === "year_standing") {
         return [{ subject_id: subjectId, type: "YEAR_STANDING", required_year_level: req.level }];
       }
+      if (req.kind === "completion") return [{ subject_id: subjectId, type: "COMPLETION" }];
       const matched = findMatchingCode(req.code, candidates);
-      return matched ? [{ subject_id: subjectId, type: "PREREQUISITE", required_subject_id: matched.id }] : [];
+      const type = req.corequisite ? "COREQUISITE" : "PREREQUISITE";
+      return matched ? [{ subject_id: subjectId, type, required_subject_id: matched.id }] : [];
     })
   );
   if (requirementRows.length > 0) {
