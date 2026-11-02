@@ -1,4 +1,5 @@
 import { createServerClientForUser } from "../domain/supabase/serverClient";
+import { createAdminClient } from "../domain/supabase/adminClient";
 
 export interface CollegeHistoryEntry {
   id: string;
@@ -38,7 +39,6 @@ export interface EmptyCollege {
 export async function getEmptyColleges(): Promise<EmptyCollege[]> {
   // Deans can't see other colleges' staff, so this server-only check uses the
   // admin client and returns only the colleges' names.
-  const { createAdminClient } = await import("../domain/supabase/adminClient");
   const admin = createAdminClient();
   const [colleges, curricula, staff] = await Promise.all([
     admin.from("colleges").select("id, name, short_name").order("name"),
