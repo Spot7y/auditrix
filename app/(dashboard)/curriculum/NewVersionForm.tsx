@@ -137,7 +137,7 @@ export default function NewVersionForm({ latestYear }: { latestYear: number | nu
                 id="new-version-file"
                 label="File"
                 accept=".xlsx,.xls,.csv"
-                hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester (1, 2 or S for midyear), prerequisites (separate several with “;”)."
+                hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester (1, 2 or S for midyear), prerequisites (separate several with “;”; a year standing can be written e.g. “4th Yr Standing” or “Fourth year standing”)."
               />
               <a
                 href="/curriculum-import-template.csv"
