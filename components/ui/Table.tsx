@@ -3,7 +3,9 @@ import type { ComponentProps } from "react";
 /** Scrolls sideways on small screens instead of squashing columns. */
 export function Table({ className, ...props }: ComponentProps<"table">) {
   return (
-    <div className="-mx-px overflow-x-auto">
+    // relative: screen-reader-only labels (absolutely positioned) stay inside the
+    // scrolling box instead of widening the whole page on a phone.
+    <div className="relative -mx-px overflow-x-auto">
       <table className={`w-full border-collapse text-left text-sm ${className ?? ""}`} {...props} />
     </div>
   );
