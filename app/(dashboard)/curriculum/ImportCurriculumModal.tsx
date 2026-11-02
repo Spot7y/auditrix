@@ -22,7 +22,7 @@ export default function ImportCurriculumModal({ curriculumId }: { curriculumId: 
           id="import-curriculum-file"
           label="File"
           accept=".xlsx,.xls,.csv"
-          hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester (1, 2 or S for midyear), prerequisites (separate several with “;”; a year standing can be written e.g. “4th Yr Standing” or “Fourth year standing”)."
+          hint="Excel (.xlsx or .xls) or CSV. Columns: code, title, units, year level, semester (1, 2 or S for midyear), prerequisites (separate several with “;” or “,”; a year standing can be written e.g. “4th Yr Standing” or “Fourth year standing”)."
         />
       </ImportDialog>
       <a href="/curriculum-import-template.csv" download className="text-sm font-medium text-brand-700 hover:underline">

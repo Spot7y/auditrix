@@ -93,6 +93,22 @@ describe("curriculum CSV parsing", () => {
     }
   });
 
+  it("separates prerequisites with a semicolon, a comma or a new line", () => {
+    const result = parseSubjectsCsv(
+      [header, 'CC 300,Practicum,6,4,2,"CC 101, CC 102; 4th Yr Standing"', 'CC 301,Seminar,3,4,2,"CC 101\nCC 102"'].join("\n")
+    );
+    assert.ok("subjects" in result);
+    assert.deepEqual(result.subjects[0].requirements, [
+      { kind: "code", code: "CC 101" },
+      { kind: "code", code: "CC 102" },
+      { kind: "year_standing", level: 4 },
+    ]);
+    assert.deepEqual(result.subjects[1].requirements, [
+      { kind: "code", code: "CC 101" },
+      { kind: "code", code: "CC 102" },
+    ]);
+  });
+
   it("writes a year standing the way it reads it back", () => {
     assert.deepEqual([1, 2, 3, 4].map(yearStandingLabel), ["1st Yr Standing", "2nd Yr Standing", "3rd Yr Standing", "4th Yr Standing"]);
     for (const level of [1, 2, 3, 4]) assert.equal(parseYearStanding(yearStandingLabel(level)), level);

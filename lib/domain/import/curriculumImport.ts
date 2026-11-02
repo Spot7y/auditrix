@@ -163,8 +163,9 @@ export function parseSubjectRows(rows: string[][]): ParsedSubjects {
     }
     seenCodes.add(code);
 
+    // Several prerequisites are separated with ";" or "," (or one per line in an Excel cell).
     const requirements = (rawPrereq ?? "")
-      .split(";")
+      .split(/[;,\n]/)
       .map((token) => parseRequirementToken(token))
       .filter((r): r is ParsedRequirement => r !== null);
 
